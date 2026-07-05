@@ -1,0 +1,72 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kelsey Creek Farm — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Animals · Environment</span>
+        <h1>Kelsey Creek Farm</h1>
+        <p class="detail-desc">Kelsey Creek Farm is a historic city-run farm in the middle of Bellevue, home to animals like goats, sheep, rabbits, and chickens, and a beloved local spot for families. Volunteering can involve helping care for the animals, cleaning barns, and assisting at farm events — hands-on work for anyone who loves being around animals and doesn't mind the less glamorous side of farm chores. It's a charming, green setting that feels worlds away from the surrounding suburbs. This is an easy yes if you're an animal lover looking for a meaningful way to spend time around them. There are two regular programs: After School Teen Volunteers (ages 12–18, with an adult present for 12–13) and Saturday Morning Teen Volunteers (ages 15–18). One important thing to know: the popular Summer Teen Farm Program charges a fee and functions more like a paid camp, while event volunteering (like the fall Farm Fair) is free — so if your goal is free volunteering, ask specifically about the no-cost options when you email or call to get started.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>General: <a href="mailto:KelseyCreekFarm@bellevuewa.gov">KelseyCreekFarm@bellevuewa.gov</a> / 425-452-7688</li>
+            <li>Farm Fair: <a href="mailto:sstenslie@bellevuewa.gov">sstenslie@bellevuewa.gov</a></li>
+            <li>Website: <a href="https://bellevuewa.gov/city-government/departments/parks/community-centers/kelsey-creek-farm" target="_blank" rel="noopener">bellevuewa.gov/kelsey-creek-farm</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Email <a href="mailto:KelseyCreekFarm@bellevuewa.gov">KelseyCreekFarm@bellevuewa.gov</a> or call 425-452-7688</span></li>
+          <li><span class="n">2</span><span>Ask about current volunteer openings and available dates</span></li>
+          <li><span class="n">3</span><span>Register for your shift through the City of Bellevue Parks system</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="mailto:KelseyCreekFarm@bellevuewa.gov">Email to sign up →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'kelsey-creek-farm', '../map.html');</script>
+
+</body>
+</html>

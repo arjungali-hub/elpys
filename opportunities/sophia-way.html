@@ -1,0 +1,72 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Sophia Way — Donation Center — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Community</span>
+        <h1>The Sophia Way — Donation Center</h1>
+        <p class="detail-desc">At Sophia Way's donation center, you'll spend a two-hour Wednesday afternoon shift sorting through donated clothing and household goods — folding, organizing, checking items for quality, and getting them ready to go to women experiencing homelessness in the Bellevue area. The work happens behind the scenes at their Bellevue center, so you won't be interacting directly with the women the shelter serves; instead, you're the reason the shelves are stocked and the donations are usable. It's calm, steady, hands-on work with a clear rhythm to it. This is a great fit if you like the satisfaction of bringing order to a messy space and prefer a predictable, low-pressure task over something fast-paced or social. It's also one of the easiest opportunities to start — no application, no orientation, just pick a Wednesday and go. It's probably not the right pick if you're hoping to work directly with the people you're helping, or if a fixed weekly time slot doesn't fit your schedule.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Email: <a href="mailto:volunteer@sophiaway.org">volunteer@sophiaway.org</a></li>
+            <li>Website: <a href="https://sophiaway.org/" target="_blank" rel="noopener">sophiaway.org</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Go to the signup page (link below)</span></li>
+          <li><span class="n">2</span><span>Pick an available Wednesday slot</span></li>
+          <li><span class="n">3</span><span>Enter your name and email</span></li>
+          <li><span class="n">4</span><span>Show up on the day — no further steps</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="https://volunteer.bloomerang.co/JE/uxxmhf89pf6yta" target="_blank" rel="noopener">Sign up →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'sophia-way', '../map.html');</script>
+
+</body>
+</html>

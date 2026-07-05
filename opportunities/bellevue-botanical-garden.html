@@ -1,0 +1,73 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bellevue Botanical Garden — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Environment</span>
+        <h1>Bellevue Botanical Garden</h1>
+        <p class="detail-desc">The Bellevue Botanical Garden is a stunning 53-acre public garden, and volunteering there means helping keep it beautiful — working as a General Garden Assistant or Waterwise Garden Assistant on garden and path maintenance, or supporting youth workshops and events. Tools and training are provided, and you'll learn real gardening skills from staff and seasoned volunteers in one of the most peaceful settings on this whole list. It's a wonderful fit if you love plants, want to learn about horticulture, and enjoy calm, absorbing outdoor work in a gorgeous place. The trade-off is commitment: this is the most structured of the online-signup options, requiring a one-time orientation before you start and geared toward volunteers who'll come back regularly rather than just once. Teen roles are open to ages 16–17. If you want true drop-in flexibility or a one-and-done experience, one of the event-based options will suit you better.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Email: <a href="mailto:BBGVolunteer@bellevuewa.gov">BBGVolunteer@bellevuewa.gov</a></li>
+            <li>Phone: 425-452-6826</li>
+            <li>Website: <a href="https://bellevuewa.gov/" target="_blank" rel="noopener">bellevuewa.gov</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Read the Parks &amp; Community Services Volunteer Handbook and BBG Volunteer Guide (linked on the page below)</span></li>
+          <li><span class="n">2</span><span>Submit an application through the online VicNet portal (linked on the same page)</span></li>
+          <li><span class="n">3</span><span>Attend a one-time in-person orientation, required before your first shift — email <a href="mailto:BBGVolunteer@bellevuewa.gov">BBGVolunteer@bellevuewa.gov</a> or call 425-452-6826 to schedule</span></li>
+          <li><span class="n">4</span><span>After orientation, email the Volunteer Lead to schedule your first shift, then sign up for future shifts through VicNet</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="https://bellevuewa.gov/city-government/departments/parks/programs/volunteer-opportunities/volunteer-bellevue-botanical-garden" target="_blank" rel="noopener">Apply →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'bellevue-botanical-garden', '../map.html');</script>
+
+</body>
+</html>

@@ -1,0 +1,72 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EarthCorps — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Environment</span>
+        <h1>EarthCorps</h1>
+        <p class="detail-desc">EarthCorps organizes habitat restoration events, mostly on Saturdays, at parks and green spaces around Puget Sound including several Eastside locations. You'll spend the day removing invasive plants like blackberry and ivy, planting natives, and helping forests and shorelines recover — guided by staff who teach you everything on site, with tools, gloves, and snacks provided. The vibe is communal and mission-driven; you're working in a group toward a visible goal, and there's a satisfying camaraderie to spending a morning pulling ivy alongside other people who care about the environment. Pick this if you're passionate about nature, enjoy group settings, and want work that's physical and outdoors. It's a weekend commitment that eats up a Saturday, so it's less convenient if your weekends are packed, and like all outdoor restoration, it's not for anyone who'd rather stay clean and indoors. Under-18s need a parent to complete an online youth waiver beforehand.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Email: <a href="mailto:volunteer@earthcorps.org">volunteer@earthcorps.org</a></li>
+            <li>Website: <a href="https://www.earthcorps.org/" target="_blank" rel="noopener">earthcorps.org</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Browse the volunteer calendar (link below) and pick an event</span></li>
+          <li><span class="n">2</span><span>Register online with your name and email</span></li>
+          <li><span class="n">3</span><span>Have a parent complete the online youth waiver at home (you'll get a link after registering)</span></li>
+          <li><span class="n">4</span><span>Show up at the listed location and scan the QR code to sign in</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="https://www.earthcorps.org/volunteer/calendar/" target="_blank" rel="noopener">Browse events →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'earthcorps', '../map.html');</script>
+
+</body>
+</html>

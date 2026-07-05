@@ -1,0 +1,71 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bellevue Farmers Market — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Community · Food</span>
+        <h1>Bellevue Farmers Market</h1>
+        <p class="detail-desc">Volunteering at the Bellevue Farmers Market puts you right in the middle of the action on a Thursday afternoon, from setting up tents and tables before the crowds arrive to staffing the info booth, helping shoppers find vendors, selling market merchandise, and processing tokens for customers using food assistance benefits. The market runs May through October in a lively outdoor setting with live music and a real neighborhood-gathering feel. This is the opportunity for you if you're outgoing and enjoy being around people and energy — you'll be talking to shoppers, working alongside other volunteers, and helping a bustling event run smoothly. It's open to all ages and needs no experience. If you're more introverted or you'd rather do focused, quiet work away from crowds, this probably isn't your best match, and it's seasonal, so it's only an option during the warmer months.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Email: <a href="mailto:fresh@bellevuefarmersmarket.org">fresh@bellevuefarmersmarket.org</a></li>
+            <li>Website: <a href="https://bellevuefarmersmarket.org/" target="_blank" rel="noopener">bellevuefarmersmarket.org</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Go to the volunteer page (link below) and click the signup button</span></li>
+          <li><span class="n">2</span><span>Complete the one-time volunteer release form (also linked on the page)</span></li>
+          <li><span class="n">3</span><span>Show up on the day</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="https://bellevuefarmersmarket.org/volunteer" target="_blank" rel="noopener">Sign up →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'bellevue-farmers-market', '../map.html');</script>
+
+</body>
+</html>

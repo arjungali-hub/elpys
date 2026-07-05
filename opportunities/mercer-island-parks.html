@@ -1,0 +1,73 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mercer Island Parks — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Environment</span>
+        <h1>Mercer Island Parks</h1>
+        <p class="detail-desc">Mercer Island Parks runs restoration events across the island's parks and forested areas, where you'll remove invasive ivy and blackberry, plant native species, spread mulch, and do light trail work. Events happen every other Saturday plus some alternating weekdays, with tools, gloves, and snacks provided — no experience needed. This is a good match if you like outdoor, physical work and want a flexible, drop-in-style commitment rather than a recurring weekly shift. Because events are often capacity-limited, it rewards someone willing to check the calendar regularly and register early. Volunteers 14 and under need an adult with them at a 1:3 ratio, while 15 and up can sign up and attend solo.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Email: <a href="mailto:restoration@mercerisland.gov">restoration@mercerisland.gov</a></li>
+            <li>Phone: 206-275-7757</li>
+            <li>Website: <a href="https://www.mercerisland.gov/" target="_blank" rel="noopener">mercerisland.gov</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Find an upcoming restoration event on the Mercer Island Parks calendar (link below)</span></li>
+          <li><span class="n">2</span><span>Register for the event — some events register through EarthCorps.org, and others are limited-capacity and ask you to sign up via the event page</span></li>
+          <li><span class="n">3</span><span>If you're under 18, have a parent sign the minor consent form (linked on the volunteer page) and bring it</span></li>
+          <li><span class="n">4</span><span>Show up at the listed park — follow the "Volunteer Event" signs</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="https://www.mercerisland.gov/parksrec/page/volunteer-mercer-island-parks" target="_blank" rel="noopener">Browse events →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'mercer-island-parks', '../map.html');</script>
+
+</body>
+</html>

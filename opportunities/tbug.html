@@ -1,0 +1,74 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>tBUG — The Bellevue Urban Garden — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Food · Environment</span>
+        <h1>tBUG — The Bellevue Urban Garden</h1>
+        <p class="detail-desc">tBUG is a three-acre urban farm tucked into Bellevue, run almost entirely by volunteers and dedicated to growing fresh vegetables for people facing food insecurity in King County. Volunteering here means real farm work — harvesting vegetables, planting seedlings, weeding beds, watering, and helping build and maintain the space. It's hands-in-the-dirt, outdoor, seasonal work with a grassroots, community-garden feel rather than a polished institutional one. You'll enjoy this if you're drawn to growing food, like the meditative side of garden work, and care about where food comes from and who gets to eat it. The flip side is that it's less structured than some other options — you arrange your time by signing up through the Teens Who Care listing or contacting the garden directly — so it suits someone comfortable with a looser, more self-directed setup rather than a rigid schedule.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Email: <a href="mailto:tBUG3rdSpace@gmail.com">tBUG3rdSpace@gmail.com</a></li>
+            <li>Phone: 206-714-8566</li>
+            <li>Website: <a href="https://www.teenswhocare.us/activity-details.php?id=7" target="_blank" rel="noopener">teenswhocare.us/activity-details.php?id=7</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Go to the Teens Who Care listing (link below)</span></li>
+          <li><span class="n">2</span><span>Scroll down to find available dates and pick one</span></li>
+          <li><span class="n">3</span><span>Fill out the short signup form</span></li>
+          <li><span class="n">4</span><span>If you're under 18, download and sign the parental permission slip — bring it to the farm or email it to tBUG3rdSpace@gmail.com in advance</span></li>
+          <li><span class="n">5</span><span>Show up at the farm entrance — look for the tBUG sign along the paved trail</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="https://www.teenswhocare.us/activity-details.php?id=7" target="_blank" rel="noopener">Sign up →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'tbug', '../map.html');</script>
+
+</body>
+</html>

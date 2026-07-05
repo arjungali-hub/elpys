@@ -1,0 +1,73 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sammamish Animal Sanctuary — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Animals</span>
+        <h1>Sammamish Animal Sanctuary</h1>
+        <p class="detail-desc">The Sammamish Animal Sanctuary — actually located in Renton, about twenty minutes from Bellevue — provides a permanent home for rescued barnyard animals like goats, pigs, cows, and chickens. As a volunteer you'll be hands-on with daily animal care: feeding, cleaning enclosures, and helping with the everyday work that keeps the sanctuary running, with training built into your first shift. It's a peaceful, rural setting and a deeply rewarding place for anyone who connects with animals. This is the right choice if you want a genuine, ongoing relationship with the animals and the place, since the sanctuary asks for a minimum three-month commitment — that's the catch to weigh seriously. It's not designed for a one-time visit or an occasional drop-in, so it suits someone ready to show up consistently. You start by filling out an online application, after which you're directed to schedule your first shift. Ages 16 and up can volunteer independently; 14–15 may be considered with prior experience.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Email: <a href="mailto:jen@sammamishanimalsanctuary.org">jen@sammamishanimalsanctuary.org</a></li>
+            <li>Phone: 425-877-9002</li>
+            <li>Website: <a href="https://sammamishanimalsanctuary.org/" target="_blank" rel="noopener">sammamishanimalsanctuary.org</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Go to the volunteer page (link below) and click "Apply Here"</span></li>
+          <li><span class="n">2</span><span>Fill out the online application form</span></li>
+          <li><span class="n">3</span><span>After submitting, you'll be directed to their volunteer app to learn about opportunities and schedule your first shift</span></li>
+          <li><span class="n">4</span><span>Your first shift includes on-site training</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="https://sammamishanimalsanctuary.org/volunteer-individuals" target="_blank" rel="noopener">Apply →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'sammamish-animal-sanctuary', '../map.html');</script>
+
+</body>
+</html>

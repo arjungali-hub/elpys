@@ -1,0 +1,72 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>King County Parks — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Environment</span>
+        <h1>King County Parks</h1>
+        <p class="detail-desc">With King County Parks, you'll join restoration events at parks across the Eastside, doing the hands-on work that keeps natural areas healthy — pulling invasive weeds, planting native trees and shrubs, spreading wood chips along trails, and clearing litter. Events happen regularly throughout the year at a rotating set of locations, and the county provides tools, gloves, and instruction, so you can show up knowing nothing about restoration and leave having learned something. This is a strong choice if you like being outdoors, don't mind getting dirty, and feel good doing physical work that visibly improves a place. The flexibility is a real plus — you pick individual events rather than committing to a schedule. It's less appealing if you dislike being cold or wet (events run rain or shine), or if physical outdoor labor isn't something you enjoy. Under-18s need a printed parent waiver, but no parent needs to attend.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Website: <a href="https://kingcounty.gov/" target="_blank" rel="noopener">kingcounty.gov</a></li>
+            <li>Portal: <a href="https://parksvolunteer.kingcounty.gov/" target="_blank" rel="noopener">parksvolunteer.kingcounty.gov</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Browse upcoming events at the signup portal (link below)</span></li>
+          <li><span class="n">2</span><span>Register for an event with your name and email</span></li>
+          <li><span class="n">3</span><span>If you're under 18, download and print the <a href="https://kingcounty.gov/parksyouthwaiverform" target="_blank" rel="noopener">youth waiver</a> from the King County Parks site, have a parent sign it, and bring it to the event</span></li>
+          <li><span class="n">4</span><span>Show up at the listed park — tools and gloves provided</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="https://parksvolunteer.kingcounty.gov/" target="_blank" rel="noopener">Browse events →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'king-county-parks', '../map.html');</script>
+
+</body>
+</html>

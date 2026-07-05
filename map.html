@@ -1,0 +1,143 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Map — elpys</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="map-section">
+    <a href="index.html" class="back-link">← Back to all opportunities</a>
+    <h1 style="font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.75rem;">Opportunities near you</h1>
+    <p class="map-intro">Every verified opportunity is pinned below. Some organizations operate at one fixed address; others run events at multiple parks or serve several cities — those pins mark a representative location, not an exact site. Click a name on the left (or a pin) for details, and use "Get directions" in the popup for an accurate route.</p>
+    <div class="map-layout">
+      <div class="map-sidebar" id="map-sidebar"></div>
+      <div class="map-main">
+        <div id="map"></div>
+      </div>
+    </div>
+    <p class="map-disclaimer">Pin placement reflects the geocoded address where one exists. Always confirm the exact address on the opportunity's own page before heading out.</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="opportunities-data.js"></script>
+<script>
+  // opportunities[] comes from opportunities-data.js. Each popup's
+  // "Get directions" link searches the real address text on Google Maps,
+  // so actual navigation never depends on the pin's placement here.
+  const map = L.map('map', { worldCopyJump: true });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  function pinIcon(big) {
+    return makeMarkerIcon(big ? 50 : 34, true);
+  }
+
+  let activeItem = null;
+
+  function selectOpportunity(opp, listItem) {
+    opportunities.forEach(o => o.marker.setIcon(pinIcon(false)));
+    if (activeItem) activeItem.classList.remove('active');
+
+    opp.marker.setIcon(pinIcon(true));
+    opp.marker.openPopup();
+    map.flyTo([opp.lat, opp.lng], Math.max(map.getZoom(), 13), { duration: 0.5 });
+
+    if (listItem) {
+      const wrap = listItem.closest('.map-list-item-wrap') || listItem;
+      wrap.classList.add('active');
+      wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      activeItem = wrap;
+    }
+  }
+
+  const sidebar = document.getElementById('map-sidebar');
+  const bounds = [];
+
+  opportunities.forEach(opp => {
+    const directionsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(opp.address);
+    const approxNote = opp.approx ? '<span class="map-popup-tag">Approximate area — operates at multiple sites</span>' : '';
+    const actionLink = (opp.approx && opp.liveUrl)
+      ? '<a href="' + opp.liveUrl + '" target="_blank" rel="noopener">Find exact locations on their website</a>'
+      : '<a href="' + directionsUrl + '" target="_blank" rel="noopener">Get directions</a>';
+    const popupHtml =
+      '<div class="map-popup">' +
+        '<a class="map-popup-title" href="' + opp.link + '">' + opp.name + '</a>' +
+        '<span class="map-popup-tag">' + opp.tag + '</span>' +
+        approxNote +
+        actionLink +
+      '</div>';
+
+    opp.marker = L.marker([opp.lat, opp.lng], { icon: pinIcon(false) }).addTo(map).bindPopup(popupHtml);
+    bounds.push([opp.lat, opp.lng]);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'map-list-item-wrap';
+
+    const item = document.createElement('div');
+    item.className = 'map-list-item';
+    item.innerHTML =
+      '<a class="map-list-name" href="' + opp.link + '">' + opp.name + '</a>' +
+      '<span class="map-list-desc">' + opp.desc + '</span>';
+    item.addEventListener('click', e => {
+      if (!e.target.closest('a')) selectOpportunity(opp, item);
+    });
+    wrap.appendChild(item);
+
+    // This pin marks a representative point, not a real address — the org
+    // actually runs events at multiple sites. Link straight to their own
+    // live listing instead of pretending this map knows where/when those
+    // events are, right under the name rather than an interrupting popup.
+    if (opp.approx && opp.liveUrl) {
+      const note = document.createElement('div');
+      note.className = 'map-list-live-note';
+      note.innerHTML = 'Operates at multiple locations — <a href="' + opp.liveUrl + '" target="_blank" rel="noopener">view their live event page →</a>';
+      wrap.appendChild(note);
+    }
+
+    sidebar.appendChild(wrap);
+    opp.listItem = item;
+
+    opp.marker.on('click', () => selectOpportunity(opp, item));
+  });
+
+  map.fitBounds(bounds, { padding: [30, 30] });
+
+  // A mini-map on an opportunity's own page links here with ?select=<slug>
+  // so this page opens already focused on that one, as if its sidebar
+  // entry had just been clicked.
+  const selectedSlug = new URLSearchParams(window.location.search).get('select');
+  if (selectedSlug) {
+    const selected = opportunities.find(o => opportunitySlug(o) === selectedSlug);
+    if (selected) selectOpportunity(selected, selected.listItem);
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,73 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hopelink Food Market — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Food · Community</span>
+        <h1>Hopelink Food Market</h1>
+        <p class="detail-desc">Hopelink runs food markets in Bellevue, Kirkland, and Shoreline that are set up like grocery stores, letting clients shop with dignity for the food they need. As a volunteer you'll stock shelves, sort donations, and assist shoppers as they move through the market. It's customer-facing and community-oriented, and you become a familiar, helpful presence for people relying on the service. This suits you if you want an ongoing role with real responsibility and you're comfortable interacting with the public. It's a bigger commitment than most options here — there's a background check and a required virtual orientation before you start, a minimum three-month commitment, and you need to be 16 or older — so it rewards someone looking to put down roots somewhere rather than volunteer just once. To begin, you email or call to apply, then allow about a week for the background check to clear before orientation and shifts.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Email: <a href="mailto:volunteerwithus@hopelink.org">volunteerwithus@hopelink.org</a></li>
+            <li>Phone: 425-869-6066</li>
+            <li>Website: <a href="https://www.hopelink.org/" target="_blank" rel="noopener">hopelink.org</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Email <a href="mailto:volunteerwithus@hopelink.org">volunteerwithus@hopelink.org</a> or call 425-869-6066 to fill out the volunteer application</span></li>
+          <li><span class="n">2</span><span>Complete a background check (can take up to a week)</span></li>
+          <li><span class="n">3</span><span>Once cleared, attend a virtual volunteer orientation (90 min, held 2–4 times per month online)</span></li>
+          <li><span class="n">4</span><span>Sign up for shifts at <a href="https://hopelink.volunteerhub.com" target="_blank" rel="noopener">hopelink.volunteerhub.com</a></span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="mailto:volunteerwithus@hopelink.org">Email to sign up →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'hopelink', '../map.html');</script>
+
+</body>
+</html>

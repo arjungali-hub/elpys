@@ -1,0 +1,74 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KidVantage — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Community</span>
+        <h1>KidVantage</h1>
+        <p class="detail-desc">KidVantage (formerly Eastside Baby Corner) runs a hub in Issaquah where donated children's clothing, gear, and essentials get sorted, cleaned, and prepared for families who need them. As a volunteer, you'll sort incoming donations by size and type, check that everything is clean and safe, and help pack items that get distributed to kids across the Eastside. The environment is warehouse-like and busy in a friendly way, with a mix of teen and adult volunteers working side by side. You'll like it here if you enjoy practical, tangible work and feel motivated by the idea that a shirt you folded or a toy you checked is going straight to a child who needs it. It's flexible, so you can pick shifts that fit your week. The main thing to weigh is location — Issaquah is about twenty minutes from Bellevue, so it works best if you have a reliable way to get there. Ages 12–13 need an adult with them; 14 and up can volunteer on their own.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Contact: Eileen</li>
+            <li>Email: <a href="mailto:eileenc@kidvantagenw.org">eileenc@kidvantagenw.org</a></li>
+            <li>Phone: 425-372-7532</li>
+            <li>Website: <a href="https://kidvantagenw.org/" target="_blank" rel="noopener">kidvantagenw.org</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Go to the signup page (link below)</span></li>
+          <li><span class="n">2</span><span>Create a free VolunteerHub account</span></li>
+          <li><span class="n">3</span><span>Browse available shifts and pick one</span></li>
+          <li><span class="n">4</span><span>Show up on the day</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="https://kidvantagenw.volunteerhub.com/vv2/" target="_blank" rel="noopener">Sign up →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'kidvantage', '../map.html');</script>
+
+</body>
+</html>

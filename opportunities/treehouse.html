@@ -1,0 +1,72 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Treehouse Store — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Community</span>
+        <h1>Treehouse Store</h1>
+        <p class="detail-desc">The Treehouse Store is a free shopping space in Seattle's Central District where kids and teens in foster care pick out clothes, shoes, books, and supplies — no cost, no stigma, just shopping like anyone else. As a volunteer, you're behind the scenes making that experience possible: sorting and tagging donations, restocking shelves, and prepping the store before shopping days. It's hands-on, organizing-heavy work in a retail-like setting, similar to working a stockroom. This is a great fit if you care about foster youth and like tidy, methodical tasks, and it's especially accessible since one-time shifts are easy to book — ongoing weekly or biweekly roles exist too, but those currently have a waitlist. Volunteers 12–15 need an adult with them; 16 and up can volunteer solo.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Email: <a href="mailto:volunteer@treehouseforkids.org">volunteer@treehouseforkids.org</a></li>
+            <li>Website: <a href="https://www.treehouseforkids.org/" target="_blank" rel="noopener">treehouseforkids.org</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Browse the Treehouse Store Support Shifts calendar (link below) for one-time "Individuals, Families, and Friends" shifts</span></li>
+          <li><span class="n">2</span><span>Register for an open shift</span></li>
+          <li><span class="n">3</span><span>If you're under 18, bring a guardian-signed waiver (linked on the volunteer page)</span></li>
+          <li><span class="n">4</span><span>For ongoing weekly/biweekly roles, email <a href="mailto:volunteer@treehouseforkids.org">volunteer@treehouseforkids.org</a> to join the waitlist</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="https://www.treehouseforkids.org/take-action/volunteer/" target="_blank" rel="noopener">Apply →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'treehouse', '../map.html');</script>
+
+</body>
+</html>

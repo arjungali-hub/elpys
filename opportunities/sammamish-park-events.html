@@ -1,0 +1,75 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>City of Sammamish — Park Volunteer Events — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Environment</span>
+        <h1>City of Sammamish — Park Volunteer Events</h1>
+        <p class="detail-desc">The City of Sammamish hosts frequent park stewardship events where you'll help restore local natural areas — removing invasive plants like purple loosestrife, putting in native plantings, building trails, and restoring wetlands and streams. Events are scheduled throughout the year at parks around Sammamish, with water, snacks, gloves, and tools all provided, and they're explicitly welcoming to students earning community service hours. The setting is outdoor and hands-on, and because most events are one-time, single-day commitments, you get a lot of flexibility to pick dates that work for you. This is a great option if you like outdoor restoration work and want something you can do occasionally without signing up for an ongoing role. It runs rain or shine, so it's less ideal if you dislike working in cold or wet weather, and summer parking at some sites is limited, so plan to carpool or get dropped off. Welcoming to ages 8 and up.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Contact: Sebastian Ritacco</li>
+            <li>Email: <a href="mailto:sritacco@sammamish.us">sritacco@sammamish.us</a></li>
+            <li>Phone: 425-414-0829</li>
+            <li>General questions: <a href="mailto:fsanchez@sammamish.us">fsanchez@sammamish.us</a></li>
+            <li>Website: <a href="https://www.sammamish.us/" target="_blank" rel="noopener">sammamish.us</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Go to the opportunities portal (link below) and create a free Galaxy Digital account</span></li>
+          <li><span class="n">2</span><span>Browse events and click "Respond" on one you want to attend</span></li>
+          <li><span class="n">3</span><span>Complete the online minor waiver — a direct link is provided on each event page</span></li>
+          <li><span class="n">4</span><span>Show up at the listed park location at the listed time</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="https://sammamish.galaxydigital.com/need/" target="_blank" rel="noopener">Browse events →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'sammamish-park-events', '../map.html');</script>
+
+</body>
+</html>

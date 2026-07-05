@@ -1,0 +1,73 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Renewal Food Bank — elpys</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="../index.html" class="site-name">elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="detail-section">
+    <a href="../index.html" class="back-link">← Back to all opportunities</a>
+    <div class="detail-layout">
+      <div class="detail-main">
+        <span class="detail-tag">Food</span>
+        <h1>Renewal Food Bank</h1>
+        <p class="detail-desc">Renewal Food Bank serves hundreds of families across East King County each week from its Bellevue location, and volunteers are central to keeping it running. You'll help stock shelves, assist shoppers as they select food, and keep the space organized and welcoming. The schedule is genuinely flexible — you can volunteer once to try it out or come back regularly — which makes it one of the more accessible commitments on this list despite needing an email to get started. It's a solid fit if you care about food security, like a mix of behind-the-scenes and people-facing work, and want something close to home in Bellevue without a rigid long-term obligation. Teens 14 and up are welcome. The only thing standing between you and a first shift is a quick email to set it up, after which you can show up as often or as little as your schedule allows.</p>
+        <div class="detail-contact">
+          <p class="steps-label">Questions?</p>
+          <ul class="contact-list">
+            <li>Email: <a href="mailto:development@renewalfoodbank.org">development@renewalfoodbank.org</a></li>
+            <li>Email: <a href="mailto:director@renewalfoodbank.org">director@renewalfoodbank.org</a></li>
+            <li>Phone: 425-736-8132</li>
+            <li>Website: <a href="https://renewalfoodbank.org/" target="_blank" rel="noopener">renewalfoodbank.org</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="detail-box">
+        <p class="steps-label">How to sign up</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Email <a href="mailto:development@renewalfoodbank.org">development@renewalfoodbank.org</a> or call 425-736-8132</span></li>
+          <li><span class="n">2</span><span>They'll confirm your first shift</span></li>
+          <li><span class="n">3</span><span>Show up on the day</span></li>
+        </ol>
+        <div class="card-actions">
+          <a class="btn" href="mailto:development@renewalfoodbank.org">Email to sign up →</a>
+        </div>
+      </div>
+    </div>
+    <div class="mini-map-wrap" id="mini-map-host">
+      <div class="mini-map" id="mini-map"></div>
+    </div>
+    <p class="mini-map-label">View on full map →</p>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../opportunities-data.js"></script>
+<script src="../mini-map.js"></script>
+<script>renderSingleMiniMap('mini-map', 'renewal-food-bank', '../map.html');</script>
+
+</body>
+</html>
