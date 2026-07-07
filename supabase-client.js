@@ -10,7 +10,7 @@ async function fetchOpportunities() {
   if (_oppCache) return _oppCache;
 
   const res = await fetch(
-    SUPABASE_URL + 'opportunities?status=eq.published&select=*&order=name.asc',
+    SUPABASE_URL + 'Opportunities?status=eq.published&select=*&order=name.asc',
     {
       headers: {
         apikey:        SUPABASE_ANON_KEY,
