@@ -1,6 +1,6 @@
 // Small, non-interactive Leaflet previews used on opportunity detail pages
-// and on the main page. Requires opportunities-data.js to already be
-// loaded (for the `opportunities` array and `opportunitySlug()` helper).
+// and on the main page. Requires supabase-client.js to already be loaded
+// (for fetchOpportunities(), makeMarkerIcon(), opportunitySlug()).
 
 function miniPinIcon(big) {
   return makeMarkerIcon(big ? 30 : 18, false);
@@ -8,14 +8,14 @@ function miniPinIcon(big) {
 
 function staticMiniMap(containerId) {
   return L.map(containerId, {
-    zoomControl: false,
+    zoomControl:        false,
     attributionControl: false,
-    dragging: false,
-    scrollWheelZoom: false,
-    doubleClickZoom: false,
-    boxZoom: false,
-    keyboard: false,
-    tap: false
+    dragging:           false,
+    scrollWheelZoom:    false,
+    doubleClickZoom:    false,
+    boxZoom:            false,
+    keyboard:           false,
+    tap:                false
   });
 }
 
@@ -25,10 +25,10 @@ function addMiniTiles(map) {
   }).addTo(map);
 }
 
-// Renders a single opportunity's location, pin shown enlarged, on a detail
-// page. Clicking anywhere on the preview opens the full map already
-// focused on that opportunity.
-function renderSingleMiniMap(containerId, slug, mapPageUrl) {
+// Renders a single opportunity's location on a detail page. Clicking the
+// preview navigates to the full map already focused on that opportunity.
+async function renderSingleMiniMap(containerId, slug, mapPageUrl) {
+  const opportunities = await fetchOpportunities();
   const opp = opportunities.find(o => opportunitySlug(o) === slug);
   if (!opp) return;
 
@@ -45,10 +45,11 @@ function renderSingleMiniMap(containerId, slug, mapPageUrl) {
   }
 }
 
-// Renders every opportunity as a small dot, used as a preview/launcher next
-// to the main page's title. Clicking it is handled by the caller (it opens
-// the map popup), not here.
-function renderAllMiniMap(containerId) {
+// Renders every opportunity as a small pin, used as the hero preview on the
+// main page. Clicking is handled by the caller (navigates to map.html).
+async function renderAllMiniMap(containerId) {
+  const opportunities = await fetchOpportunities();
+
   const map = staticMiniMap(containerId);
   addMiniTiles(map);
 

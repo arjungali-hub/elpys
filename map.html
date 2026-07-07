@@ -43,11 +43,8 @@
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="opportunities-data.js"></script>
+<script src="supabase-client.js"></script>
 <script>
-  // opportunities[] comes from opportunities-data.js. Each popup's
-  // "Get directions" link searches the real address text on Google Maps,
-  // so actual navigation never depends on the pin's placement here.
   const map = L.map('map', { worldCopyJump: true });
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -62,7 +59,7 @@
   let activeItem = null;
 
   function selectOpportunity(opp, listItem) {
-    opportunities.forEach(o => o.marker.setIcon(pinIcon(false)));
+    opp._allOpps.forEach(o => o.marker.setIcon(pinIcon(false)));
     if (activeItem) activeItem.classList.remove('active');
 
     opp.marker.setIcon(pinIcon(true));
@@ -77,66 +74,66 @@
     }
   }
 
-  const sidebar = document.getElementById('map-sidebar');
-  const bounds = [];
+  async function initMap() {
+    const opportunities = await fetchOpportunities();
+    const sidebar = document.getElementById('map-sidebar');
+    const bounds = [];
 
-  opportunities.forEach(opp => {
-    const directionsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(opp.address);
-    const approxNote = opp.approx ? '<span class="map-popup-tag">Approximate area — operates at multiple sites</span>' : '';
-    const actionLink = (opp.approx && opp.liveUrl)
-      ? '<a href="' + opp.liveUrl + '" target="_blank" rel="noopener">Find exact locations on their website</a>'
-      : '<a href="' + directionsUrl + '" target="_blank" rel="noopener">Get directions</a>';
-    const popupHtml =
-      '<div class="map-popup">' +
-        '<a class="map-popup-title" href="' + opp.link + '">' + opp.name + '</a>' +
-        '<span class="map-popup-tag">' + opp.tag + '</span>' +
-        approxNote +
-        actionLink +
-      '</div>';
+    opportunities.forEach(opp => {
+      opp._allOpps = opportunities;
 
-    opp.marker = L.marker([opp.lat, opp.lng], { icon: pinIcon(false) }).addTo(map).bindPopup(popupHtml);
-    bounds.push([opp.lat, opp.lng]);
+      const directionsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(opp.address);
+      const approxNote = opp.approx ? '<span class="map-popup-tag">Approximate area — operates at multiple sites</span>' : '';
+      const actionLink = (opp.approx && opp.liveUrl)
+        ? '<a href="' + opp.liveUrl + '" target="_blank" rel="noopener">Find exact locations on their website</a>'
+        : '<a href="' + directionsUrl + '" target="_blank" rel="noopener">Get directions</a>';
+      const popupHtml =
+        '<div class="map-popup">' +
+          '<a class="map-popup-title" href="' + opp.link + '">' + opp.name + '</a>' +
+          '<span class="map-popup-tag">' + opp.tag + '</span>' +
+          approxNote +
+          actionLink +
+        '</div>';
 
-    const wrap = document.createElement('div');
-    wrap.className = 'map-list-item-wrap';
+      opp.marker = L.marker([opp.lat, opp.lng], { icon: pinIcon(false) }).addTo(map).bindPopup(popupHtml);
+      bounds.push([opp.lat, opp.lng]);
 
-    const item = document.createElement('div');
-    item.className = 'map-list-item';
-    item.innerHTML =
-      '<a class="map-list-name" href="' + opp.link + '">' + opp.name + '</a>' +
-      '<span class="map-list-desc">' + opp.desc + '</span>';
-    item.addEventListener('click', e => {
-      if (!e.target.closest('a')) selectOpportunity(opp, item);
+      const wrap = document.createElement('div');
+      wrap.className = 'map-list-item-wrap';
+
+      const item = document.createElement('div');
+      item.className = 'map-list-item';
+      item.innerHTML =
+        '<a class="map-list-name" href="' + opp.link + '">' + opp.name + '</a>' +
+        '<span class="map-list-desc">' + opp.desc + '</span>';
+      item.addEventListener('click', e => {
+        if (!e.target.closest('a')) selectOpportunity(opp, item);
+      });
+      wrap.appendChild(item);
+
+      if (opp.approx && opp.liveUrl) {
+        const note = document.createElement('div');
+        note.className = 'map-list-live-note';
+        note.innerHTML = 'Operates at multiple locations — <a href="' + opp.liveUrl + '" target="_blank" rel="noopener">view their live event page →</a>';
+        wrap.appendChild(note);
+      }
+
+      sidebar.appendChild(wrap);
+      opp.listItem = item;
+
+      opp.marker.on('click', () => selectOpportunity(opp, item));
     });
-    wrap.appendChild(item);
 
-    // This pin marks a representative point, not a real address — the org
-    // actually runs events at multiple sites. Link straight to their own
-    // live listing instead of pretending this map knows where/when those
-    // events are, right under the name rather than an interrupting popup.
-    if (opp.approx && opp.liveUrl) {
-      const note = document.createElement('div');
-      note.className = 'map-list-live-note';
-      note.innerHTML = 'Operates at multiple locations — <a href="' + opp.liveUrl + '" target="_blank" rel="noopener">view their live event page →</a>';
-      wrap.appendChild(note);
+    map.fitBounds(bounds, { padding: [30, 30] });
+
+    const selectedSlug = new URLSearchParams(window.location.search).get('select');
+    if (selectedSlug) {
+      const selected = opportunities.find(o => opportunitySlug(o) === selectedSlug);
+      if (selected) selectOpportunity(selected, selected.listItem);
     }
-
-    sidebar.appendChild(wrap);
-    opp.listItem = item;
-
-    opp.marker.on('click', () => selectOpportunity(opp, item));
-  });
-
-  map.fitBounds(bounds, { padding: [30, 30] });
-
-  // A mini-map on an opportunity's own page links here with ?select=<slug>
-  // so this page opens already focused on that one, as if its sidebar
-  // entry had just been clicked.
-  const selectedSlug = new URLSearchParams(window.location.search).get('select');
-  if (selectedSlug) {
-    const selected = opportunities.find(o => opportunitySlug(o) === selectedSlug);
-    if (selected) selectOpportunity(selected, selected.listItem);
   }
+
+  initMap();
 </script>
 
 </body>
