@@ -36,6 +36,8 @@
     .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     @media (max-width: 480px) { .field-row { grid-template-columns: 1fr; } }
 
+    .checkbox-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .checkbox-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9375rem; font-weight: 400; cursor: pointer; }
     .section-radios { display: flex; gap: 1.5rem; }
     .section-radios label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9375rem; font-weight: 400; cursor: pointer; }
 
@@ -96,14 +98,13 @@
       </div>
 
       <div class="field">
-        <label for="f-category">Category <span aria-hidden="true">*</span></label>
-        <span class="hint">Hold Ctrl (Windows) or ⌘ (Mac) to select more than one.</span>
-        <select id="f-category" name="category" multiple required size="4">
-          <option>Community</option>
-          <option>Environment</option>
-          <option>Food</option>
-          <option>Animals</option>
-        </select>
+        <label>Category <span aria-hidden="true">*</span></label>
+        <div class="checkbox-group" id="f-category">
+          <label class="checkbox-label"><input type="checkbox" name="category" value="Animals" /> Animals</label>
+          <label class="checkbox-label"><input type="checkbox" name="category" value="Community" /> Community</label>
+          <label class="checkbox-label"><input type="checkbox" name="category" value="Environment" /> Environment</label>
+          <label class="checkbox-label"><input type="checkbox" name="category" value="Food" /> Food</label>
+        </div>
       </div>
 
       <p class="field-group-label">Age &amp; schedule</p>
@@ -210,16 +211,16 @@
     const required = form.querySelectorAll('[required]');
     for (const el of required) {
       if (el.type === 'radio') continue; // handled below
-      if (el.multiple && el.selectedOptions.length === 0) {
-        el.focus();
-        showStatus('Please select at least one category.', 'error');
-        return;
-      }
       if (!el.multiple && !el.value.trim()) {
         el.focus();
         showStatus('Please fill in all required fields.', 'error');
         return;
       }
+    }
+    const checkedCategories = Array.from(form.querySelectorAll('input[name="category"]:checked'));
+    if (checkedCategories.length === 0) {
+      showStatus('Please select at least one category.', 'error');
+      return;
     }
     const section = form.querySelector('input[name="section"]:checked');
     if (!section) {
@@ -233,7 +234,7 @@
     const data = {
       name:         form.elements.name.value.trim(),
       description:  form.elements.description.value.trim(),
-      category:     Array.from(document.getElementById('f-category').selectedOptions).map(o => o.value).sort().join(' · '),
+      category:     checkedCategories.map(el => el.value).sort().join(' · '),
       age_display:  form.elements.age_display.value.trim(),
       age_min:      form.elements.age_min.value ? parseInt(form.elements.age_min.value, 10) : null,
       'when':       form.elements.when.value.trim(),
