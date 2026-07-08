@@ -97,15 +97,12 @@
 
       <div class="field">
         <label for="f-category">Category <span aria-hidden="true">*</span></label>
-        <select id="f-category" name="category" required>
-          <option value="">— Select —</option>
+        <span class="hint">Hold Ctrl (Windows) or ⌘ (Mac) to select more than one.</span>
+        <select id="f-category" name="category" multiple required size="4">
           <option>Community</option>
           <option>Environment</option>
           <option>Food</option>
           <option>Animals</option>
-          <option>Community · Food</option>
-          <option>Food · Community</option>
-          <option>Animals · Environment</option>
         </select>
       </div>
 
@@ -213,7 +210,12 @@
     const required = form.querySelectorAll('[required]');
     for (const el of required) {
       if (el.type === 'radio') continue; // handled below
-      if (!el.value.trim()) {
+      if (el.multiple && el.selectedOptions.length === 0) {
+        el.focus();
+        showStatus('Please select at least one category.', 'error');
+        return;
+      }
+      if (!el.multiple && !el.value.trim()) {
         el.focus();
         showStatus('Please fill in all required fields.', 'error');
         return;
@@ -231,7 +233,7 @@
     const data = {
       name:         form.elements.name.value.trim(),
       description:  form.elements.description.value.trim(),
-      category:     form.elements.category.value,
+      category:     Array.from(document.getElementById('f-category').selectedOptions).map(o => o.value).join(' · '),
       age_display:  form.elements.age_display.value.trim(),
       age_min:      form.elements.age_min.value ? parseInt(form.elements.age_min.value, 10) : null,
       'when':       form.elements.when.value.trim(),
