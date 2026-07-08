@@ -233,7 +233,7 @@
     const data = {
       name:         form.elements.name.value.trim(),
       description:  form.elements.description.value.trim(),
-      category:     Array.from(document.getElementById('f-category').selectedOptions).map(o => o.value).join(' · '),
+      category:     Array.from(document.getElementById('f-category').selectedOptions).map(o => o.value).sort().join(' · '),
       age_display:  form.elements.age_display.value.trim(),
       age_min:      form.elements.age_min.value ? parseInt(form.elements.age_min.value, 10) : null,
       'when':       form.elements.when.value.trim(),
