@@ -178,7 +178,8 @@
 
     const steps = Array.isArray(row.signup_steps) ? row.signup_steps : [];
     const stepsHtml = steps.length ? '<ol class="sub-steps">' + steps.map(s => '<li>' + esc(s) + '</li>').join('') + '</ol>' : '';
-    const noteHtml  = row.card_note ? '<p class="sub-note">' + esc(row.card_note) + '</p>' : '';
+    const noteHtml      = row.card_note   ? '<p class="sub-note">' + esc(row.card_note) + '</p>' : '';
+    const adminNoteHtml = row.admin_notes ? '<p style="font-size:0.8125rem;background:#FFFBEB;border:1px solid #FCD34D;border-radius:5px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;"><strong>Admin note:</strong> ' + esc(row.admin_notes) + '</p>' : '';
 
     card.innerHTML =
       '<div class="sub-name">' + esc(row.name) + '</div>' +
@@ -190,8 +191,9 @@
         '<span>Section: ' + esc(row.section || '—') + '</span>' +
       '</div>' +
       '<p class="sub-desc">' + esc(row.description || '') + '</p>' +
+      (row.detail_description ? '<p style="font-size:0.8125rem;font-weight:600;margin:0.5rem 0 0.2rem;">Full description</p><p class="sub-desc" style="color:#555;">' + esc(row.detail_description) + '</p>' : '') +
       '<p style="font-size:0.8125rem;font-weight:600;margin-bottom:0.3rem;">Sign-up steps</p>' +
-      stepsHtml + noteHtml +
+      stepsHtml + noteHtml + adminNoteHtml +
       '<div class="sub-links">' +
         '<a href="' + esc(row.signup_link || '#') + '" target="_blank" rel="noopener">Sign-up link ↗</a>' +
         '<span style="color:#999;font-size:0.8125rem;">Submitted: ' + (row.created_at ? new Date(row.created_at).toLocaleDateString() : '—') + '</span>' +
@@ -294,9 +296,11 @@
           ef('Sign-up link',  'text',     'e-link-'    + row.id, esc(row.signup_link || '')) +
           ef('Sign-up label', 'text',     'e-label-'   + row.id, esc(row.signup_label || '')) +
           efSelect('Section', 'e-section-' + row.id, row.section || 'online') +
-          efArea('Description', 'e-desc-' + row.id, esc(row.description || ''), false) +
+          efArea('Card description', 'e-desc-' + row.id, esc(row.description || ''), false) +
+          efArea('Full description (detail page)', 'e-detaildesc-' + row.id, esc(row.detail_description || ''), false) +
           efArea('Sign-up steps (one per line)', 'e-steps-' + row.id, esc(stepsText), false) +
           efArea('Card note', 'e-note-' + row.id, esc(row.card_note || ''), false) +
+          efArea('Admin notes (not shown on site)', 'e-adminnotes-' + row.id, esc(row.admin_notes || ''), false) +
         '</div>' +
         '<div class="edit-actions">' +
           '<button class="btn-save">Save changes</button>' +
@@ -354,7 +358,8 @@
       action:       'update',
       id,
       name:         g('e-name-'    + id).trim(),
-      description:  g('e-desc-'    + id).trim(),
+      description:        g('e-desc-'       + id).trim(),
+      detail_description: g('e-detaildesc-' + id).trim() || null,
       category:     g('e-cat-'     + id).trim(),
       age_display:  g('e-age-'     + id).trim(),
       age_min:      g('e-agemin-'  + id) ? parseInt(g('e-agemin-' + id), 10) : null,
@@ -368,7 +373,8 @@
       signup_label: g('e-label-'  + id).trim() || null,
       signup_steps: stepsRaw,
       section:      g('e-section-' + id),
-      card_note:    g('e-note-'    + id).trim() || null,
+      card_note:    g('e-note-'       + id).trim() || null,
+      admin_notes:  g('e-adminnotes-' + id).trim() || null,
     };
 
     const saveBtn = document.getElementById('edit-' + id).querySelector('.btn-save');

@@ -74,7 +74,8 @@ function _transformRow(row) {
     lng:     parseFloat(row.lng),
     approx:  row.approx     || false,
     liveUrl: row.live_url   || null,
-    desc:    row.description || '',
+    desc:       row.description        || '',
+    _detailDesc: row.detail_description || row.description || '',
 
     // ── Fields used only by the index.html card renderer ─────────────────
     _tags:         tags,

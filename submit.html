@@ -92,9 +92,15 @@
       </div>
 
       <div class="field">
-        <label for="f-description">Description <span aria-hidden="true">*</span></label>
-        <span class="hint">A few sentences describing what volunteers actually do. Be specific — this appears on the listing card and detail page.</span>
-        <textarea id="f-description" name="description" required placeholder="e.g. Help set up tents and tables, assist shoppers at the info booth, or support vendors during the weekly farmers market."></textarea>
+        <label for="f-description">Card description <span aria-hidden="true">*</span></label>
+        <span class="hint">1–2 sentences shown on the listing card and map popup. Keep it short and specific.</span>
+        <textarea id="f-description" name="description" required placeholder="e.g. Sort and repack donated food at a fast-paced warehouse shift supporting 300+ food banks across Western Washington."></textarea>
+      </div>
+
+      <div class="field">
+        <label for="f-detail-description">Full description (detail page) <span aria-hidden="true">*</span></label>
+        <span class="hint">A longer description shown on the opportunity's own page. Include what the work is like, what to expect, and who it's a good fit for.</span>
+        <textarea id="f-detail-description" name="detail_description" required placeholder="e.g. At Food Lifeline you'll work a fast-paced two-hour shift in a large warehouse, sorting and repacking donated food..."></textarea>
       </div>
 
       <div class="field">
@@ -177,6 +183,12 @@
         <textarea id="f-note" name="card_note" placeholder="e.g. Minimum 3-month commitment required."></textarea>
       </div>
 
+      <div class="field">
+        <label for="f-admin-notes">Notes for the reviewer <span class="optional-label">(optional)</span></label>
+        <span class="hint">Anything you want the reviewer to know that won't appear on the site — context, questions, links, etc.</span>
+        <textarea id="f-admin-notes" name="admin_notes" placeholder="e.g. We're a new org and happy to answer any questions — reach us at contact@ourorg.org"></textarea>
+      </div>
+
       <button type="submit" class="submit-btn" id="submit-btn">Submit for review →</button>
 
     </form>
@@ -248,7 +260,8 @@
 
     const data = {
       name:         form.elements.name.value.trim(),
-      description:  form.elements.description.value.trim(),
+      description:         form.elements.description.value.trim(),
+      detail_description:  form.elements.detail_description.value.trim(),
       category:     checkedCategories
                       .map(el => el.value === '__other__' ? otherText : el.value)
                       .sort()
@@ -264,7 +277,8 @@
                       .split('\n')
                       .map(s => s.trim())
                       .filter(s => s.length > 0),
-      card_note:    form.elements.card_note.value.trim() || null,
+      card_note:    form.elements.card_note.value.trim()   || null,
+      admin_notes:  form.elements.admin_notes.value.trim() || null,
       section:      section.value,
       status:       'pending',   // hardcoded — never changes on submit
     };
