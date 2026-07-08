@@ -52,6 +52,13 @@ header {
   font-size: 0.8125rem;
   color: var(--muted);
 }
+.header-admin-link {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+.header-admin-link:hover { text-decoration: underline; }
 
 /* ── Hero ── */
 .hero {
