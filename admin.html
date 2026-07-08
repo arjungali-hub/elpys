@@ -261,9 +261,10 @@
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'HTTP ' + res.status);
       }
-      setCardMsg(id, '✓ Approved and published.', '#15803D');
-      document.getElementById('card-' + id).style.opacity = '0.4';
-      setCardBtns(id, true); // leave disabled after success
+      const card = document.getElementById('card-' + id);
+      card.style.transition = 'opacity 0.3s';
+      card.style.opacity = '0';
+      setTimeout(() => { card.remove(); checkEmpty(); }, 300);
     } catch (err) {
       setCardMsg(id, 'Error: ' + err.message, '#991B1B');
       setCardBtns(id, false);
@@ -288,7 +289,7 @@
       const card = document.getElementById('card-' + id);
       card.style.transition = 'opacity 0.3s';
       card.style.opacity = '0';
-      setTimeout(() => card.remove(), 300);
+      setTimeout(() => { card.remove(); checkEmpty(); }, 300);
 
       // Update badge count
       const badge = document.getElementById('count-badge');
@@ -300,6 +301,14 @@
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+
+  function checkEmpty() {
+    const list = document.getElementById('submissions-list');
+    if (list.querySelectorAll('.submission-card').length === 0) {
+      list.innerHTML = '<p class="empty-state">No pending submissions right now.</p>';
+      document.getElementById('count-badge').textContent = '0';
+    }
+  }
 
   function setCardBtns(id, disabled) {
     const card = document.getElementById('card-' + id);
