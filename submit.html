@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Submit an Opportunity — Elpys</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .submit-section { padding: 3rem 0 4rem; }
+    .submit-section h1 { font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+    .submit-section .page-intro { font-size: 0.9375rem; color: #444; line-height: 1.6; max-width: 60ch; margin-bottom: 2rem; }
+
+    .submit-form { max-width: 600px; display: flex; flex-direction: column; gap: 1.25rem; }
+
+    .field { display: flex; flex-direction: column; gap: 0.35rem; }
+    .field label { font-size: 0.8125rem; font-weight: 600; }
+    .field .hint { font-size: 0.75rem; color: var(--muted); }
+    .field input, .field select, .field textarea {
+      font-family: inherit;
+      font-size: 0.9375rem;
+      color: var(--body);
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.55rem 0.75rem;
+      width: 100%;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      outline: 2px solid var(--body);
+      outline-offset: 1px;
+    }
+    .field textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
+    .field textarea.steps-area { min-height: 130px; }
+
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 480px) { .field-row { grid-template-columns: 1fr; } }
+
+    .section-radios { display: flex; gap: 1.5rem; }
+    .section-radios label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9375rem; font-weight: 400; cursor: pointer; }
+
+    .submit-btn {
+      align-self: flex-start;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--white);
+      background: var(--body);
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.65rem 1.5rem;
+      cursor: pointer;
+    }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .form-status { font-size: 0.9375rem; padding: 1rem; border-radius: var(--radius); display: none; }
+    .form-status.success { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; }
+    .form-status.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+
+    .optional-label { font-weight: 400; color: var(--muted); }
+    .field-group-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 0.25rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="index.html" class="site-name">Elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="submit-section">
+    <a href="index.html" class="back-link">← Back to all opportunities</a>
+    <h1>Submit a volunteer opportunity</h1>
+    <p class="page-intro">Is your organization a good fit for teen volunteers? Fill out this form and we'll review it. Once approved, it'll appear on the site with a map pin and full detail page. We'll reach out if we have questions.</p>
+
+    <div class="form-status" id="form-status"></div>
+
+    <form class="submit-form" id="submit-form" novalidate>
+
+      <p class="field-group-label">About the opportunity</p>
+
+      <div class="field">
+        <label for="f-name">Organization / opportunity name <span aria-hidden="true">*</span></label>
+        <input id="f-name" name="name" type="text" required placeholder="e.g. Bellevue Farmers Market" />
+      </div>
+
+      <div class="field">
+        <label for="f-description">Description <span aria-hidden="true">*</span></label>
+        <span class="hint">A few sentences describing what volunteers actually do. Be specific — this appears on the listing card and detail page.</span>
+        <textarea id="f-description" name="description" required placeholder="e.g. Help set up tents and tables, assist shoppers at the info booth, or support vendors during the weekly farmers market."></textarea>
+      </div>
+
+      <div class="field">
+        <label for="f-category">Category <span aria-hidden="true">*</span></label>
+        <select id="f-category" name="category" required>
+          <option value="">— Select —</option>
+          <option>Community</option>
+          <option>Environment</option>
+          <option>Food</option>
+          <option>Animals</option>
+          <option>Community · Food</option>
+          <option>Food · Community</option>
+          <option>Animals · Environment</option>
+        </select>
+      </div>
+
+      <p class="field-group-label">Age &amp; schedule</p>
+
+      <div class="field">
+        <label for="f-age-display">Age requirements <span aria-hidden="true">*</span></label>
+        <span class="hint">Display text shown on the card, e.g. "14+" or "16+ solo (13 and under w/ adult)".</span>
+        <input id="f-age-display" name="age_display" type="text" required placeholder="e.g. 14+" />
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="f-age-min">Minimum age for filtering <span class="optional-label">(optional)</span></label>
+          <span class="hint">Number only, e.g. 14. Leave blank if all ages welcome.</span>
+          <input id="f-age-min" name="age_min" type="number" min="1" max="99" placeholder="e.g. 14" />
+        </div>
+        <div class="field">
+          <label for="f-when">When <span aria-hidden="true">*</span></label>
+          <span class="hint">e.g. "Thursdays, May–October"</span>
+          <input id="f-when" name="when" type="text" required placeholder="e.g. Saturdays, year-round" />
+        </div>
+      </div>
+
+      <p class="field-group-label">Location</p>
+
+      <div class="field">
+        <label for="f-where">Where (short display text) <span aria-hidden="true">*</span></label>
+        <span class="hint">Short version shown on the card, e.g. "Bellevue (1717 Bellevue Way NE)".</span>
+        <input id="f-where" name="where" type="text" required placeholder="e.g. Bellevue (1717 Bellevue Way NE)" />
+      </div>
+
+      <div class="field">
+        <label for="f-address">Full street address <span aria-hidden="true">*</span></label>
+        <span class="hint">Used for map directions. If your org runs events at multiple locations, enter your primary address or city/neighborhood.</span>
+        <input id="f-address" name="address" type="text" required placeholder="e.g. 1717 Bellevue Way NE, Bellevue, WA 98004" />
+      </div>
+
+      <p class="field-group-label">Sign-up process</p>
+
+      <div class="field">
+        <label for="f-section">How do volunteers sign up? <span aria-hidden="true">*</span></label>
+        <div class="section-radios">
+          <label><input type="radio" name="section" value="online" required /> Online (no phone/email needed)</label>
+          <label><input type="radio" name="section" value="contact" /> Contact us first (email or phone)</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-signup-link">Sign-up link or email <span aria-hidden="true">*</span></label>
+        <span class="hint">Full URL (https://…) or a mailto: address.</span>
+        <input id="f-signup-link" name="signup_link" type="text" required placeholder="https://yourorg.org/volunteer or mailto:volunteer@yourorg.org" />
+      </div>
+
+      <div class="field">
+        <label for="f-signup-label">Sign-up button label <span class="optional-label">(optional)</span></label>
+        <span class="hint">Defaults to "Sign up →". Use something like "Apply →" or "Email to sign up →" if more accurate.</span>
+        <input id="f-signup-label" name="signup_label" type="text" placeholder="Sign up →" />
+      </div>
+
+      <div class="field">
+        <label for="f-steps">Sign-up steps <span aria-hidden="true">*</span></label>
+        <span class="hint">One step per line. These appear as a numbered list on the listing.</span>
+        <textarea id="f-steps" name="signup_steps" class="steps-area" required placeholder="Go to the volunteer page and create an account&#10;Pick a shift from the calendar&#10;Show up on the day"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="f-note">Additional note <span class="optional-label">(optional)</span></label>
+        <span class="hint">Any caveats, commitments, or extra info (e.g. "Minimum 3-month commitment required.").</span>
+        <textarea id="f-note" name="card_note" placeholder="e.g. Minimum 3-month commitment required."></textarea>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submit-btn">Submit for review →</button>
+
+    </form>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="mailto:?subject=Volunteer opportunity suggestion">Suggest an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="supabase-client.js"></script>
+<script>
+  const form   = document.getElementById('submit-form');
+  const btn    = document.getElementById('submit-btn');
+  const status = document.getElementById('form-status');
+
+  function showStatus(msg, type) {
+    status.textContent = msg;
+    status.className   = 'form-status ' + type;
+    status.style.display = 'block';
+    status.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    status.style.display = 'none';
+
+    // Basic required-field check
+    const required = form.querySelectorAll('[required]');
+    for (const el of required) {
+      if (el.type === 'radio') continue; // handled below
+      if (!el.value.trim()) {
+        el.focus();
+        showStatus('Please fill in all required fields.', 'error');
+        return;
+      }
+    }
+    const section = form.querySelector('input[name="section"]:checked');
+    if (!section) {
+      showStatus('Please select how volunteers sign up.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+
+    const data = {
+      name:         form.elements.name.value.trim(),
+      description:  form.elements.description.value.trim(),
+      category:     form.elements.category.value,
+      age_display:  form.elements.age_display.value.trim(),
+      age_min:      form.elements.age_min.value ? parseInt(form.elements.age_min.value, 10) : null,
+      'when':       form.elements.when.value.trim(),
+      'where':      form.elements.where.value.trim(),
+      address:      form.elements.address.value.trim(),
+      signup_link:  form.elements.signup_link.value.trim(),
+      signup_label: form.elements.signup_label.value.trim() || 'Sign up →',
+      signup_steps: form.elements.signup_steps.value
+                      .split('\n')
+                      .map(s => s.trim())
+                      .filter(s => s.length > 0),
+      card_note:    form.elements.card_note.value.trim() || null,
+      section:      section.value,
+      status:       'pending',   // hardcoded — never changes on submit
+    };
+
+    try {
+      const res = await fetch(SUPABASE_URL + 'Opportunities', {
+        method: 'POST',
+        headers: {
+          apikey:         SUPABASE_ANON_KEY,
+          Authorization:  'Bearer ' + SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+          Prefer:         'return=minimal',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || ('HTTP ' + res.status));
+      }
+
+      form.style.display = 'none';
+      showStatus(
+        'Thanks! We\'ll review your listing and it\'ll go live once approved. We\'ll reach out if we have questions.',
+        'success'
+      );
+    } catch (err) {
+      showStatus('Something went wrong: ' + err.message + '. Please try again.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Submit for review →';
+    }
+  });
+</script>
+
+</body>
+</html>

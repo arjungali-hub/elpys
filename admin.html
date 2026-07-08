@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Elpys</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: #F7F7F7; color: #1A1A1A; line-height: 1.5; font-size: 15px; padding: 2rem 1rem 4rem; }
+    h1 { font-size: 1.375rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+    .subtitle { color: #666; font-size: 0.875rem; margin-bottom: 1.75rem; }
+
+    /* Login */
+    #login-panel { max-width: 340px; }
+    .login-row { display: flex; gap: 0.5rem; }
+    .login-row input { flex: 1; font-family: inherit; font-size: 0.9375rem; border: 1px solid #D1D5DB; border-radius: 6px; padding: 0.5rem 0.75rem; }
+    .login-row input:focus { outline: 2px solid #1A1A1A; outline-offset: 1px; }
+    .btn-primary { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: #fff; background: #1A1A1A; border: none; border-radius: 6px; padding: 0.55rem 1rem; cursor: pointer; white-space: nowrap; }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* Status messages */
+    .msg { font-size: 0.875rem; margin-top: 0.75rem; padding: 0.65rem 0.85rem; border-radius: 6px; display: none; }
+    .msg.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; display: block; }
+    .msg.success { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; display: block; }
+    .msg.info    { background: #EFF6FF; border: 1px solid #93C5FD; color: #1E40AF; display: block; }
+
+    /* Submissions list */
+    #submissions-panel { display: none; }
+    .submissions-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.25rem; }
+    .submissions-header h2 { font-size: 1rem; font-weight: 700; }
+    .count-badge { font-size: 0.75rem; background: #E5E7EB; color: #374151; border-radius: 999px; padding: 0.15rem 0.6rem; font-weight: 600; }
+
+    .submission-card {
+      background: #fff;
+      border: 1px solid #E5E7EB;
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      max-width: 780px;
+    }
+    .sub-name { font-size: 1rem; font-weight: 700; margin-bottom: 0.15rem; }
+    .sub-meta { font-size: 0.8125rem; color: #555; margin-bottom: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; }
+    .sub-meta span::before { content: '· '; color: #aaa; }
+    .sub-meta span:first-child::before { content: ''; }
+
+    .sub-desc { font-size: 0.875rem; color: #333; margin-bottom: 0.75rem; line-height: 1.55; }
+
+    .sub-steps { font-size: 0.8125rem; color: #444; padding-left: 1.1rem; margin-bottom: 0.75rem; }
+    .sub-steps li { margin-bottom: 0.2rem; }
+
+    .sub-note { font-size: 0.8125rem; color: #666; font-style: italic; margin-bottom: 0.75rem; }
+
+    .sub-links { font-size: 0.8125rem; margin-bottom: 1rem; }
+    .sub-links a { color: #1A1A1A; text-decoration: underline; margin-right: 1rem; }
+
+    /* Approve fields */
+    .approve-fields {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 6px;
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.85rem;
+    }
+    .approve-fields p { font-size: 0.75rem; font-weight: 600; color: #555; margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .approve-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
+    .approve-field { display: flex; flex-direction: column; gap: 0.25rem; }
+    .approve-field label { font-size: 0.75rem; font-weight: 600; color: #555; }
+    .approve-field input {
+      font-family: inherit;
+      font-size: 0.875rem;
+      border: 1px solid #D1D5DB;
+      border-radius: 5px;
+      padding: 0.4rem 0.6rem;
+      width: 180px;
+    }
+    .approve-field input.short { width: 110px; }
+    .approve-field input:focus { outline: 2px solid #1A1A1A; outline-offset: 1px; }
+
+    /* Action buttons */
+    .sub-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .btn-approve { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: #fff; background: #15803D; border: none; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer; }
+    .btn-approve:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-reject  { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: #991B1B; background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer; }
+    .btn-reject:disabled { opacity: 0.45; cursor: not-allowed; }
+    .sub-action-msg { font-size: 0.8125rem; color: #666; align-self: center; }
+
+    .empty-state { color: #666; font-size: 0.9375rem; padding: 1.5rem 0; }
+  </style>
+</head>
+<body>
+
+<h1>Elpys Admin</h1>
+<p class="subtitle">Review pending opportunity submissions</p>
+
+<!-- ── Login ── -->
+<div id="login-panel">
+  <div class="login-row">
+    <input type="password" id="password-input" placeholder="Admin password" autocomplete="current-password" />
+    <button class="btn-primary" id="login-btn">Load submissions</button>
+  </div>
+  <div class="msg" id="login-msg"></div>
+</div>
+
+<!-- ── Submissions list ── -->
+<div id="submissions-panel">
+  <div class="submissions-header">
+    <h2>Pending submissions</h2>
+    <span class="count-badge" id="count-badge">0</span>
+  </div>
+  <div id="submissions-list"></div>
+</div>
+
+<script>
+  const API = '/api/admin';
+  let _password = '';
+
+  // ── Login ──────────────────────────────────────────────────────────────────
+
+  function showLoginMsg(msg, type) {
+    const el = document.getElementById('login-msg');
+    el.textContent = msg;
+    el.className = 'msg ' + type;
+  }
+
+  document.getElementById('login-btn').addEventListener('click', loadSubmissions);
+  document.getElementById('password-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') loadSubmissions();
+  });
+
+  async function loadSubmissions() {
+    _password = document.getElementById('password-input').value;
+    if (!_password) { showLoginMsg('Enter a password.', 'error'); return; }
+
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true;
+    btn.textContent = 'Loading…';
+
+    try {
+      const res = await fetch(API, {
+        headers: { 'x-admin-password': _password }
+      });
+
+      if (res.status === 401) { showLoginMsg('Incorrect password.', 'error'); return; }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+
+      const rows = await res.json();
+      document.getElementById('login-panel').style.display = 'none';
+      renderSubmissions(rows);
+      document.getElementById('submissions-panel').style.display = 'block';
+    } catch (err) {
+      showLoginMsg('Error: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Load submissions';
+    }
+  }
+
+  // ── Render submissions ─────────────────────────────────────────────────────
+
+  function renderSubmissions(rows) {
+    document.getElementById('count-badge').textContent = rows.length;
+    const list = document.getElementById('submissions-list');
+
+    if (rows.length === 0) {
+      list.innerHTML = '<p class="empty-state">No pending submissions right now.</p>';
+      return;
+    }
+
+    list.innerHTML = '';
+    rows.forEach(row => list.appendChild(buildCard(row)));
+  }
+
+  function buildCard(row) {
+    const card = document.createElement('div');
+    card.className = 'submission-card';
+    card.id = 'card-' + row.id;
+
+    const steps = Array.isArray(row.signup_steps) ? row.signup_steps : [];
+    const stepsHtml = steps.length
+      ? '<ol class="sub-steps">' + steps.map(s => '<li>' + esc(s) + '</li>').join('') + '</ol>'
+      : '';
+    const noteHtml = row.card_note
+      ? '<p class="sub-note">' + esc(row.card_note) + '</p>'
+      : '';
+
+    card.innerHTML =
+      '<div class="sub-name">' + esc(row.name) + '</div>' +
+      '<div class="sub-meta">' +
+        '<span>' + esc(row.category || '—') + '</span>' +
+        '<span>Age: ' + esc(row.age_display || '—') + '</span>' +
+        '<span>When: ' + esc(row['when'] || '—') + '</span>' +
+        '<span>Where: ' + esc(row['where'] || '—') + '</span>' +
+        '<span>Section: ' + esc(row.section || '—') + '</span>' +
+      '</div>' +
+      '<p class="sub-desc">' + esc(row.description || '') + '</p>' +
+      '<p style="font-size:0.8125rem;font-weight:600;margin-bottom:0.3rem;">Sign-up steps</p>' +
+      stepsHtml +
+      noteHtml +
+      '<div class="sub-links">' +
+        '<a href="' + esc(row.signup_link || '#') + '" target="_blank" rel="noopener">Sign-up link ↗</a>' +
+        '<span style="color:#999;font-size:0.8125rem;">Submitted: ' + (row.created_at ? new Date(row.created_at).toLocaleDateString() : '—') + '</span>' +
+      '</div>' +
+
+      // Approve fields — fill these in before clicking Approve
+      '<div class="approve-fields">' +
+        '<p>Fill in before approving</p>' +
+        '<div class="approve-row">' +
+          '<div class="approve-field">' +
+            '<label for="slug-' + row.id + '">Slug</label>' +
+            '<input id="slug-' + row.id + '" type="text" placeholder="e.g. food-lifeline" value="' + esc(autoSlug(row.name)) + '" />' +
+          '</div>' +
+          '<div class="approve-field">' +
+            '<label for="lat-' + row.id + '">Latitude</label>' +
+            '<input id="lat-' + row.id + '" type="text" class="short" placeholder="e.g. 47.6264" />' +
+          '</div>' +
+          '<div class="approve-field">' +
+            '<label for="lng-' + row.id + '">Longitude</label>' +
+            '<input id="lng-' + row.id + '" type="text" class="short" placeholder="e.g. -122.2054" />' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="sub-actions">' +
+        '<button class="btn-approve" data-id="' + row.id + '">Approve</button>' +
+        '<button class="btn-reject"  data-id="' + row.id + '">Reject</button>' +
+        '<span class="sub-action-msg" id="msg-' + row.id + '"></span>' +
+      '</div>';
+
+    card.querySelector('.btn-approve').addEventListener('click', () => handleApprove(row.id));
+    card.querySelector('.btn-reject').addEventListener('click',  () => handleReject(row.id));
+
+    return card;
+  }
+
+  // ── Approve ────────────────────────────────────────────────────────────────
+
+  async function handleApprove(id) {
+    const slug = document.getElementById('slug-' + id).value.trim();
+    const lat  = document.getElementById('lat-'  + id).value.trim();
+    const lng  = document.getElementById('lng-'  + id).value.trim();
+
+    if (!slug || !lat || !lng) {
+      setCardMsg(id, 'Fill in slug, lat, and lng first.', '#991B1B');
+      return;
+    }
+    if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lng))) {
+      setCardMsg(id, 'Lat and lng must be numbers.', '#991B1B');
+      return;
+    }
+
+    setCardBtns(id, true);
+    setCardMsg(id, 'Approving…', '#555');
+
+    try {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'x-admin-password': _password, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve', id, slug, lat: parseFloat(lat), lng: parseFloat(lng) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'HTTP ' + res.status);
+      }
+      setCardMsg(id, '✓ Approved and published.', '#15803D');
+      document.getElementById('card-' + id).style.opacity = '0.4';
+      setCardBtns(id, true); // leave disabled after success
+    } catch (err) {
+      setCardMsg(id, 'Error: ' + err.message, '#991B1B');
+      setCardBtns(id, false);
+    }
+  }
+
+  // ── Reject ─────────────────────────────────────────────────────────────────
+
+  async function handleReject(id) {
+    if (!confirm('Delete this submission permanently?')) return;
+
+    setCardBtns(id, true);
+    setCardMsg(id, 'Deleting…', '#555');
+
+    try {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'x-admin-password': _password, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject', id }),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const card = document.getElementById('card-' + id);
+      card.style.transition = 'opacity 0.3s';
+      card.style.opacity = '0';
+      setTimeout(() => card.remove(), 300);
+
+      // Update badge count
+      const badge = document.getElementById('count-badge');
+      badge.textContent = Math.max(0, parseInt(badge.textContent, 10) - 1);
+    } catch (err) {
+      setCardMsg(id, 'Error: ' + err.message, '#991B1B');
+      setCardBtns(id, false);
+    }
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  function setCardBtns(id, disabled) {
+    const card = document.getElementById('card-' + id);
+    card.querySelectorAll('button').forEach(b => b.disabled = disabled);
+  }
+
+  function setCardMsg(id, msg, color) {
+    const el = document.getElementById('msg-' + id);
+    el.textContent = msg;
+    el.style.color = color;
+  }
+
+  function autoSlug(name) {
+    return (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  function esc(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+</script>
+
+</body>
+</html>
