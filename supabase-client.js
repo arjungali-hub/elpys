@@ -67,7 +67,8 @@ function _transformRow(row) {
     // ── Fields used by map.html and mini-map.js ──────────────────────────
     name:    row.name,
     tag:     row.category   || '',
-    link:    'opportunities/' + slug + '.html',
+    slug:    slug,
+    link:    'opportunities/detail.html?slug=' + slug,
     address: row.address    || '',
     lat:     parseFloat(row.lat),
     lng:     parseFloat(row.lng),
@@ -95,7 +96,7 @@ function _nameToSlug(name) {
 }
 
 function opportunitySlug(opp) {
-  return opp.link.split('/').pop().replace('.html', '');
+  return opp.slug;
 }
 
 // ── Map marker icon ──────────────────────────────────────────────────────────
