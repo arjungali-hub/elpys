@@ -1,10 +1,12 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Submit an Opportunity — Elpys</title>
   <link rel="stylesheet" href="styles.css">
+  <!-- Cloudflare Turnstile -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     .submit-section { padding: 3rem 0 4rem; }
     .submit-section h1 { font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
@@ -40,6 +42,10 @@
     .checkbox-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9375rem; font-weight: 400; cursor: pointer; }
     .section-radios { display: flex; gap: 1.5rem; }
     .section-radios label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9375rem; font-weight: 400; cursor: pointer; }
+
+    /* Honeypot — off-screen so real users never see it, but not display:none
+       (some bots skip display:none fields) */
+    .hp-field { position: absolute; left: -9999px; top: -9999px; }
 
     .submit-btn {
       align-self: flex-start;
@@ -83,6 +89,12 @@
     <div class="form-status" id="form-status"></div>
 
     <form class="submit-form" id="submit-form" novalidate>
+
+      <!-- Honeypot: invisible to real users, bots often fill it -->
+      <div class="hp-field" aria-hidden="true">
+        <label for="hp-website">Website</label>
+        <input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off" />
+      </div>
 
       <p class="field-group-label">About the opportunity</p>
 
@@ -152,7 +164,7 @@
       <p class="field-group-label">Sign-up process</p>
 
       <div class="field">
-        <label for="f-section">How do volunteers sign up? <span aria-hidden="true">*</span></label>
+        <label>How do volunteers sign up? <span aria-hidden="true">*</span></label>
         <div class="section-radios">
           <label><input type="radio" name="section" value="online" required /> Online (no phone/email needed)</label>
           <label><input type="radio" name="section" value="contact" /> Contact us first (email or phone)</label>
@@ -189,6 +201,11 @@
         <textarea id="f-admin-notes" name="admin_notes" placeholder="e.g. We're a new org and happy to answer any questions — reach us at contact@ourorg.org"></textarea>
       </div>
 
+      <!-- Cloudflare Turnstile widget
+           Replace data-sitekey with your real site key from dash.cloudflare.com → Turnstile
+           The corresponding secret key goes in Vercel env var: TURNSTILE_SECRET_KEY -->
+      <div class="cf-turnstile" data-sitekey="PASTE_YOUR_TURNSTILE_SITE_KEY_HERE" data-theme="light"></div>
+
       <button type="submit" class="submit-btn" id="submit-btn">Submit for review →</button>
 
     </form>
@@ -199,13 +216,12 @@
   <div class="wrap">
     <div class="footer-inner">
       <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="submit.html">Submit an opportunity</a>
     </div>
   </div>
 </footer>
 
-<script src="supabase-client.js"></script>
 <script>
-  // Show/hide the "Other" text input when its checkbox is toggled
   document.getElementById('cat-other-check').addEventListener('change', function() {
     const txt = document.getElementById('cat-other-text');
     txt.style.display = this.checked ? 'inline-block' : 'none';
@@ -227,11 +243,11 @@
     e.preventDefault();
     status.style.display = 'none';
 
-    // Basic required-field check
+    // Client-side required-field check
     const required = form.querySelectorAll('[required]');
     for (const el of required) {
-      if (el.type === 'radio') continue; // handled below
-      if (!el.multiple && !el.value.trim()) {
+      if (el.type === 'radio') continue;
+      if (!el.value.trim()) {
         el.focus();
         showStatus('Please fill in all required fields.', 'error');
         return;
@@ -258,51 +274,55 @@
     btn.disabled = true;
     btn.textContent = 'Submitting…';
 
+    // Read Turnstile token (empty string if widget not yet completed — server will reject)
+    const turnstileToken = (form.querySelector('[name="cf-turnstile-response"]') || {}).value || '';
+
     const data = {
-      name:         form.elements.name.value.trim(),
+      // Honeypot field — always empty for real users
+      website:             document.getElementById('hp-website').value,
+      // Turnstile CAPTCHA token
+      'cf-turnstile-response': turnstileToken,
+      // Form fields
+      name:                form.elements.name.value.trim(),
       description:         form.elements.description.value.trim(),
       detail_description:  form.elements.detail_description.value.trim(),
-      category:     checkedCategories
-                      .map(el => el.value === '__other__' ? otherText : el.value)
-                      .sort()
-                      .join(' · '),
-      age_display:  form.elements.age_display.value.trim(),
-      age_min:      form.elements.age_min.value ? parseInt(form.elements.age_min.value, 10) : null,
-      'when':       form.elements.when.value.trim(),
-      'where':      form.elements.where.value.trim(),
-      address:      form.elements.address.value.trim(),
-      signup_link:  form.elements.signup_link.value.trim(),
-      signup_label: form.elements.signup_label.value.trim() || 'Sign up →',
-      signup_steps: form.elements.signup_steps.value
-                      .split('\n')
-                      .map(s => s.trim())
-                      .filter(s => s.length > 0),
-      card_note:    form.elements.card_note.value.trim()   || null,
-      admin_notes:  form.elements.admin_notes.value.trim() || null,
-      section:      section.value,
-      status:       'pending',   // hardcoded — never changes on submit
+      category:            checkedCategories
+                             .map(el => el.value === '__other__' ? otherText : el.value)
+                             .sort()
+                             .join(' · '),
+      age_display:         form.elements.age_display.value.trim(),
+      age_min:             form.elements.age_min.value ? parseInt(form.elements.age_min.value, 10) : null,
+      'when':              form.elements.when.value.trim(),
+      'where':             form.elements.where.value.trim(),
+      address:             form.elements.address.value.trim(),
+      signup_link:         form.elements.signup_link.value.trim(),
+      signup_label:        form.elements.signup_label.value.trim() || 'Sign up →',
+      signup_steps:        form.elements.signup_steps.value
+                             .split('\n')
+                             .map(s => s.trim())
+                             .filter(s => s.length > 0),
+      card_note:           form.elements.card_note.value.trim()   || null,
+      admin_notes:         form.elements.admin_notes.value.trim() || null,
+      section:             section.value,
+      // status is NOT sent — the server always sets it to 'pending'
     };
 
     try {
-      const res = await fetch(SUPABASE_URL + 'Opportunities', {
-        method: 'POST',
-        headers: {
-          apikey:         SUPABASE_ANON_KEY,
-          Authorization:  'Bearer ' + SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json',
-          Prefer:         'return=minimal',
-        },
-        body: JSON.stringify(data),
+      const res = await fetch('/api/submit', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(data),
       });
 
+      const json = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || ('HTTP ' + res.status));
+        throw new Error(json.error || 'HTTP ' + res.status);
       }
 
       form.style.display = 'none';
       showStatus(
-        'Thanks! We\'ll review your listing and it\'ll go live once approved. We\'ll reach out if we have questions.',
+        "Thanks! We'll review your listing and it'll go live once approved. We'll reach out if we have questions.",
         'success'
       );
     } catch (err) {
