@@ -87,7 +87,24 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid section value.' });
   }
 
-  // ── 5. Build sanitized payload ────────────────────────────────────────────
+  // ── 5. Duplicate name check (case-insensitive, all statuses) ─────────────
+  const submittedName = String(body.name).trim();
+  // Escape ilike wildcards so the name is treated as a literal string
+  const escapedName = submittedName.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+  const dupRes = await fetch(
+    SUPABASE_URL + 'Opportunities?name=ilike.' + encodeURIComponent(escapedName) + '&select=id,status&limit=1',
+    { headers: supabaseHeaders() }
+  );
+  if (dupRes.ok) {
+    const dups = await dupRes.json();
+    if (Array.isArray(dups) && dups.length > 0) {
+      const existing = dups[0];
+      const label = existing.status === 'pending' ? 'already been submitted and is awaiting review' : 'already listed on the site';
+      return res.status(409).json({ error: '"' + submittedName + '" has ' + label + '. If you think this is a mistake, please reach out directly.' });
+    }
+  }
+
+  // ── 6. Build sanitized payload ────────────────────────────────────────────
   const steps = (Array.isArray(body.signup_steps) ? body.signup_steps : [])
     .map(s => String(s).trim())
     .filter(Boolean)
@@ -112,7 +129,7 @@ module.exports = async function handler(req, res) {
     status:             'pending', // always set server-side, never from client
   };
 
-  // ── 6. Insert via service role key ────────────────────────────────────────
+  // ── 7. Insert via service role key ────────────────────────────────────────
   const r = await fetch(SUPABASE_URL + 'Opportunities', {
     method:  'POST',
     headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
