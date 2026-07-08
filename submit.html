@@ -104,6 +104,7 @@
           <label class="checkbox-label"><input type="checkbox" name="category" value="Community" /> Community</label>
           <label class="checkbox-label"><input type="checkbox" name="category" value="Environment" /> Environment</label>
           <label class="checkbox-label"><input type="checkbox" name="category" value="Food" /> Food</label>
+          <label class="checkbox-label"><input type="checkbox" id="cat-other-check" value="__other__" /> Other: <input type="text" id="cat-other-text" placeholder="e.g. Education" style="margin-left:0.35rem;font-family:inherit;font-size:0.9375rem;border:1px solid var(--border);border-radius:var(--radius);padding:0.2rem 0.5rem;width:160px;display:none;" /></label>
         </div>
       </div>
 
@@ -192,6 +193,13 @@
 
 <script src="supabase-client.js"></script>
 <script>
+  // Show/hide the "Other" text input when its checkbox is toggled
+  document.getElementById('cat-other-check').addEventListener('change', function() {
+    const txt = document.getElementById('cat-other-text');
+    txt.style.display = this.checked ? 'inline-block' : 'none';
+    if (this.checked) txt.focus();
+  });
+
   const form   = document.getElementById('submit-form');
   const btn    = document.getElementById('submit-btn');
   const status = document.getElementById('form-status');
@@ -222,6 +230,13 @@
       showStatus('Please select at least one category.', 'error');
       return;
     }
+    const otherCheck = document.getElementById('cat-other-check');
+    const otherText  = document.getElementById('cat-other-text').value.trim();
+    if (otherCheck.checked && !otherText) {
+      document.getElementById('cat-other-text').focus();
+      showStatus('Please fill in the "Other" category name.', 'error');
+      return;
+    }
     const section = form.querySelector('input[name="section"]:checked');
     if (!section) {
       showStatus('Please select how volunteers sign up.', 'error');
@@ -234,7 +249,10 @@
     const data = {
       name:         form.elements.name.value.trim(),
       description:  form.elements.description.value.trim(),
-      category:     checkedCategories.map(el => el.value).sort().join(' · '),
+      category:     checkedCategories
+                      .map(el => el.value === '__other__' ? otherText : el.value)
+                      .sort()
+                      .join(' · '),
       age_display:  form.elements.age_display.value.trim(),
       age_min:      form.elements.age_min.value ? parseInt(form.elements.age_min.value, 10) : null,
       'when':       form.elements.when.value.trim(),
