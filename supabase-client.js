@@ -42,11 +42,16 @@ async function fetchOpportunities() {
 function _transformRow(row) {
   const slug = row.slug || _nameToSlug(row.name);
 
-  // data-tags: lowercase category with · replaced by space
-  const tags = (row.category || '')
-    .toLowerCase()
-    .replace(/\s*·\s*/g, ' ')
-    .trim();
+  // Normalize category: split on · or ,, sort alphabetically, rejoin with ·
+  const normalizedCategory = (row.category || '')
+    .split(/\s*[·,]\s*/)
+    .map(c => c.trim())
+    .filter(Boolean)
+    .sort()
+    .join(' · ');
+
+  // data-tags: lowercase, · replaced by space, for filter matching
+  const tags = normalizedCategory.toLowerCase().replace(/\s*·\s*/g, ' ').trim();
 
   // data-age: prefer explicit age_filter column, fall back to age_min
   let dataAge = 'all';
@@ -66,7 +71,7 @@ function _transformRow(row) {
   return {
     // ── Fields used by map.html and mini-map.js ──────────────────────────
     name:    row.name,
-    tag:     row.category   || '',
+    tag:     normalizedCategory,
     slug:    slug,
     link:    'opportunities/detail.html?slug=' + slug,
     address: row.address    || '',

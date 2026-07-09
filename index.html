@@ -301,9 +301,12 @@
     const filtersEl = document.getElementById('filters');
     const categoryMap = new Map(); // lowercase key → display label
     opportunities.forEach(opp => {
-      (opp.tag || '').split('·').forEach(cat => {
-        const label = cat.trim();
-        if (label) categoryMap.set(label.toLowerCase(), label);
+      (opp.tag || '').split(/[·,]/).forEach(cat => {
+        const trimmed = cat.trim();
+        if (!trimmed) return;
+        const key   = trimmed.toLowerCase();
+        const label = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+        categoryMap.set(key, label);
       });
     });
     filtersEl.querySelectorAll('.filter-btn:not(:first-child)').forEach(b => b.remove());
