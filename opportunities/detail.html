@@ -78,6 +78,11 @@
       ? '<p style="font-size:0.875rem;color:#555;margin-top:0.75rem;">' + esc(opp._note) + '</p>'
       : '';
 
+    // Build contact-for-questions line if present
+    const contactHtml = opp._contactInfo
+      ? '<p style="font-size:0.875rem;color:#555;margin-top:0.75rem;"><strong>Questions?</strong> ' + esc(opp._contactInfo) + '</p>'
+      : '';
+
     // Build when/where/age row if any fields are populated
     const metaItems = [];
     if (opp._ageHtml)  metaItems.push('<span><strong>Age:</strong> ' + opp._ageHtml + '</span>');
@@ -110,7 +115,8 @@
       '<div class="mini-map-wrap" id="mini-map-host">' +
         '<div class="mini-map" id="mini-map"></div>' +
       '</div>' +
-      '<p class="mini-map-label">View on full map →</p>';
+      '<p class="mini-map-label">View on full map →</p>' +
+      contactHtml;
 
     section.appendChild(content);
 

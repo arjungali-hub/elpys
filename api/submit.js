@@ -113,7 +113,7 @@ module.exports = async function handler(req, res) {
   const payload = {
     name:               String(body.name).trim().slice(0, 200),
     description:        String(body.description).trim().slice(0, 1000),
-    detail_description: body.detail_description ? String(body.detail_description).trim().slice(0, 5000) : null,
+    long_description:   body.long_description ? String(body.long_description).trim().slice(0, 5000) : null,
     category:           String(body.category).trim().slice(0, 100),
     age_display:        String(body.age_display).trim().slice(0, 100),
     age_min:            body.age_min ? (parseInt(body.age_min, 10) || null) : null,
@@ -124,6 +124,7 @@ module.exports = async function handler(req, res) {
     signup_label:       body.signup_label ? String(body.signup_label).trim().slice(0, 50) : 'Sign up →',
     signup_steps:       steps,
     section:            body.section,
+    contact_info:       body.contact_info ? String(body.contact_info).trim().slice(0, 300) : null,
     card_note:          body.card_note   ? String(body.card_note).trim().slice(0, 500)  : null,
     admin_notes:        body.admin_notes ? String(body.admin_notes).trim().slice(0, 1000) : null,
     status:             'pending', // always set server-side, never from client

@@ -75,7 +75,7 @@ function _transformRow(row) {
     approx:  row.approx     || false,
     liveUrl: row.live_url   || null,
     desc:       row.description        || '',
-    _detailDesc: row.detail_description || row.description || '',
+    _detailDesc: row.long_description || row.description || '',
 
     // ── Fields used only by the index.html card renderer ─────────────────
     _tags:         tags,
@@ -86,9 +86,15 @@ function _transformRow(row) {
     _where:        row.where          || '',
     _signupLink:   row.signup_link    || '#',
     _signupLabel:  row.signup_label   || 'Sign up →',
-    _steps:        Array.isArray(row.signup_steps) ? row.signup_steps : [],
+    _steps:        (() => {
+                     const v = row.signup_steps;
+                     if (!v) return [];
+                     const raw = Array.isArray(v) ? v.join(' | ') : String(v);
+                     return raw.split('|').map(s => s.trim()).filter(Boolean);
+                   })(),
     _section:      (row.section       || 'online').toLowerCase(),
     _note:         row.card_note      || null,
+    _contactInfo:  row.contact_info   || null,
   };
 }
 

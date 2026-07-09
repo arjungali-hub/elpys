@@ -110,9 +110,9 @@
       </div>
 
       <div class="field">
-        <label for="f-detail-description">Full description (detail page) <span aria-hidden="true">*</span></label>
+        <label for="f-long-description">Full description (detail page) <span aria-hidden="true">*</span></label>
         <span class="hint">A longer description shown on the opportunity's own page. Include what the work is like, what to expect, and who it's a good fit for.</span>
-        <textarea id="f-detail-description" name="detail_description" required placeholder="e.g. At the Bellevue Farmers Market you'll help set up and break down vendor tents, staff the info booth, and keep the market running smoothly on Saturday mornings from May through October. Shifts are about 3 hours and the atmosphere is relaxed and community-focused."></textarea>
+        <textarea id="f-long-description" name="long_description" required placeholder="e.g. At the Bellevue Farmers Market you'll help set up and break down vendor tents, staff the info booth, and keep the market running smoothly on Saturday mornings from May through October. Shifts are about 3 hours and the atmosphere is relaxed and community-focused."></textarea>
       </div>
 
       <div class="field">
@@ -122,7 +122,7 @@
           <label class="checkbox-label"><input type="checkbox" name="category" value="Community" /> Community</label>
           <label class="checkbox-label"><input type="checkbox" name="category" value="Environment" /> Environment</label>
           <label class="checkbox-label"><input type="checkbox" name="category" value="Food" /> Food</label>
-          <label class="checkbox-label"><input type="checkbox" id="cat-other-check" value="__other__" /> Other: <input type="text" id="cat-other-text" placeholder="e.g. Education" style="margin-left:0.35rem;font-family:inherit;font-size:0.9375rem;border:1px solid var(--border);border-radius:var(--radius);padding:0.2rem 0.5rem;width:160px;display:none;" /></label>
+          <label class="checkbox-label"><input type="checkbox" name="category" id="cat-other-check" value="__other__" /> Other: <input type="text" id="cat-other-text" placeholder="e.g. Education" style="margin-left:0.35rem;font-family:inherit;font-size:0.9375rem;border:1px solid var(--border);border-radius:var(--radius);padding:0.2rem 0.5rem;width:160px;display:none;" /></label>
         </div>
       </div>
 
@@ -187,6 +187,12 @@
         <label for="f-steps">Sign-up steps <span aria-hidden="true">*</span></label>
         <span class="hint">One step per line. These appear as a numbered list on the listing.</span>
         <textarea id="f-steps" name="signup_steps" class="steps-area" required placeholder="Go to the volunteer page and fill out the interest form&#10;A coordinator will email you with available Saturday shifts&#10;Show up 30 minutes before market opens"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="f-contact">Contact for questions <span class="optional-label">(optional)</span></label>
+        <span class="hint">An email, phone number, or URL visitors can use to ask questions before signing up — e.g. "volunteer@ourorg.org" or "ourorg.org/contact".</span>
+        <input id="f-contact" name="contact_info" type="text" placeholder="e.g. volunteer@bellevuefarmersmarket.org" />
       </div>
 
       <div class="field">
@@ -285,7 +291,7 @@
       // Form fields
       name:                form.elements.name.value.trim(),
       description:         form.elements.description.value.trim(),
-      detail_description:  form.elements.detail_description.value.trim(),
+      long_description:    form.elements.long_description.value.trim(),
       category:            checkedCategories
                              .map(el => el.value === '__other__' ? otherText : el.value)
                              .sort()
@@ -301,6 +307,7 @@
                              .split('\n')
                              .map(s => s.trim())
                              .filter(s => s.length > 0),
+      contact_info:        form.elements.contact_info.value.trim() || null,
       card_note:           form.elements.card_note.value.trim()   || null,
       admin_notes:         form.elements.admin_notes.value.trim() || null,
       section:             section.value,
