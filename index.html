@@ -227,9 +227,7 @@
 
     const allAgesHintEl = document.getElementById('all-ages-hint');
     if (allAgesHintEl) {
-      allAgesHintEl.textContent = (age !== null && age >= 1000)
-        ? '...maybe you shouldn\'t be volunteering at this age.'
-        : 'Opportunities open to all ages are always shown.';
+      allAgesHintEl.textContent = 'Opportunities open to all ages are always shown.';
     }
 
     const totalVisible = [...document.querySelectorAll('.card')].filter(c => c.style.display !== 'none').length;
