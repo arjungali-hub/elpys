@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Send Feedback — Elpys</title>
+  <!-- noindex: remove this tag when ready to launch publicly -->
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .feedback-section { padding: 3rem 0 4rem; }
+    .feedback-section h1 { font-size: clamp(1.375rem, 3vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+    .feedback-section .page-intro { font-size: 0.9375rem; color: #444; line-height: 1.6; max-width: 52ch; margin-bottom: 2rem; }
+
+    .feedback-form { max-width: 520px; display: flex; flex-direction: column; gap: 1.25rem; }
+
+    .field { display: flex; flex-direction: column; gap: 0.35rem; }
+    .field label { font-size: 0.8125rem; font-weight: 600; }
+    .field .hint { font-size: 0.75rem; color: var(--muted); }
+    .field input, .field textarea {
+      font-family: inherit; font-size: 0.9375rem; color: var(--body);
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.55rem 0.75rem; width: 100%;
+    }
+    .field input:focus, .field textarea:focus { outline: 2px solid var(--body); outline-offset: 1px; }
+    .field textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
+
+    .optional-label { font-weight: 400; color: var(--muted); }
+
+    .submit-btn {
+      align-self: flex-start; font-family: inherit; font-size: 0.9375rem;
+      font-weight: 600; color: var(--white); background: var(--body);
+      border: none; border-radius: var(--radius); padding: 0.65rem 1.5rem; cursor: pointer;
+    }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .form-status { font-size: 0.9375rem; padding: 1rem; border-radius: var(--radius); display: none; }
+    .form-status.success { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; }
+    .form-status.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="index.html" class="site-name">Elpys</a>
+      <span class="header-sub">Volunteer opportunities for teens</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="feedback-section">
+    <a href="index.html" class="back-link">← Back to all opportunities</a>
+    <h1>Send feedback</h1>
+    <p class="page-intro">Found something broken, or have a suggestion? Let us know — it helps make the site better for everyone.</p>
+
+    <div class="form-status" id="form-status"></div>
+
+    <form class="feedback-form" id="feedback-form" novalidate>
+
+      <div class="field">
+        <label for="f-message">What did you find? <span aria-hidden="true">*</span></label>
+        <span class="hint">Describe the issue or share your suggestion.</span>
+        <textarea id="f-message" name="message" required placeholder="e.g. The sign-up steps aren't showing on the FamilyWorks detail page."></textarea>
+      </div>
+
+      <div class="field">
+        <label for="f-page">Which page were you on? <span class="optional-label">(optional)</span></label>
+        <input id="f-page" name="page_url" type="text" placeholder="e.g. https://elpys.org/opportunities/detail.html?slug=familyworks" />
+      </div>
+
+      <div class="field">
+        <label for="f-email">Your email <span class="optional-label">(optional)</span></label>
+        <span class="hint">Only if you'd like us to follow up.</span>
+        <input id="f-email" name="contact_email" type="email" placeholder="e.g. you@example.com" />
+      </div>
+
+      <button type="submit" class="submit-btn" id="submit-btn">Send feedback →</button>
+
+    </form>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="submit.html">Submit an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="beta-banner.js"></script>
+<script>
+  // Pre-fill page field from ?from= param (set by beta banner link)
+  const fromParam = new URLSearchParams(location.search).get('from');
+  if (fromParam) document.getElementById('f-page').value = fromParam;
+
+  const form   = document.getElementById('feedback-form');
+  const btn    = document.getElementById('submit-btn');
+  const status = document.getElementById('form-status');
+
+  function showStatus(msg, type) {
+    status.textContent = msg;
+    status.className   = 'form-status ' + type;
+    status.style.display = 'block';
+    status.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    status.style.display = 'none';
+
+    const message = form.elements.message.value.trim();
+    if (!message) {
+      form.elements.message.focus();
+      showStatus('Please describe what you found.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    try {
+      const res = await fetch('/api/feedback', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          page_url:      form.elements.page_url.value.trim()      || null,
+          contact_email: form.elements.contact_email.value.trim() || null,
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'HTTP ' + res.status);
+
+      form.style.display = 'none';
+      showStatus('Thanks — we got your feedback!', 'success');
+    } catch (err) {
+      showStatus('Something went wrong: ' + err.message + '. Please try again.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Send feedback →';
+    }
+  });
+</script>
+
+</body>
+</html>

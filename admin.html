@@ -25,6 +25,11 @@
     /* Panels */
     #submissions-panel { display: none; }
     #published-panel   { display: none; margin-top: 2.75rem; padding-top: 2.75rem; border-top: 1px solid #E5E7EB; }
+    #feedback-panel    { display: none; margin-top: 2.75rem; padding-top: 2.75rem; border-top: 1px solid #E5E7EB; }
+    .feedback-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; max-width: 820px; }
+    .feedback-card .fb-message { font-size: 0.9375rem; color: #1A1A1A; line-height: 1.55; margin-bottom: 0.5rem; }
+    .feedback-card .fb-meta { font-size: 0.8125rem; color: #666; display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin-bottom: 0.65rem; }
+    .feedback-card .fb-meta a { color: #1E40AF; word-break: break-all; }
     .section-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.25rem; }
     .section-header h2 { font-size: 1rem; font-weight: 700; }
     .count-badge { font-size: 0.75rem; background: #E5E7EB; color: #374151; border-radius: 999px; padding: 0.15rem 0.6rem; font-weight: 600; }
@@ -120,6 +125,14 @@
   <div id="published-list"></div>
 </div>
 
+<div id="feedback-panel">
+  <div class="section-header">
+    <h2>Feedback</h2>
+    <span class="count-badge" id="feedback-count-badge">0</span>
+  </div>
+  <div id="feedback-list"></div>
+</div>
+
 <script>
   const API = '/api/admin';
   let _password = '';
@@ -144,12 +157,14 @@
       if (res.status === 401) { showLoginMsg('Incorrect password.', 'error'); return; }
       if (!res.ok) throw new Error('HTTP ' + res.status);
 
-      const { pending, published } = await res.json();
+      const { pending, published, feedback } = await res.json();
       document.getElementById('login-panel').style.display = 'none';
       renderPending(pending);
       renderPublished(published);
+      renderFeedback(feedback || []);
       document.getElementById('submissions-panel').style.display = 'block';
       document.getElementById('published-panel').style.display = 'block';
+      document.getElementById('feedback-panel').style.display = 'block';
     } catch (err) {
       showLoginMsg('Error: ' + err.message, 'error');
     } finally {
@@ -484,6 +499,64 @@
 
   function autoSlug(name) {
     return (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  // ── Feedback ───────────────────────────────────────────────────────────────
+
+  function renderFeedback(rows) {
+    document.getElementById('feedback-count-badge').textContent = rows.length;
+    const list = document.getElementById('feedback-list');
+    if (rows.length === 0) { list.innerHTML = '<p class="empty-state">No feedback yet.</p>'; return; }
+    list.innerHTML = '';
+    rows.forEach(row => list.appendChild(buildFeedbackCard(row)));
+  }
+
+  function buildFeedbackCard(row) {
+    const card = document.createElement('div');
+    card.className = 'feedback-card';
+    card.id = 'fb-' + row.id;
+
+    const date = row.created_at ? new Date(row.created_at).toLocaleString() : '—';
+    const pageHtml = row.page_url
+      ? '<span>Page: <a href="' + esc(row.page_url) + '" target="_blank" rel="noopener">' + esc(row.page_url) + '</a></span>'
+      : '';
+    const emailHtml = row.contact_email
+      ? '<span>Email: <a href="mailto:' + esc(row.contact_email) + '">' + esc(row.contact_email) + '</a></span>'
+      : '';
+
+    card.innerHTML =
+      '<p class="fb-message">' + esc(row.message) + '</p>' +
+      '<div class="fb-meta">' +
+        '<span>' + esc(date) + '</span>' +
+        pageHtml + emailHtml +
+      '</div>' +
+      '<div class="sub-actions">' +
+        '<button class="btn-delete btn-delete-fb">Delete</button>' +
+      '</div>';
+
+    card.querySelector('.btn-delete-fb').addEventListener('click', () => handleDeleteFeedback(row.id));
+    return card;
+  }
+
+  async function handleDeleteFeedback(id) {
+    if (!confirm('Delete this feedback permanently?')) return;
+    const btn = document.querySelector('#fb-' + id + ' .btn-delete-fb');
+    if (btn) btn.disabled = true;
+    try {
+      const res = await postAction({ action: 'delete-feedback', id });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      fadeRemove('fb-' + id, () => {
+        adjustBadge('feedback-count-badge', -1);
+        const list = document.getElementById('feedback-list');
+        if (list.querySelectorAll('.feedback-card').length === 0) {
+          list.innerHTML = '<p class="empty-state">No feedback yet.</p>';
+          document.getElementById('feedback-count-badge').textContent = '0';
+        }
+      });
+    } catch (err) {
+      if (btn) btn.disabled = false;
+      alert('Error: ' + err.message);
+    }
   }
 
   function esc(str) {

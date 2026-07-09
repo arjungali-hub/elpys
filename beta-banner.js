@@ -16,11 +16,14 @@
     // ── Dismissible beta banner below the header ─────────────────────────────
     if (sessionStorage.getItem(DISMISSED_KEY)) return;
 
+    var isSubdir = location.pathname.indexOf('/opportunities/') !== -1;
+    var feedbackHref = (isSubdir ? '../' : '') + 'feedback.html?from=' + encodeURIComponent(location.href);
+
     var banner = document.createElement('div');
     banner.id = 'beta-banner';
     banner.innerHTML =
       'Elpys is in beta — some features are still being tested. Found something broken? ' +
-      '<a href="mailto:?subject=Elpys%20bug%20report">Let us know</a>.' +
+      '<a href="' + feedbackHref + '">Let us know</a>.' +
       '<button id="beta-banner-close" aria-label="Dismiss">×</button>';
 
     var header = document.querySelector('header');

@@ -29,13 +29,15 @@ module.exports = async function handler(req, res) {
 
   // ── GET — return pending + published ────────────────────────────────────────
   if (req.method === 'GET') {
-    const [pendingRes, publishedRes] = await Promise.all([
+    const [pendingRes, publishedRes, feedbackRes] = await Promise.all([
       fetch(SUPABASE_URL + 'Opportunities?status=eq.pending&select=*&order=created_at.asc',  { headers: supabaseHeaders() }),
       fetch(SUPABASE_URL + 'Opportunities?status=eq.published&select=*&order=name.asc', { headers: supabaseHeaders() }),
+      fetch(SUPABASE_URL + 'Feedback?select=*&order=created_at.desc&limit=200', { headers: supabaseHeaders() }),
     ]);
     const pending   = await pendingRes.json();
     const published = await publishedRes.json();
-    return res.status(200).json({ pending, published });
+    const feedback  = await feedbackRes.json();
+    return res.status(200).json({ pending, published, feedback: Array.isArray(feedback) ? feedback : [] });
   }
 
   // ── POST — act on a row ─────────────────────────────────────────────────────
@@ -96,6 +98,14 @@ module.exports = async function handler(req, res) {
     if (action === 'reject' || action === 'delete') {
       const r = await fetch(
         SUPABASE_URL + 'Opportunities?id=eq.' + encodeURIComponent(id),
+        { method: 'DELETE', headers: supabaseHeaders() }
+      );
+      return res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
+    }
+
+    if (action === 'delete-feedback') {
+      const r = await fetch(
+        SUPABASE_URL + 'Feedback?id=eq.' + encodeURIComponent(id),
         { method: 'DELETE', headers: supabaseHeaders() }
       );
       return res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
