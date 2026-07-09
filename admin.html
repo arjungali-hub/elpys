@@ -319,7 +319,7 @@
     card.querySelector('.btn-edit').addEventListener('click',      () => toggleEdit(row.id));
     card.querySelector('.btn-save').addEventListener('click',      () => handleSave(row.id));
     card.querySelector('.btn-cancel').addEventListener('click',    () => toggleEdit(row.id, false));
-    card.querySelector('.btn-unpublish').addEventListener('click', () => handleUnpublish(row.id, row.name));
+    card.querySelector('.btn-unpublish').addEventListener('click', () => handleUnpublish(row));
     card.querySelector('.btn-delete').addEventListener('click',    () => handleDelete(row.id, row.name));
     return card;
   }
@@ -396,7 +396,8 @@
     }
   }
 
-  async function handleUnpublish(id, name) {
+  async function handleUnpublish(row) {
+    const id = row.id, name = row.name;
     if (!confirm('Move "' + name + '" back to pending? It will be hidden from the public site immediately.')) return;
     setPublishedBtns(id, true); setCardMsg2(id, 'Unpublishing…', '#555');
     try {
@@ -404,6 +405,12 @@
       if (!res.ok) throw new Error('HTTP ' + res.status);
       fadeRemove('card-' + id, checkPublishedEmpty);
       adjustBadge('published-count-badge', -1);
+      // Immediately add to pending section
+      const pendingList = document.getElementById('submissions-list');
+      const empty = pendingList.querySelector('.empty-state');
+      if (empty) empty.remove();
+      pendingList.insertBefore(buildPendingCard(row), pendingList.firstChild);
+      adjustBadge('count-badge', 1);
     } catch (err) { setCardMsg2(id, 'Error: ' + err.message, '#991B1B'); setPublishedBtns(id, false); }
   }
 
