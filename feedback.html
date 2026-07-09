@@ -140,7 +140,7 @@
       form.style.display = 'none';
       showStatus('Thanks — we got your feedback!', 'success');
     } catch (err) {
-      showStatus('Something went wrong: ' + err.message + '. Please try again.', 'error');
+      showStatus(err.message || 'Something went wrong. Please try again.', 'error');
       btn.disabled = false;
       btn.textContent = 'Send feedback →';
     }
