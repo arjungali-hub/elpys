@@ -100,6 +100,9 @@ function _transformRow(row) {
     _section:      (row.section       || 'online').toLowerCase(),
     _note:         row.card_note      || null,
     _contactInfo:  row.contact_info   || null,
+    _website:      row.website        || null,
+    _contactEmail: row.contact_email  || null,
+    _contactPhone: row.contact_phone  || null,
   };
 }
 

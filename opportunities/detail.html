@@ -85,6 +85,23 @@
       ? '<p style="font-size:0.875rem;color:#555;margin-top:0.75rem;"><strong>Questions?</strong> ' + esc(opp._contactInfo) + '</p>'
       : '';
 
+    // Build org contact section (website / email / phone)
+    const websiteUrl = opp._website
+      ? (/^https?:\/\//i.test(opp._website) ? opp._website : 'https://' + opp._website)
+      : null;
+    const contactLines = [];
+    if (websiteUrl)          contactLines.push('<span><strong>Website:</strong> <a href="' + esc(websiteUrl) + '" target="_blank" rel="noopener">' + esc(opp._website) + '</a></span>');
+    if (opp._contactEmail)   contactLines.push('<span><strong>Email:</strong> <a href="mailto:' + esc(opp._contactEmail) + '">' + esc(opp._contactEmail) + '</a></span>');
+    if (opp._contactPhone)   contactLines.push('<span><strong>Phone:</strong> ' + esc(opp._contactPhone) + '</span>');
+    const orgContactHtml = contactLines.length
+      ? '<div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid #E5E7EB;">' +
+          '<p style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:0.6rem;">Contact</p>' +
+          '<div style="display:flex;flex-direction:column;gap:0.35rem;font-size:0.9375rem;">' +
+            contactLines.join('') +
+          '</div>' +
+        '</div>'
+      : '';
+
     // Build when/where/age row if any fields are populated
     const metaItems = [];
     if (opp._ageHtml)  metaItems.push('<span><strong>Age:</strong> ' + opp._ageHtml + '</span>');
@@ -118,7 +135,8 @@
         '<div class="mini-map" id="mini-map"></div>' +
       '</div>' +
       '<p class="mini-map-label">View on full map →</p>' +
-      contactHtml;
+      contactHtml +
+      orgContactHtml;
 
     section.appendChild(content);
 
