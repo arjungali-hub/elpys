@@ -47,7 +47,11 @@ header {
   font-weight: 600;
   letter-spacing: -0.01em;
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
+.site-logo { height: 22px; width: auto; display: block; }
 .header-sub {
   font-size: 0.8125rem;
   color: var(--muted);
