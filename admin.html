@@ -26,6 +26,11 @@
     #submissions-panel { display: none; }
     #published-panel   { display: none; margin-top: 2.75rem; padding-top: 2.75rem; border-top: 1px solid #E5E7EB; }
     #feedback-panel    { display: none; margin-top: 2.75rem; padding-top: 2.75rem; border-top: 1px solid #E5E7EB; }
+
+    /* Section jump nav */
+    #section-nav { display: none; margin-bottom: 2rem; display: none; gap: 0.5rem; flex-wrap: wrap; }
+    #section-nav a { font-size: 0.8125rem; font-weight: 600; color: #374151; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; padding: 0.35rem 0.75rem; text-decoration: none; }
+    #section-nav a:hover { background: #E5E7EB; }
     .feedback-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; max-width: 820px; }
     .feedback-card .fb-message { font-size: 0.9375rem; color: #1A1A1A; line-height: 1.55; margin-bottom: 0.5rem; }
     .feedback-card .fb-meta { font-size: 0.8125rem; color: #666; display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin-bottom: 0.65rem; }
@@ -109,6 +114,12 @@
   <div class="msg" id="login-msg"></div>
 </div>
 
+<nav id="section-nav">
+  <a href="#submissions-panel">Pending <span id="nav-pending-badge"></span></a>
+  <a href="#published-panel">Published <span id="nav-published-badge"></span></a>
+  <a href="#feedback-panel">Feedback <span id="nav-feedback-badge"></span></a>
+</nav>
+
 <div id="submissions-panel">
   <div class="section-header">
     <h2>Pending submissions</h2>
@@ -165,6 +176,11 @@
       document.getElementById('submissions-panel').style.display = 'block';
       document.getElementById('published-panel').style.display = 'block';
       document.getElementById('feedback-panel').style.display = 'block';
+      const nav = document.getElementById('section-nav');
+      nav.style.display = 'flex';
+      document.getElementById('nav-pending-badge').textContent   = '(' + pending.length + ')';
+      document.getElementById('nav-published-badge').textContent = '(' + published.length + ')';
+      document.getElementById('nav-feedback-badge').textContent  = '(' + (feedback || []).length + ')';
     } catch (err) {
       showLoginMsg('Error: ' + err.message, 'error');
     } finally {
