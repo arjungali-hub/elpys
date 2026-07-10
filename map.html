@@ -85,7 +85,9 @@
       opp._allOpps = opportunities;
 
       const directionsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(opp.address);
-      const approxNote = opp.approx ? '<span class="map-popup-tag">Approximate area — operates at multiple sites</span>' : '';
+      const approxNote = opp.approx
+        ? '<span class="map-popup-tag">Approximate area — operates at multiple sites</span>'
+        : (opp.liveUrl ? '<span class="map-popup-tag">Nearest location shown</span>' : '');
       const actionLink = (opp.approx && opp.liveUrl)
         ? '<a href="' + opp.liveUrl + '" target="_blank" rel="noopener">Find exact locations on their website</a>'
         : '<a href="' + directionsUrl + '" target="_blank" rel="noopener">Get directions</a>';
@@ -117,6 +119,11 @@
         const note = document.createElement('div');
         note.className = 'map-list-live-note';
         note.innerHTML = 'Operates at multiple locations — <a href="' + opp.liveUrl + '" target="_blank" rel="noopener">view their live event page →</a>';
+        wrap.appendChild(note);
+      } else if (!opp.approx && opp.liveUrl) {
+        const note = document.createElement('div');
+        note.className = 'map-list-live-note';
+        note.innerHTML = 'Nearest location shown — <a href="' + opp.liveUrl + '" target="_blank" rel="noopener">view all locations →</a>';
         wrap.appendChild(note);
       }
 

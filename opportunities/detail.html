@@ -135,6 +135,7 @@
         '<div class="mini-map" id="mini-map"></div>' +
       '</div>' +
       '<p class="mini-map-label">View on full map →</p>' +
+      (!opp.approx && opp.liveUrl ? '<p style="font-size:0.8125rem;color:#888;margin-top:0.35rem;">The location marked is the nearest — <a href="' + esc(opp.liveUrl) + '" target="_blank" rel="noopener" style="color:#888;">view all locations →</a></p>' : '') +
       contactHtml +
       orgContactHtml;
 
