@@ -19,7 +19,7 @@ const TURNSTILE_SECRET  = process.env.TURNSTILE_SECRET_KEY;
 // Resets on each cold start / deploy. Per-instance, not global across Vercel
 // function instances — good enough for low-volume spam deterrence at this scale.
 const ipStore = new Map();
-const RATE_MAX    = 3;
+const RATE_MAX    = 10;
 const RATE_WIN_MS = 60 * 60 * 1000; // 1 hour
 
 function supabaseHeaders(extra) {

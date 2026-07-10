@@ -20,7 +20,7 @@ const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET_KEY;
 
 // ── In-memory rate limit store ────────────────────────────────────────────────
 const ipStore    = new Map();
-const RATE_MAX    = 5;
+const RATE_MAX    = 15;
 const RATE_WIN_MS = 60 * 60 * 1000; // 1 hour
 
 module.exports = async function handler(req, res) {
