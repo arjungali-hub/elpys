@@ -8,6 +8,8 @@
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/svg+xml" href="elpys-favicon.svg">
   <link rel="stylesheet" href="styles.css">
+  <!-- Cloudflare Turnstile -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     .feedback-section { padding: 3rem 0 4rem; }
     .feedback-section h1 { font-size: clamp(1.375rem, 3vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
@@ -38,6 +40,9 @@
     .form-status { font-size: 0.9375rem; padding: 1rem; border-radius: var(--radius); display: none; }
     .form-status.success { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; }
     .form-status.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+
+    /* Honeypot — off-screen, never visible to real users */
+    .hp-field { position: absolute; left: -9999px; top: -9999px; }
   </style>
 </head>
 <body>
@@ -76,6 +81,14 @@
         <span class="hint">Only if you'd like us to follow up.</span>
         <input id="f-email" name="contact_email" type="email" placeholder="e.g. you@example.com" />
       </div>
+
+      <!-- Honeypot — bots fill it, real users never see it -->
+      <div class="hp-field" aria-hidden="true">
+        <label for="hp-website">Leave this blank</label>
+        <input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off">
+      </div>
+
+      <div class="cf-turnstile" data-sitekey="0x4AAAAAADxuIIEw7hNrIcR3" data-theme="light"></div>
 
       <button type="submit" class="submit-btn" id="submit-btn">Send feedback →</button>
 
@@ -123,10 +136,13 @@
     btn.textContent = 'Sending…';
 
     try {
+      const turnstileToken = (form.querySelector('[name="cf-turnstile-response"]') || {}).value || '';
       const res = await fetch('/api/feedback', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          website:                   document.getElementById('hp-website').value,
+          'cf-turnstile-response':   turnstileToken,
           message,
           page_url:      form.elements.page_url.value.trim()      || null,
           contact_email: form.elements.contact_email.value.trim() || null,
