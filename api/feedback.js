@@ -50,7 +50,7 @@ module.exports = async function handler(req, res) {
   if (!r.ok) {
     const detail = await r.text().catch(() => '');
     console.error('Supabase feedback insert failed:', r.status, detail);
-    return res.status(500).json({ error: 'Submission failed. Please try again.' });
+    return res.status(500).json({ error: 'Supabase error ' + r.status + ': ' + detail });
   }
 
   return res.status(200).json({ ok: true });
