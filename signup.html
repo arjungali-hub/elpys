@@ -124,20 +124,20 @@
     if (r.data && r.data.session) location.replace('account.html');
   });
 
-  var form   = document.getElementById('signup-form');
-  var btn    = document.getElementById('submit-btn');
-  var status = document.getElementById('form-status');
+  var form      = document.getElementById('signup-form');
+  var btn       = document.getElementById('submit-btn');
+  var statusEl  = document.getElementById('form-status');
 
   function showStatus(msg, type) {
-    status.textContent    = msg;
-    status.className      = 'form-status ' + type;
-    status.style.display  = 'block';
-    status.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    statusEl.textContent    = msg;
+    statusEl.className      = 'form-status ' + type;
+    statusEl.style.display  = 'block';
+    statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
-    status.style.display = 'none';
+    statusEl.style.display = 'none';
 
     var email     = form.elements.email.value.trim();
     var password  = form.elements.password.value;
