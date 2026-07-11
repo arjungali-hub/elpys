@@ -9,7 +9,8 @@ const SUPABASE_URL  = process.env.SUPABASE_URL;
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ADMIN_PASS    = process.env.ADMIN_PASSWORD;
 const RESEND_KEY    = process.env.RESEND_API_KEY;
-const SITE_URL      = 'https://elpys.org'; // update if the domain changes
+const RESEND_FROM   = process.env.RESEND_FROM_EMAIL; // e.g. "Elpys <noreply@yourdomain.com>" — must be a Resend-verified sender
+const SITE_URL      = 'https://elpys.vercel.app';
 
 function supabaseHeaders(extra) {
   return Object.assign({
@@ -69,14 +70,14 @@ module.exports = async function handler(req, res) {
 
       // Send confirmation email if the submission has a contact_email
       let emailSent = false;
-      if (row && row.contact_email && RESEND_KEY) {
+      if (row && row.contact_email && RESEND_KEY && RESEND_FROM) {
         const detailUrl = SITE_URL + '/opportunities/detail.html?slug=' + encodeURIComponent(slug.trim());
         const safeName  = String(row.name || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         const emailRes  = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: { Authorization: 'Bearer ' + RESEND_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            from:    'Elpys <noreply@elpys.org>',
+            from:    RESEND_FROM,
             to:      [row.contact_email],
             subject: 'Your opportunity is now live on Elpys!',
             html:
