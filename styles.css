@@ -59,6 +59,18 @@ header {
   text-decoration: none;
 }
 .header-auth-link:hover { text-decoration: underline; }
+.header-signup-btn {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--body);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.75rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.header-signup-btn:hover { background: var(--off); }
 .header-admin-link {
   font-size: 0.8125rem;
   color: var(--muted);

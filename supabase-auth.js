@@ -22,6 +22,8 @@
     if (session) {
       el.href        = base + 'account.html';
       el.textContent = 'My account';
+      var signupEl = document.getElementById('header-signup-link');
+      if (signupEl) signupEl.style.display = 'none';
     }
   });
 }());
