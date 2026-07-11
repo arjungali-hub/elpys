@@ -261,11 +261,9 @@
 
     setCardBtns(id, true); setCardMsg(id, 'Approving…', '#555');
     try {
-      const res  = await postAction({ action: 'approve', id, slug, lat: parseFloat(lat), lng: parseFloat(lng) });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
-      setCardMsg(id, data.emailSent ? 'Approved — confirmation email sent' : 'Approved', '#065F46');
-      setTimeout(() => fadeRemove('card-' + id, checkPendingEmpty), 1500);
+      const res = await postAction({ action: 'approve', id, slug, lat: parseFloat(lat), lng: parseFloat(lng) });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'HTTP ' + res.status); }
+      fadeRemove('card-' + id, checkPendingEmpty);
     } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#991B1B'); setCardBtns(id, false); }
   }
 
