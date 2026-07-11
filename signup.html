@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign up — Elpys</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="elpys-favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .auth-section { padding: 3rem 0 4rem; }
+    .auth-wrap { max-width: 440px; }
+    .auth-section h1 { font-size: clamp(1.375rem, 3vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+    .auth-intro { font-size: 0.9375rem; color: #444; line-height: 1.6; margin-bottom: 2rem; max-width: 52ch; }
+    .auth-form { display: flex; flex-direction: column; gap: 1.25rem; }
+    .field { display: flex; flex-direction: column; gap: 0.35rem; }
+    .field label { font-size: 0.8125rem; font-weight: 600; }
+    .field input { font-family: inherit; font-size: 0.9375rem; color: var(--body); background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.55rem 0.75rem; width: 100%; }
+    .field input:focus { outline: 2px solid var(--body); outline-offset: 1px; }
+    .interests-fieldset { border: none; padding: 0; margin: 0; }
+    .interests-fieldset legend { font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.6rem; display: block; }
+    .optional-tag { font-weight: 400; color: var(--muted); }
+    .interest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; }
+    .interest-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer; }
+    .age-confirm-label { display: flex; align-items: flex-start; gap: 0.6rem; font-size: 0.875rem; cursor: pointer; line-height: 1.5; }
+    .age-confirm-label input { margin-top: 0.2rem; flex-shrink: 0; cursor: pointer; }
+    .submit-btn { align-self: flex-start; font-family: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--white); background: var(--body); border: none; border-radius: var(--radius); padding: 0.65rem 1.5rem; cursor: pointer; }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-status { font-size: 0.9375rem; padding: 1rem; border-radius: var(--radius); display: none; }
+    .form-status.success { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; }
+    .form-status.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+    .auth-switch { margin-top: 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .auth-switch a { color: var(--body); text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="index.html" class="site-name"><img src="elpys-logo-mark.svg" class="site-logo" alt="" aria-hidden="true">Elpys</a>
+      <a href="login.html" class="header-auth-link">Log in</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="auth-section">
+    <div class="auth-wrap">
+
+      <div id="check-email-state" style="display:none;">
+        <h1>Check your email</h1>
+        <p class="auth-intro">We sent a confirmation link to <strong id="confirm-email-addr"></strong>. Click it to activate your account — then come back and log in.</p>
+        <p><a href="login.html">← Go to log in</a></p>
+      </div>
+
+      <div id="form-state">
+        <h1>Create an account</h1>
+        <p class="auth-intro">Save opportunities that match your interests. Accounts are free and optional — the site works fine without one.</p>
+
+        <div class="form-status" id="form-status"></div>
+
+        <form class="auth-form" id="signup-form" novalidate>
+
+          <div class="field">
+            <label for="su-email">Email</label>
+            <input type="email" id="su-email" name="email" required placeholder="you@example.com" autocomplete="email">
+          </div>
+
+          <div class="field">
+            <label for="su-password">Password</label>
+            <input type="password" id="su-password" name="password" required placeholder="At least 8 characters" autocomplete="new-password">
+          </div>
+
+          <div class="field">
+            <label for="su-password2">Confirm password</label>
+            <input type="password" id="su-password2" name="password2" required placeholder="Same password again" autocomplete="new-password">
+          </div>
+
+          <fieldset class="interests-fieldset">
+            <legend>What are you interested in? <span class="optional-tag">(optional)</span></legend>
+            <div class="interest-grid">
+              <label class="interest-label"><input type="checkbox" name="interest" value="Animals"> Animals</label>
+              <label class="interest-label"><input type="checkbox" name="interest" value="Community"> Community</label>
+              <label class="interest-label"><input type="checkbox" name="interest" value="Environment"> Environment</label>
+              <label class="interest-label"><input type="checkbox" name="interest" value="Food"> Food</label>
+            </div>
+          </fieldset>
+
+          <label class="age-confirm-label">
+            <input type="checkbox" id="age-confirm" required>
+            <span>I confirm I am 13 or older. <em style="color:var(--muted);">You must be 13 or older to use Elpys.</em></span>
+          </label>
+
+          <button type="submit" class="submit-btn" id="submit-btn">Create account →</button>
+
+        </form>
+
+        <p class="auth-switch">Already have an account? <a href="login.html">Log in →</a></p>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="submit.html">Submit an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  var _supa = supabase.createClient(
+    'https://ukrykzmehvghedrvmkjj.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrcnlrem1laHZnaGVkcnZta2pqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzODc4NzgsImV4cCI6MjA5ODk2Mzg3OH0.J1J4p3lTbQKMc3GvWVlBxAZZV1jGYPIU4Jj_ePLndgM'
+  );
+
+  // Already signed in → go straight to account
+  _supa.auth.getSession().then(function (r) {
+    if (r.data && r.data.session) location.replace('account.html');
+  });
+
+  var form   = document.getElementById('signup-form');
+  var btn    = document.getElementById('submit-btn');
+  var status = document.getElementById('form-status');
+
+  function showStatus(msg, type) {
+    status.textContent    = msg;
+    status.className      = 'form-status ' + type;
+    status.style.display  = 'block';
+    status.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    status.style.display = 'none';
+
+    var email     = form.elements.email.value.trim();
+    var password  = form.elements.password.value;
+    var password2 = form.elements.password2.value;
+    var ageCheck  = document.getElementById('age-confirm').checked;
+
+    if (!email)                return showStatus('Please enter your email.', 'error');
+    if (password.length < 8)   return showStatus('Password must be at least 8 characters.', 'error');
+    if (password !== password2) return showStatus("Passwords don't match.", 'error');
+    if (!ageCheck)             return showStatus('You must confirm you are 13 or older to create an account.', 'error');
+
+    var interests = Array.from(form.querySelectorAll('input[name="interest"]:checked')).map(function (c) { return c.value; });
+
+    btn.disabled    = true;
+    btn.textContent = 'Creating account…';
+
+    var result = await _supa.auth.signUp({
+      email:    email,
+      password: password,
+      options: {
+        data:             { interests: interests },
+        emailRedirectTo:  location.origin + '/account.html',
+      },
+    });
+
+    if (result.error) {
+      showStatus(result.error.message, 'error');
+      btn.disabled    = false;
+      btn.textContent = 'Create account →';
+      return;
+    }
+
+    document.getElementById('form-state').style.display       = 'none';
+    document.getElementById('confirm-email-addr').textContent = email;
+    document.getElementById('check-email-state').style.display = 'block';
+  });
+</script>
+<script src="beta-banner.js"></script>
+
+</body>
+</html>

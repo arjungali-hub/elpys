@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log in — Elpys</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="elpys-favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .auth-section { padding: 3rem 0 4rem; }
+    .auth-wrap { max-width: 440px; }
+    .auth-section h1 { font-size: clamp(1.375rem, 3vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+    .auth-intro { font-size: 0.9375rem; color: #444; line-height: 1.6; margin-bottom: 2rem; }
+    .auth-form { display: flex; flex-direction: column; gap: 1.25rem; }
+    .field { display: flex; flex-direction: column; gap: 0.35rem; }
+    .field label { font-size: 0.8125rem; font-weight: 600; }
+    .field input { font-family: inherit; font-size: 0.9375rem; color: var(--body); background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.55rem 0.75rem; width: 100%; }
+    .field input:focus { outline: 2px solid var(--body); outline-offset: 1px; }
+    .submit-btn { align-self: flex-start; font-family: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--white); background: var(--body); border: none; border-radius: var(--radius); padding: 0.65rem 1.5rem; cursor: pointer; }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-status { font-size: 0.9375rem; padding: 1rem; border-radius: var(--radius); display: none; }
+    .form-status.error { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+    .auth-switch { margin-top: 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .auth-switch a { color: var(--body); text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="index.html" class="site-name"><img src="elpys-logo-mark.svg" class="site-logo" alt="" aria-hidden="true">Elpys</a>
+      <a href="signup.html" class="header-auth-link">Sign up</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="auth-section">
+    <div class="auth-wrap">
+      <h1>Log in</h1>
+      <p class="auth-intro">Welcome back.</p>
+
+      <div class="form-status" id="form-status"></div>
+
+      <form class="auth-form" id="login-form" novalidate>
+
+        <div class="field">
+          <label for="li-email">Email</label>
+          <input type="email" id="li-email" name="email" required autocomplete="email" placeholder="you@example.com">
+        </div>
+
+        <div class="field">
+          <label for="li-password">Password</label>
+          <input type="password" id="li-password" name="password" required autocomplete="current-password" placeholder="Your password">
+        </div>
+
+        <button type="submit" class="submit-btn" id="submit-btn">Log in →</button>
+
+      </form>
+
+      <p class="auth-switch">Don't have an account? <a href="signup.html">Sign up →</a></p>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="submit.html">Submit an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  var _supa = supabase.createClient(
+    'https://ukrykzmehvghedrvmkjj.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrcnlrem1laHZnaGVkcnZta2pqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzODc4NzgsImV4cCI6MjA5ODk2Mzg3OH0.J1J4p3lTbQKMc3GvWVlBxAZZV1jGYPIU4Jj_ePLndgM'
+  );
+
+  // Already signed in → go straight to account
+  _supa.auth.getSession().then(function (r) {
+    if (r.data && r.data.session) location.replace('account.html');
+  });
+
+  var form   = document.getElementById('login-form');
+  var btn    = document.getElementById('submit-btn');
+  var status = document.getElementById('form-status');
+
+  function showError(msg) {
+    status.textContent   = msg;
+    status.className     = 'form-status error';
+    status.style.display = 'block';
+    status.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    status.style.display = 'none';
+
+    var email    = form.elements.email.value.trim();
+    var password = form.elements.password.value;
+
+    if (!email || !password) return showError('Please enter your email and password.');
+
+    btn.disabled    = true;
+    btn.textContent = 'Logging in…';
+
+    var result = await _supa.auth.signInWithPassword({ email: email, password: password });
+
+    if (result.error) {
+      showError(result.error.message);
+      btn.disabled    = false;
+      btn.textContent = 'Log in →';
+      return;
+    }
+
+    location.replace('account.html');
+  });
+</script>
+<script src="beta-banner.js"></script>
+
+</body>
+</html>

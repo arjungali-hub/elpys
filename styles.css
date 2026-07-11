@@ -52,8 +52,14 @@ header {
   gap: 0.5rem;
 }
 .site-logo { height: 30px; width: auto; display: block; }
-.header-admin-link {
+.header-auth-link {
   margin-left: auto;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+.header-auth-link:hover { text-decoration: underline; }
+.header-admin-link {
   font-size: 0.8125rem;
   color: var(--muted);
   text-decoration: none;

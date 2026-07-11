@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My account — Elpys</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="elpys-favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .account-section { padding: 3rem 0 4rem; max-width: 480px; }
+    .account-section h1 { font-size: clamp(1.375rem, 3vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.4rem; }
+    .account-email { font-size: 0.9375rem; color: var(--muted); margin-bottom: 2.5rem; }
+    .account-block { margin-bottom: 2.5rem; }
+    .account-block-label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; }
+    .interests-fieldset { border: none; padding: 0; margin: 0; }
+    .interest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; margin-bottom: 1rem; }
+    .interest-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer; }
+    .submit-btn { font-family: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--white); background: var(--body); border: none; border-radius: var(--radius); padding: 0.65rem 1.5rem; cursor: pointer; }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-status { font-size: 0.875rem; padding: 0.75rem 1rem; border-radius: var(--radius); display: none; margin-bottom: 1rem; }
+    .form-status.success { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; }
+    .form-status.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+    .signout-btn { font-family: inherit; font-size: 0.875rem; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.5rem 1rem; cursor: pointer; }
+    .signout-btn:hover { color: var(--body); border-color: #aaa; }
+    #loading-msg { color: var(--muted); font-size: 0.9375rem; padding: 3rem 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="index.html" class="site-name"><img src="elpys-logo-mark.svg" class="site-logo" alt="" aria-hidden="true">Elpys</a>
+      <a href="account.html" id="header-auth-link" class="header-auth-link">My account</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <p id="loading-msg">Loading…</p>
+  <section class="account-section" id="account-section" style="display:none;"></section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="submit.html">Submit an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  var _supa = supabase.createClient(
+    'https://ukrykzmehvghedrvmkjj.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrcnlrem1laHZnaGVkcnZta2pqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzODc4NzgsImV4cCI6MjA5ODk2Mzg3OH0.J1J4p3lTbQKMc3GvWVlBxAZZV1jGYPIU4Jj_ePLndgM'
+  );
+
+  var CATEGORIES = ['Animals', 'Community', 'Environment', 'Food'];
+
+  function esc(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function init() {
+    // getSession handles the auth callback URL after email verification automatically
+    var sessionResult = await _supa.auth.getSession();
+    var session = sessionResult.data && sessionResult.data.session;
+
+    if (!session) {
+      location.replace('login.html');
+      return;
+    }
+
+    var user = session.user;
+    document.getElementById('loading-msg').style.display = 'none';
+    document.getElementById('account-section').style.display = 'block';
+
+    // Load profile row (created automatically by Supabase trigger on signup)
+    var profileResult = await _supa.from('profiles').select('interests').eq('id', user.id).single();
+    var profile = profileResult.data;
+
+    var currentInterests = (profile && Array.isArray(profile.interests)) ? profile.interests : [];
+
+    // Post-signup: interests saved in user metadata but not yet in profile — migrate them
+    var metaInterests = (user.user_metadata && Array.isArray(user.user_metadata.interests))
+      ? user.user_metadata.interests : [];
+    if (currentInterests.length === 0 && metaInterests.length > 0) {
+      await _supa.from('profiles').update({ interests: metaInterests }).eq('id', user.id);
+      currentInterests = metaInterests;
+    }
+
+    render(user, currentInterests);
+  }
+
+  function render(user, currentInterests) {
+    var section = document.getElementById('account-section');
+
+    section.innerHTML =
+      '<h1>My account</h1>' +
+      '<p class="account-email">' + esc(user.email) + '</p>' +
+
+      '<div class="account-block">' +
+        '<p class="account-block-label">My interests</p>' +
+        '<p style="font-size:0.875rem;color:#555;margin-bottom:0.75rem;">We\'ll highlight opportunities that match when you\'re browsing.</p>' +
+        '<div class="form-status" id="save-status"></div>' +
+        '<form id="interests-form" class="interests-fieldset">' +
+          '<div class="interest-grid">' +
+            CATEGORIES.map(function (cat) {
+              var checked = currentInterests.indexOf(cat) !== -1 ? ' checked' : '';
+              return '<label class="interest-label"><input type="checkbox" name="interest" value="' + cat + '"' + checked + '> ' + cat + '</label>';
+            }).join('') +
+          '</div>' +
+          '<button type="submit" class="submit-btn" id="save-btn">Save interests →</button>' +
+        '</form>' +
+      '</div>' +
+
+      '<div class="account-block">' +
+        '<p class="account-block-label">Account</p>' +
+        '<button class="signout-btn" id="signout-btn">Log out</button>' +
+      '</div>';
+
+    document.getElementById('interests-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var selected = Array.from(e.currentTarget.querySelectorAll('input[name="interest"]:checked')).map(function (c) { return c.value; });
+      var saveBtn    = document.getElementById('save-btn');
+      var saveStatus = document.getElementById('save-status');
+
+      saveBtn.disabled    = true;
+      saveBtn.textContent = 'Saving…';
+      saveStatus.style.display = 'none';
+
+      var result = await _supa.from('profiles').update({ interests: selected }).eq('id', user.id);
+
+      saveStatus.className     = 'form-status ' + (result.error ? 'error' : 'success');
+      saveStatus.textContent   = result.error ? 'Could not save: ' + result.error.message : 'Saved!';
+      saveStatus.style.display = 'block';
+      saveBtn.disabled         = false;
+      saveBtn.textContent      = 'Save interests →';
+    });
+
+    document.getElementById('signout-btn').addEventListener('click', async function () {
+      await _supa.auth.signOut();
+      location.replace('index.html');
+    });
+  }
+
+  init();
+</script>
+<script src="supabase-auth.js"></script>
+<script src="beta-banner.js"></script>
+
+</body>
+</html>
