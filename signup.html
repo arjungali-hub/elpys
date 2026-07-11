@@ -165,7 +165,7 @@
       });
 
       if (result.error) {
-        showStatus(result.error.message, 'error');
+        showStatus(result.error.message || result.error.error_description || 'Sign-up failed (code ' + result.error.status + '). Check that email sign-ins are enabled in your Supabase project.', 'error');
         btn.disabled    = false;
         btn.textContent = 'Create account →';
         return;
