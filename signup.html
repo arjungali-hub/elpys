@@ -154,25 +154,31 @@
     btn.disabled    = true;
     btn.textContent = 'Creating account…';
 
-    var result = await _supa.auth.signUp({
-      email:    email,
-      password: password,
-      options: {
-        data:             { interests: interests },
-        emailRedirectTo:  location.origin + '/account.html',
-      },
-    });
+    try {
+      var result = await _supa.auth.signUp({
+        email:    email,
+        password: password,
+        options: {
+          data:            { interests: interests },
+          emailRedirectTo: location.origin + '/account.html',
+        },
+      });
 
-    if (result.error) {
-      showStatus(result.error.message, 'error');
+      if (result.error) {
+        showStatus(result.error.message, 'error');
+        btn.disabled    = false;
+        btn.textContent = 'Create account →';
+        return;
+      }
+
+      document.getElementById('form-state').style.display        = 'none';
+      document.getElementById('confirm-email-addr').textContent  = email;
+      document.getElementById('check-email-state').style.display = 'block';
+    } catch (err) {
+      showStatus(err.message || 'Something went wrong. Please try again.', 'error');
       btn.disabled    = false;
       btn.textContent = 'Create account →';
-      return;
     }
-
-    document.getElementById('form-state').style.display       = 'none';
-    document.getElementById('confirm-email-addr').textContent = email;
-    document.getElementById('check-email-state').style.display = 'block';
   });
 </script>
 <script src="beta-banner.js"></script>
