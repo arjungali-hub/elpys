@@ -36,6 +36,16 @@
       adminGroup.appendChild(makeAdminLink('Feedback',              base + 'admin.html?view=feedback'));
       adminGroup.appendChild(makeAdminLink('Edit opportunities',    base + 'admin.html?view=edit'));
       adminGroup.appendChild(makeAdminLink('Approve opportunities', base + 'admin.html?view=confirm'));
+
+      var adminLogoutBtn = document.createElement('button');
+      adminLogoutBtn.textContent = 'Log out';
+      adminLogoutBtn.className   = 'header-logout-btn';
+      adminLogoutBtn.addEventListener('click', function () {
+        sessionStorage.removeItem('elpys_admin_pw');
+        location.href = base + 'index.html';
+      });
+      adminGroup.appendChild(adminLogoutBtn);
+
       inner.appendChild(adminGroup);
     }
     return;
