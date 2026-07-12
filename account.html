@@ -23,6 +23,8 @@
     .form-status.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
     .signout-btn { font-family: inherit; font-size: 0.875rem; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.5rem 1rem; cursor: pointer; }
     .signout-btn:hover { color: var(--body); border-color: #aaa; }
+    .delete-btn { font-family: inherit; font-size: 0.875rem; color: #991B1B; background: none; border: 1px solid #FCA5A5; border-radius: var(--radius); padding: 0.5rem 1rem; cursor: pointer; margin-left: 0.75rem; }
+    .delete-btn:hover { background: #FEF2F2; }
     #loading-msg { color: var(--muted); font-size: 0.9375rem; padding: 3rem 0; }
   </style>
 </head>
@@ -121,6 +123,7 @@
       '<div class="account-block">' +
         '<p class="account-block-label">Account</p>' +
         '<button class="signout-btn" id="signout-btn">Log out</button>' +
+        '<button class="delete-btn" id="delete-btn">Delete account</button>' +
       '</div>';
 
     document.getElementById('interests-form').addEventListener('submit', async function (e) {
@@ -143,8 +146,30 @@
     });
 
     document.getElementById('signout-btn').addEventListener('click', async function () {
+      if (!confirm('Log out of your account?')) return;
       await _supa.auth.signOut();
       location.replace('index.html');
+    });
+
+    document.getElementById('delete-btn').addEventListener('click', async function () {
+      if (!confirm('Delete your account permanently? This cannot be undone.')) return;
+      if (!confirm('Are you sure? All your data will be deleted.')) return;
+
+      var sessionResult = await _supa.auth.getSession();
+      var token = sessionResult.data && sessionResult.data.session && sessionResult.data.session.access_token;
+      if (!token) { alert('Could not get session. Please refresh and try again.'); return; }
+
+      var res = await fetch('/api/delete-account', {
+        method:  'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token },
+      });
+
+      if (res.ok) {
+        await _supa.auth.signOut();
+        location.replace('index.html');
+      } else {
+        alert('Could not delete account. Please try again.');
+      }
     });
   }
 

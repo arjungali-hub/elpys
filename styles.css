@@ -54,7 +54,8 @@ header {
 .site-logo { height: 30px; width: auto; display: block; }
 .header-auth-link,
 .header-signup-btn,
-.header-admin-link {
+.header-admin-link,
+.header-logout-btn {
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--body);
@@ -64,10 +65,13 @@ header {
   padding: 0.3rem 0.75rem;
   text-decoration: none;
   white-space: nowrap;
+  font-family: inherit;
+  cursor: pointer;
 }
 .header-auth-link:hover,
 .header-signup-btn:hover,
-.header-admin-link:hover { background: var(--off); }
+.header-admin-link:hover,
+.header-logout-btn:hover { background: var(--off); }
 .header-auth-link { margin-left: auto; }
 
 /* ── Beta banner — remove once site launches ── */
