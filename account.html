@@ -103,10 +103,11 @@
     document.getElementById('account-section').style.display = 'block';
 
     // Load profile row (created automatically by Supabase trigger on signup)
-    var profileResult = await _supa.from('profiles').select('interests').eq('id', user.id).single();
+    var profileResult = await _supa.from('profiles').select('interests,unsubscribed').eq('id', user.id).single();
     var profile = profileResult.data;
 
-    var currentInterests = (profile && Array.isArray(profile.interests)) ? profile.interests : [];
+    var currentInterests  = (profile && Array.isArray(profile.interests)) ? profile.interests : [];
+    var isUnsubscribed    = profile ? !!profile.unsubscribed : false;
 
     // Post-signup: interests saved in user metadata but not yet in profile — migrate them
     var metaInterests = (user.user_metadata && Array.isArray(user.user_metadata.interests))
@@ -116,11 +117,16 @@
       currentInterests = metaInterests;
     }
 
-    render(user, currentInterests);
+    render(user, currentInterests, isUnsubscribed);
   }
 
-  function render(user, currentInterests) {
+  function render(user, currentInterests, isUnsubscribed) {
     var section = document.getElementById('account-section');
+
+    var notifLabel = isUnsubscribed ? 'Enable email notifications' : 'Disable email notifications';
+    var notifHint  = isUnsubscribed
+      ? 'You\'re not receiving the weekly digest. Turn it back on to get new opportunities by email.'
+      : 'You\'ll receive a weekly email when new opportunities match your interests.';
 
     section.innerHTML =
       '<h1>My account</h1>' +
@@ -139,6 +145,13 @@
           '</div>' +
           '<button type="submit" class="submit-btn" id="save-btn">Save interests →</button>' +
         '</form>' +
+      '</div>' +
+
+      '<div class="account-block">' +
+        '<p class="account-block-label">Email notifications</p>' +
+        '<p id="notif-hint" style="font-size:0.875rem;color:#555;margin-bottom:0.75rem;">' + notifHint + '</p>' +
+        '<div class="form-status" id="notif-status"></div>' +
+        '<button class="signout-btn" id="notif-btn">' + notifLabel + '</button>' +
       '</div>' +
 
       '<div class="account-block">' +
@@ -164,6 +177,38 @@
       saveStatus.style.display = 'block';
       saveBtn.disabled         = false;
       saveBtn.textContent      = 'Save interests →';
+    });
+
+    var _unsubscribed = isUnsubscribed;
+    document.getElementById('notif-btn').addEventListener('click', async function () {
+      var btn         = document.getElementById('notif-btn');
+      var notifStatus = document.getElementById('notif-status');
+      var newVal      = !_unsubscribed;
+
+      btn.disabled    = true;
+      btn.textContent = 'Saving…';
+      notifStatus.style.display = 'none';
+
+      var result = await _supa.from('profiles').update({ unsubscribed: newVal }).eq('id', user.id);
+
+      if (result.error) {
+        notifStatus.className     = 'form-status error';
+        notifStatus.textContent   = 'Could not save: ' + result.error.message;
+        notifStatus.style.display = 'block';
+        btn.disabled    = false;
+        btn.textContent = _unsubscribed ? 'Enable email notifications' : 'Disable email notifications';
+      } else {
+        _unsubscribed       = newVal;
+        btn.textContent     = _unsubscribed ? 'Enable email notifications' : 'Disable email notifications';
+        btn.disabled        = false;
+        notifStatus.className     = 'form-status success';
+        notifStatus.textContent   = _unsubscribed ? 'Notifications disabled.' : 'Notifications enabled!';
+        notifStatus.style.display = 'block';
+        document.getElementById('notif-hint').textContent =
+          _unsubscribed
+            ? 'You\'re not receiving the weekly digest. Turn it back on to get new opportunities by email.'
+            : 'You\'ll receive a weekly email when new opportunities match your interests.';
+      }
     });
 
     document.getElementById('signout-btn').addEventListener('click', function () {

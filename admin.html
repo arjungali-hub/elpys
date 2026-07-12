@@ -120,6 +120,8 @@
   <a href="#submissions-panel">Pending <span id="nav-pending-badge"></span></a>
   <a href="#published-panel">Published <span id="nav-published-badge"></span></a>
   <a href="#feedback-panel">Feedback <span id="nav-feedback-badge"></span></a>
+  <button class="btn-primary" id="digest-btn" style="display:none;" onclick="sendDigestNow()">Send digest now</button>
+  <span id="digest-msg" style="font-size:0.8125rem;color:#555;"></span>
 </nav>
 
 <div id="submissions-panel">
@@ -153,6 +155,28 @@
   function adminLogout() {
     sessionStorage.removeItem('elpys_admin_pw');
     location.href = 'index.html';
+  }
+
+  async function sendDigestNow() {
+    const btn = document.getElementById('digest-btn');
+    const msg = document.getElementById('digest-msg');
+    btn.disabled    = true;
+    btn.textContent = 'Sending…';
+    msg.textContent = '';
+    msg.style.color = '#555';
+    try {
+      const res  = await fetch('/api/send-digest', { headers: { 'x-admin-password': _password } });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'HTTP ' + res.status);
+      msg.textContent = json.message || ('Sent to ' + json.sent + ' user(s), skipped ' + json.skipped + '.');
+      msg.style.color = '#15803D';
+    } catch (err) {
+      msg.textContent = 'Error: ' + err.message;
+      msg.style.color = '#991B1B';
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Send digest now';
+    }
   }
 
   // ── Auto-login from sessionStorage ────────────────────────────────────────
@@ -205,6 +229,7 @@
         document.getElementById('nav-published-badge').textContent = '(' + published.length + ')';
         document.getElementById('nav-feedback-badge').textContent  = '(' + (feedback || []).length + ')';
       }
+      document.getElementById('digest-btn').style.display = 'inline-block';
     } catch (err) {
       showLoginMsg('Error: ' + err.message, 'error');
     } finally {
