@@ -56,6 +56,27 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
+  function showModal(opts) {
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-box">' +
+        '<button class="modal-close" aria-label="Close">×</button>' +
+        '<p class="modal-title">' + opts.title + '</p>' +
+        '<p class="modal-body">' + opts.body + '</p>' +
+        '<div class="modal-actions">' +
+          '<button class="modal-btn-cancel">Cancel</button>' +
+          '<button class="modal-btn-action' + (opts.danger ? ' danger' : '') + '">' + opts.confirmText + '</button>' +
+        '</div>' +
+      '</div>';
+    function close() { overlay.remove(); }
+    overlay.querySelector('.modal-close').addEventListener('click', close);
+    overlay.querySelector('.modal-btn-cancel').addEventListener('click', close);
+    overlay.querySelector('.modal-btn-action').addEventListener('click', function () { close(); opts.onConfirm(); });
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    document.body.appendChild(overlay);
+  }
+
   var _supa = supabase.createClient(
     'https://ukrykzmehvghedrvmkjj.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrcnlrem1laHZnaGVkcnZta2pqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzODc4NzgsImV4cCI6MjA5ODk2Mzg3OH0.J1J4p3lTbQKMc3GvWVlBxAZZV1jGYPIU4Jj_ePLndgM'
@@ -145,31 +166,42 @@
       saveBtn.textContent      = 'Save interests →';
     });
 
-    document.getElementById('signout-btn').addEventListener('click', async function () {
-      if (!confirm('Log out of your account?')) return;
-      await _supa.auth.signOut();
-      location.replace('index.html');
+    document.getElementById('signout-btn').addEventListener('click', function () {
+      showModal({
+        title:       'Log out?',
+        body:        'You\'ll be signed out of your account.',
+        confirmText: 'Log out',
+        onConfirm:   async function () {
+          await _supa.auth.signOut();
+          location.replace('index.html');
+        },
+      });
     });
 
-    document.getElementById('delete-btn').addEventListener('click', async function () {
-      if (!confirm('Delete your account permanently? This cannot be undone.')) return;
-      if (!confirm('Are you sure? All your data will be deleted.')) return;
+    document.getElementById('delete-btn').addEventListener('click', function () {
+      showModal({
+        title:       'Delete account?',
+        body:        'This will permanently delete your account and all your saved data. This cannot be undone.',
+        confirmText: 'Delete account',
+        danger:      true,
+        onConfirm:   async function () {
+          var sessionResult = await _supa.auth.getSession();
+          var token = sessionResult.data && sessionResult.data.session && sessionResult.data.session.access_token;
+          if (!token) { alert('Could not get session. Please refresh and try again.'); return; }
 
-      var sessionResult = await _supa.auth.getSession();
-      var token = sessionResult.data && sessionResult.data.session && sessionResult.data.session.access_token;
-      if (!token) { alert('Could not get session. Please refresh and try again.'); return; }
+          var res = await fetch('/api/delete-account', {
+            method:  'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token },
+          });
 
-      var res = await fetch('/api/delete-account', {
-        method:  'DELETE',
-        headers: { 'Authorization': 'Bearer ' + token },
+          if (res.ok) {
+            await _supa.auth.signOut();
+            location.replace('index.html');
+          } else {
+            alert('Could not delete account. Please try again.');
+          }
+        },
       });
-
-      if (res.ok) {
-        await _supa.auth.signOut();
-        location.replace('index.html');
-      } else {
-        alert('Could not delete account. Please try again.');
-      }
     });
   }
 

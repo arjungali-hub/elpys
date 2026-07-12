@@ -74,6 +74,59 @@ header {
 .header-logout-btn:hover { background: var(--off); }
 .header-auth-link { margin-left: auto; }
 
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-box {
+  background: var(--white);
+  border-radius: 10px;
+  padding: 1.75rem 2rem 1.5rem;
+  max-width: 380px;
+  width: calc(100% - 2.5rem);
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+.modal-close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.9rem;
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+.modal-close:hover { color: var(--body); background: var(--off); }
+.modal-title { font-size: 1.0625rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 0.5rem; padding-right: 1.5rem; }
+.modal-body  { font-size: 0.9375rem; color: #444; line-height: 1.55; margin-bottom: 1.5rem; }
+.modal-actions { display: flex; gap: 0.65rem; justify-content: flex-end; }
+.modal-btn-cancel {
+  font-family: inherit; font-size: 0.9375rem;
+  color: var(--muted); background: none;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.55rem 1.1rem; cursor: pointer;
+}
+.modal-btn-cancel:hover { color: var(--body); border-color: #aaa; }
+.modal-btn-action {
+  font-family: inherit; font-size: 0.9375rem; font-weight: 600;
+  color: var(--white); background: var(--body);
+  border: none; border-radius: var(--radius);
+  padding: 0.55rem 1.1rem; cursor: pointer;
+}
+.modal-btn-action:hover { opacity: 0.85; }
+.modal-btn-action.danger { background: #991B1B; }
+.modal-btn-action.danger:hover { background: #7F1D1D; opacity: 1; }
+
 /* ── Beta banner — remove once site launches ── */
 #beta-banner {
   position: relative;

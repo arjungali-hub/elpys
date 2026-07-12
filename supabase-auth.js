@@ -4,6 +4,31 @@
 //   Normal user → My account + Log out
 //   Admin       → Feedback + Edit opportunities + Approve opportunities
 
+function showModal(opts) {
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML =
+    '<div class="modal-box">' +
+      '<button class="modal-close" aria-label="Close">×</button>' +
+      '<p class="modal-title">' + opts.title + '</p>' +
+      '<p class="modal-body">' + opts.body + '</p>' +
+      '<div class="modal-actions">' +
+        '<button class="modal-btn-cancel">Cancel</button>' +
+        '<button class="modal-btn-action' + (opts.danger ? ' danger' : '') + '">' + opts.confirmText + '</button>' +
+      '</div>' +
+    '</div>';
+
+  function close() { overlay.remove(); }
+  overlay.querySelector('.modal-close').addEventListener('click', close);
+  overlay.querySelector('.modal-btn-cancel').addEventListener('click', close);
+  overlay.querySelector('.modal-btn-action').addEventListener('click', function () {
+    close();
+    opts.onConfirm();
+  });
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+  document.body.appendChild(overlay);
+}
+
 (function () {
   var SUPA_URL  = 'https://ukrykzmehvghedrvmkjj.supabase.co';
   var SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrcnlrem1laHZnaGVkcnZta2pqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzODc4NzgsImV4cCI6MjA5ODk2Mzg3OH0.J1J4p3lTbQKMc3GvWVlBxAZZV1jGYPIU4Jj_ePLndgM';
@@ -69,9 +94,15 @@
     logoutBtn.textContent = 'Log out';
     logoutBtn.className   = 'header-logout-btn';
     logoutBtn.addEventListener('click', function () {
-      if (!confirm('Log out of your account?')) return;
-      client.auth.signOut().then(function () {
-        location.href = base + 'index.html';
+      showModal({
+        title:       'Log out?',
+        body:        'You\'ll be signed out of your account.',
+        confirmText: 'Log out',
+        onConfirm:   function () {
+          client.auth.signOut().then(function () {
+            location.href = base + 'index.html';
+          });
+        },
       });
     });
     authEl.insertAdjacentElement('afterend', logoutBtn);
