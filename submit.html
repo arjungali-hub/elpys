@@ -104,7 +104,7 @@
 
       <div class="field">
         <label for="f-name">Organization / opportunity name <span aria-hidden="true">*</span></label>
-        <input id="f-name" name="name" type="text" required placeholder="e.g. Bellevue Farmers Market" />
+        <input id="f-name" name="name" type="text" required autocomplete="organization" placeholder="e.g. Bellevue Farmers Market" />
       </div>
 
       <div class="field">
@@ -162,7 +162,7 @@
       <div class="field">
         <label for="f-address">Full street address <span aria-hidden="true">*</span></label>
         <span class="hint">Used for map directions. If your org runs events at multiple locations, enter your primary address or city/neighborhood.</span>
-        <input id="f-address" name="address" type="text" required placeholder="e.g. 1717 Bellevue Way NE, Bellevue, WA 98004" />
+        <input id="f-address" name="address" type="text" required autocomplete="street-address" placeholder="e.g. 1717 Bellevue Way NE, Bellevue, WA 98004" />
       </div>
 
       <p class="field-group-label">Sign-up process</p>
@@ -178,7 +178,7 @@
       <div class="field">
         <label for="f-signup-link">Sign-up link or email <span aria-hidden="true">*</span></label>
         <span class="hint">Full URL (https://…) or a mailto: address.</span>
-        <input id="f-signup-link" name="signup_link" type="text" required placeholder="e.g. https://bellevuefarmersmarket.org/volunteer" />
+        <input id="f-signup-link" name="signup_link" type="text" required autocomplete="url" placeholder="e.g. https://bellevuefarmersmarket.org/volunteer" />
       </div>
 
       <div class="field">
@@ -195,17 +195,17 @@
 
       <div class="field">
         <label for="f-website">Website <span class="optional-label">(optional)</span></label>
-        <input id="f-website" name="website_url" type="text" placeholder="e.g. bellevuefarmersmarket.org/volunteer" />
+        <input id="f-website" name="website_url" type="text" autocomplete="url" placeholder="e.g. bellevuefarmersmarket.org/volunteer" />
       </div>
 
       <div class="field">
         <label for="f-contact-email">Contact email <span class="optional-label">(optional)</span></label>
-        <input id="f-contact-email" name="contact_email" type="email" placeholder="e.g. volunteer@bellevuefarmersmarket.org" />
+        <input id="f-contact-email" name="contact_email" type="email" autocomplete="email" placeholder="e.g. volunteer@bellevuefarmersmarket.org" />
       </div>
 
       <div class="field">
         <label for="f-contact-phone">Contact phone <span class="optional-label">(optional)</span></label>
-        <input id="f-contact-phone" name="contact_phone" type="text" placeholder="e.g. (425) 555-0100" />
+        <input id="f-contact-phone" name="contact_phone" type="text" autocomplete="tel" placeholder="e.g. (425) 555-0100" />
       </div>
 
       <div class="field">
@@ -320,7 +320,7 @@
                              .split('\n')
                              .map(s => s.trim())
                              .filter(s => s.length > 0),
-      website:             form.elements.website_url.value.trim()    || null,
+      website_url:         form.elements.website_url.value.trim()    || null,
       contact_email:       form.elements.contact_email.value.trim()  || null,
       contact_phone:       form.elements.contact_phone.value.trim()  || null,
       card_note:           form.elements.card_note.value.trim()   || null,

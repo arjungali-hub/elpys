@@ -124,7 +124,7 @@ module.exports = async function handler(req, res) {
     signup_label:       body.signup_label ? String(body.signup_label).trim().slice(0, 50) : 'Sign up →',
     signup_steps:       steps,
     section:            body.section,
-    website:            body.website       ? String(body.website).trim().slice(0, 300)       : null,
+    website:            body.website_url   ? String(body.website_url).trim().slice(0, 300)   : null,
     contact_email:      body.contact_email ? String(body.contact_email).trim().slice(0, 200) : null,
     contact_phone:      body.contact_phone ? String(body.contact_phone).trim().slice(0, 50)  : null,
     card_note:          body.card_note   ? String(body.card_note).trim().slice(0, 500)  : null,

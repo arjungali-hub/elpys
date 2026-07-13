@@ -70,7 +70,7 @@ module.exports = async function handler(req, res) {
     const interests = Array.isArray(profile.interests) ? profile.interests : [];
     const matched   = opportunities.filter(opp => {
       if (!opp.category) return false;
-      const cats = opp.category.split(',').map(c => c.trim());
+      const cats = opp.category.split(/[,·]/).map(c => c.trim()).filter(Boolean);
       return interests.some(i => cats.includes(i));
     });
 
