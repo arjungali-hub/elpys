@@ -52,6 +52,7 @@ header {
   gap: 0.5rem;
 }
 .site-logo { height: 30px; width: auto; display: block; }
+.header-submit-link,
 .header-auth-link,
 .header-signup-btn,
 .header-admin-link,
@@ -68,11 +69,12 @@ header {
   font-family: inherit;
   cursor: pointer;
 }
+.header-submit-link:hover,
 .header-auth-link:hover,
 .header-signup-btn:hover,
 .header-admin-link:hover,
 .header-logout-btn:hover { background: var(--off); }
-.header-auth-link { margin-left: auto; }
+.header-submit-link { margin-left: auto; }
 
 /* ── Modal ── */
 .modal-overlay {
