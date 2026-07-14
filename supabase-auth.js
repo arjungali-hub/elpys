@@ -44,6 +44,8 @@ function showModal(opts) {
   if (adminPw) {
     if (authEl)   authEl.style.display   = 'none';
     if (signupEl) signupEl.style.display = 'none';
+    var submitEl = document.querySelector('.header-submit-link');
+    if (submitEl) submitEl.style.display = 'none';
 
     var inner = document.querySelector('.header-inner');
     if (inner) {

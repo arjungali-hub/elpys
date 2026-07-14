@@ -120,9 +120,11 @@
   <a href="#submissions-panel">Pending <span id="nav-pending-badge"></span></a>
   <a href="#published-panel">Published <span id="nav-published-badge"></span></a>
   <a href="#feedback-panel">Feedback <span id="nav-feedback-badge"></span></a>
-  <button class="btn-primary" id="digest-btn" style="display:none;" onclick="sendDigestNow()">Send digest now</button>
-  <span id="digest-msg" style="font-size:0.8125rem;color:#555;"></span>
 </nav>
+<div id="digest-bar" style="display:none;margin-bottom:1.5rem;">
+  <button class="btn-primary" id="digest-btn" onclick="sendDigestNow()">Send digest now</button>
+  <span id="digest-msg" style="font-size:0.8125rem;color:#555;margin-left:0.75rem;"></span>
+</div>
 
 <div id="submissions-panel">
   <div class="section-header">
@@ -229,7 +231,7 @@
         document.getElementById('nav-published-badge').textContent = '(' + published.length + ')';
         document.getElementById('nav-feedback-badge').textContent  = '(' + (feedback || []).length + ')';
       }
-      document.getElementById('digest-btn').style.display = 'inline-block';
+      document.getElementById('digest-bar').style.display = 'block';
     } catch (err) {
       showLoginMsg('Error: ' + err.message, 'error');
     } finally {
