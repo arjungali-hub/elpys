@@ -122,20 +122,22 @@
           metaHtml +
           '<p class="detail-desc">' + esc(opp._detailDesc) + '</p>' +
         '</div>' +
-        '<div class="detail-box">' +
-          '<p class="steps-label">How to sign up</p>' +
-          stepsHtml +
-          noteHtml +
-          '<div class="card-actions" style="margin-top:1rem;">' +
-            '<a class="btn" href="' + esc(opp._signupLink) + '" target="_blank" rel="noopener">' + esc(opp._signupLabel) + '</a>' +
+        '<div class="detail-right">' +
+          '<div class="mini-map-wrap" id="mini-map-host">' +
+            '<div class="mini-map" id="mini-map"></div>' +
+          '</div>' +
+          '<p class="mini-map-label">View on full map →</p>' +
+          (!opp.approx && opp.liveUrl ? '<p style="font-size:0.8125rem;color:#888;margin-top:0.35rem;">The location marked is the nearest — <a href="' + esc(opp.liveUrl) + '" target="_blank" rel="noopener" style="color:#888;">view all locations →</a></p>' : '') +
+          '<div class="detail-box">' +
+            '<p class="steps-label">How to sign up</p>' +
+            stepsHtml +
+            noteHtml +
+            '<div class="card-actions" style="margin-top:1rem;">' +
+              '<a class="btn" href="' + esc(opp._signupLink) + '" target="_blank" rel="noopener">' + esc(opp._signupLabel) + '</a>' +
+            '</div>' +
           '</div>' +
         '</div>' +
       '</div>' +
-      '<div class="mini-map-wrap" id="mini-map-host">' +
-        '<div class="mini-map" id="mini-map"></div>' +
-      '</div>' +
-      '<p class="mini-map-label">View on full map →</p>' +
-      (!opp.approx && opp.liveUrl ? '<p style="font-size:0.8125rem;color:#888;margin-top:0.35rem;">The location marked is the nearest — <a href="' + esc(opp.liveUrl) + '" target="_blank" rel="noopener" style="color:#888;">view all locations →</a></p>' : '') +
       contactHtml +
       orgContactHtml;
 
