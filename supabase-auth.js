@@ -49,6 +49,7 @@ function showModal(opts) {
 
     var inner = document.querySelector('.header-inner');
     if (inner) {
+      // ── Row 1: admin nav links ───────────────────────────────────────────
       var adminGroup = document.createElement('div');
       adminGroup.style.cssText = 'display:flex;gap:0.5rem;align-items:center;margin-left:auto;';
 
@@ -72,8 +73,49 @@ function showModal(opts) {
         location.href = base + 'index.html';
       });
       adminGroup.appendChild(adminLogoutBtn);
-
       inner.appendChild(adminGroup);
+
+      // ── Row 2: submit link + digest button ──────────────────────────────
+      var sub = document.createElement('div');
+      sub.className = 'header-admin-sub';
+
+      var subSubmit = document.createElement('a');
+      subSubmit.href      = base + 'submit.html';
+      subSubmit.textContent = 'Submit an opportunity';
+      subSubmit.className   = 'header-admin-link';
+      sub.appendChild(subSubmit);
+
+      var digestMsg = document.createElement('span');
+      digestMsg.className = 'header-digest-msg';
+
+      var digestBtn = document.createElement('button');
+      digestBtn.textContent = 'Send digest now';
+      digestBtn.className   = 'header-logout-btn';
+      digestBtn.style.marginLeft = 'auto';
+      digestBtn.addEventListener('click', function () {
+        digestBtn.disabled    = true;
+        digestBtn.textContent = 'Sending…';
+        digestMsg.textContent = '';
+        digestMsg.style.color = '#555';
+        fetch('/api/send-digest', { headers: { 'x-admin-password': adminPw } })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (d) {
+            if (!d.ok) throw new Error(d.j.error || 'HTTP error');
+            digestMsg.textContent = d.j.message || ('Sent to ' + d.j.sent + ', skipped ' + d.j.skipped + '.');
+            digestMsg.style.color = '#15803D';
+          })
+          .catch(function (err) {
+            digestMsg.textContent = 'Error: ' + err.message;
+            digestMsg.style.color = '#991B1B';
+          })
+          .then(function () {
+            digestBtn.disabled    = false;
+            digestBtn.textContent = 'Send digest now';
+          });
+      });
+      sub.appendChild(digestBtn);
+      sub.appendChild(digestMsg);
+      inner.parentElement.appendChild(sub);
     }
     return;
   }

@@ -75,6 +75,15 @@ header {
 .header-admin-link:hover,
 .header-logout-btn:hover { background: var(--off); }
 .header-submit-link { margin-left: auto; }
+.header-admin-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+  margin-top: 0.5rem;
+}
+.header-digest-msg { font-size: 0.8125rem; }
 
 /* ── Modal ── */
 .modal-overlay {
