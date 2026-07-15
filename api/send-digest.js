@@ -6,7 +6,6 @@ const sendEmail = require('../lib/sendEmail');
 
 const SUPABASE_REST = process.env.SUPABASE_URL;          // https://xxx.supabase.co/rest/v1/
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SUPABASE_AUTH = 'https://ukrykzmehvghedrvmkjj.supabase.co/auth/v1';
 const CRON_SECRET   = process.env.CRON_SECRET;
 const ADMIN_PASS    = process.env.ADMIN_PASSWORD;
 
@@ -41,9 +40,9 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true, message: 'No new opportunities this week — digest skipped.' });
   }
 
-  // 2. Subscribed users with at least one interest
+  // 2. Subscribed users with at least one interest and a stored email
   const profilesRes = await fetch(
-    SUPABASE_REST + 'profiles?unsubscribed=eq.false&interests=not.eq.%7B%7D&select=id,interests',
+    SUPABASE_REST + 'profiles?unsubscribed=eq.false&interests=not.eq.%7B%7D&email=not.is.null&select=id,interests,email',
     { headers: supaHeaders() }
   );
   if (!profilesRes.ok) return res.status(500).json({ error: 'Failed to fetch profiles' });
@@ -53,24 +52,17 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true, message: 'No subscribed users — digest skipped.' });
   }
 
-  // 3. Fetch auth users to get emails
-  const authRes = await fetch(SUPABASE_AUTH + '/admin/users?per_page=1000', { headers: supaHeaders() });
-  if (!authRes.ok) return res.status(500).json({ error: 'Failed to fetch auth users' });
-  const { users = [] } = await authRes.json();
-  const emailById = {};
-  users.forEach(u => { emailById[u.id] = u.email; });
-
-  // 4. Send one digest per matching user
+  // 3. Send one digest per matching user
   let sent = 0, skipped = 0;
 
   for (const profile of profiles) {
-    const to = emailById[profile.id];
-    if (!to) continue;
+    const to = profile.email;
 
-    const interests = Array.isArray(profile.interests) ? profile.interests : [];
+    const interests = (Array.isArray(profile.interests) ? profile.interests : [])
+      .map(i => i.toLowerCase());
     const matched   = opportunities.filter(opp => {
       if (!opp.category) return false;
-      const cats = opp.category.split(/[,·]/).map(c => c.trim()).filter(Boolean);
+      const cats = opp.category.split(/[,·]/).map(c => c.trim().toLowerCase()).filter(Boolean);
       return interests.some(i => cats.includes(i));
     });
 
