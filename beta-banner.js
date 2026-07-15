@@ -4,15 +4,6 @@
   var DISMISSED_KEY = 'elpys-beta-banner-dismissed';
 
   function init() {
-    // ── Beta badge next to "Elpys" in the header ────────────────────────────
-    var siteName = document.querySelector('.site-name');
-    if (siteName && !siteName.querySelector('.beta-badge')) {
-      var badge = document.createElement('span');
-      badge.className = 'beta-badge';
-      badge.textContent = 'Beta';
-      siteName.appendChild(badge);
-    }
-
     // ── Dismissible beta banner below the header ─────────────────────────────
     if (sessionStorage.getItem(DISMISSED_KEY)) return;
 

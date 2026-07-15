@@ -86,19 +86,6 @@ header {
 }
 #beta-banner-close:hover { color: var(--body); }
 
-/* ── Beta badge — remove once site launches ── */
-.beta-badge {
-  display: inline-block;
-  font-size: 0.5625rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  background: #E5E7EB;
-  color: #4B5563;
-  border-radius: 999px;
-  padding: 0.1rem 0.45rem;
-  margin-left: 0.3rem;
-}
 
 /* ── Hero ── */
 .hero {
