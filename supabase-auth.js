@@ -91,7 +91,6 @@ function showModal(opts) {
       var digestBtn = document.createElement('button');
       digestBtn.textContent = 'Send digest now';
       digestBtn.className   = 'header-logout-btn';
-      digestBtn.style.marginLeft = 'auto';
       digestBtn.addEventListener('click', function () {
         digestBtn.disabled    = true;
         digestBtn.textContent = 'Sending…';
