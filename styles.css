@@ -34,7 +34,7 @@ img { display: block; max-width: 100%; }
 /* ── Header ── */
 header {
   border-bottom: 1px solid var(--border);
-  padding: 1.25rem 0;
+  padding: 2rem 0 1.25rem;
 }
 .header-inner {
   display: flex;
@@ -47,11 +47,21 @@ header {
   font-weight: 700;
   letter-spacing: -0.02em;
   text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+  color: #2b2420;
+  line-height: 1;
 }
-.site-logo { height: 30px; width: auto; display: block; }
+.site-name-l {
+  position: relative;
+  display: inline-block;
+}
+.site-name-torch {
+  position: absolute;
+  width: 0.45em;
+  height: auto;
+  bottom: 0.9em;
+  left: 50%;
+  transform: translateX(-50%);
+}
 .header-admin-link {
   margin-left: auto;
   font-size: 0.8125rem;
