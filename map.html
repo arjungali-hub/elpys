@@ -24,7 +24,15 @@
   <section class="map-section">
     <a href="index.html" class="back-link">← Back to all opportunities</a>
     <h1 style="font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.75rem;">Opportunities near you</h1>
-    <p class="map-intro">Every verified opportunity is pinned below. Some organizations operate at one fixed address; others run events at multiple parks or serve several cities — those pins mark a representative location, not an exact site. Click a name on the left (or a pin) for details, and use "Get directions" in the popup for an accurate route.</p>
+    <p class="map-intro">Every verified opportunity is pinned below. Some organizations operate at one fixed address; others run events at multiple parks or serve several cities — those pins mark a representative location, not an exact site. Click a name on the left (or a pin), then enter where you're starting from to estimate the drive and show the route.</p>
+    <form class="route-search" id="route-form">
+      <label for="route-origin">Starting place</label>
+      <div class="route-search-row">
+        <input id="route-origin" name="origin" type="search" autocomplete="street-address" placeholder="e.g. Bellevue High School or 98004" />
+        <button type="submit">Show route</button>
+      </div>
+      <p class="route-status" id="route-status">Choose an opportunity, then search from your starting place.</p>
+    </form>
     <div class="map-layout">
       <div class="map-sidebar" id="map-sidebar"></div>
       <div class="map-main">
@@ -59,14 +67,62 @@
   }
 
   let activeItem = null;
+  let activeOpportunity = null;
+  let routeLayer = null;
+  let originMarker = null;
+  const routeForm = document.getElementById('route-form');
+  const routeOrigin = document.getElementById('route-origin');
+  const routeStatus = document.getElementById('route-status');
+
+  function escHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[ch]));
+  }
+
+  function formatDriveTime(seconds) {
+    const mins = Math.max(1, Math.round(seconds / 60));
+    if (mins < 60) return mins + ' min';
+    const hours = Math.floor(mins / 60);
+    const rem = mins % 60;
+    return rem ? hours + ' hr ' + rem + ' min' : hours + ' hr';
+  }
+
+  function formatDistance(meters) {
+    const miles = meters / 1609.344;
+    return miles < 10 ? miles.toFixed(1) + ' mi' : Math.round(miles) + ' mi';
+  }
+
+  function setRouteStatus(message, kind) {
+    routeStatus.textContent = message;
+    routeStatus.classList.toggle('error', kind === 'error');
+    routeStatus.classList.toggle('success', kind === 'success');
+  }
+
+  function clearRoute() {
+    if (routeLayer) {
+      map.removeLayer(routeLayer);
+      routeLayer = null;
+    }
+    if (originMarker) {
+      map.removeLayer(originMarker);
+      originMarker = null;
+    }
+  }
 
   function selectOpportunity(opp, listItem) {
     opp._allOpps.forEach(o => o.marker.setIcon(pinIcon(false)));
     if (activeItem) activeItem.classList.remove('active');
 
+    activeOpportunity = opp;
     opp.marker.setIcon(pinIcon(true));
     opp.marker.openPopup();
     map.flyTo([opp.lat, opp.lng], Math.max(map.getZoom(), 13), { duration: 0.5 });
+    setRouteStatus('Selected ' + opp.name + '. Enter a starting place and show the route.');
 
     if (listItem) {
       const wrap = listItem.closest('.map-list-item-wrap') || listItem;
@@ -75,6 +131,87 @@
       activeItem = wrap;
     }
   }
+
+  async function geocodePlace(query) {
+    const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us&q=' + encodeURIComponent(query);
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' }
+    });
+    if (!res.ok) throw new Error('Could not search for that starting place.');
+
+    const matches = await res.json();
+    if (!matches.length) throw new Error('No matching starting place found.');
+
+    return {
+      lat: parseFloat(matches[0].lat),
+      lng: parseFloat(matches[0].lon),
+      label: matches[0].display_name
+    };
+  }
+
+  async function fetchDriveRoute(origin, opp) {
+    const coords = origin.lng + ',' + origin.lat + ';' + opp.lng + ',' + opp.lat;
+    const url = 'https://router.project-osrm.org/route/v1/driving/' + coords + '?overview=full&geometries=geojson&steps=false';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Could not load driving directions.');
+
+    const data = await res.json();
+    if (!data.routes || !data.routes.length) throw new Error('No driving route found.');
+    return data.routes[0];
+  }
+
+  async function showRouteFromInput() {
+    const originText = routeOrigin.value.trim();
+    if (!activeOpportunity) {
+      setRouteStatus('Choose an opportunity first.', 'error');
+      return;
+    }
+    if (!originText) {
+      setRouteStatus('Type a starting place first.', 'error');
+      routeOrigin.focus();
+      return;
+    }
+
+    setRouteStatus('Searching for drive time to ' + activeOpportunity.name + '...');
+    try {
+      const origin = await geocodePlace(originText);
+      const route = await fetchDriveRoute(origin, activeOpportunity);
+      clearRoute();
+
+      routeLayer = L.geoJSON(route.geometry, {
+        style: {
+          color: '#1A1A1A',
+          weight: 5,
+          opacity: 0.85
+        }
+      }).addTo(map);
+      originMarker = L.circleMarker([origin.lat, origin.lng], {
+        radius: 7,
+        color: '#1A1A1A',
+        weight: 2,
+        fillColor: '#FFFFFF',
+        fillOpacity: 1
+      }).addTo(map).bindPopup('Start: ' + escHtml(originText));
+
+      const routeBounds = routeLayer.getBounds();
+      routeBounds.extend([activeOpportunity.lat, activeOpportunity.lng]);
+      routeBounds.extend([origin.lat, origin.lng]);
+      map.fitBounds(routeBounds, { padding: [36, 36] });
+
+      setRouteStatus(
+        activeOpportunity.name + ': about ' + formatDriveTime(route.duration) + ' driving, ' + formatDistance(route.distance) + '.',
+        'success'
+      );
+    } catch (err) {
+      clearRoute();
+      setRouteStatus(err.message || 'Could not show a route.', 'error');
+    }
+  }
+
+  routeForm.addEventListener('submit', e => {
+    e.preventDefault();
+    showRouteFromInput();
+  });
 
   async function initMap() {
     const opportunities = await fetchOpportunities();
@@ -96,10 +233,18 @@
           '<a class="map-popup-title" href="' + opp.link + '">' + opp.name + '</a>' +
           '<span class="map-popup-tag">' + opp.tag + '</span>' +
           approxNote +
+          '<button type="button" class="map-popup-route" data-route-slug="' + opportunitySlug(opp) + '">Select for route</button>' +
           actionLink +
         '</div>';
 
       opp.marker = L.marker([opp.lat, opp.lng], { icon: pinIcon(false) }).addTo(map).bindPopup(popupHtml);
+      opp.marker.on('popupopen', e => {
+        const btn = e.popup.getElement().querySelector('[data-route-slug]');
+        if (btn) btn.addEventListener('click', () => {
+          selectOpportunity(opp, item);
+          routeOrigin.focus();
+        });
+      });
       bounds.push([opp.lat, opp.lng]);
 
       const wrap = document.createElement('div');
