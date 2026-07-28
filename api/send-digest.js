@@ -13,6 +13,42 @@ function supaHeaders(extra) {
   return Object.assign({ apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }, extra || {});
 }
 
+function _parseSchedule(when) {
+  const w = (when || '').toLowerCase();
+  const days = [], times = [];
+  if (/monday|tuesday|wednesday|thursday|friday|\bweekday|\bmon\b|\btue\b|\bwed\b|\bthu\b|\bfri\b/.test(w)) days.push('weekdays');
+  if (/saturday|sunday|\bweekend|\bsat\b|\bsun\b/.test(w)) days.push('weekends');
+  if (!days.length) { days.push('weekdays'); days.push('weekends'); }
+  if (/\bmorning\b|\b(8|9|10|11)\s*am\b/.test(w)) times.push('morning');
+  if (/\bafternoon\b|\bnoon\b|\b(12|1|2|3|4)\s*pm\b/.test(w)) times.push('afternoon');
+  if (/\bevening\b|\b(5|6|7|8|9|10|11)\s*pm\b/.test(w)) times.push('evening');
+  const ranges = w.match(/\b(\d{1,2})\s*[–\-]\s*\d{1,2}\s*pm\b/g) || [];
+  ranges.forEach(r => {
+    const s = parseInt(r);
+    if (s >= 8 && s <= 11 && !times.includes('morning'))   times.push('morning');
+    else if ((s === 12 || (s >= 1 && s <= 4)) && !times.includes('afternoon')) times.push('afternoon');
+    else if (s >= 5 && s <= 9 && !times.includes('evening')) times.push('evening');
+  });
+  if (!times.length) { times.push('morning'); times.push('afternoon'); times.push('evening'); }
+  return { days, times };
+}
+
+const WEEKDAY_KEYS = ['monday','tuesday','wednesday','thursday','friday'];
+const WEEKEND_KEYS = ['saturday','sunday'];
+
+function availabilityMatches(schedule, availability) {
+  if (!availability || typeof availability !== 'object') return true;
+  const hasSlots = Object.values(availability).some(slots => Array.isArray(slots) && slots.length > 0);
+  if (!hasSlots) return true;
+  return schedule.days.some(oppDay => {
+    const keys = oppDay === 'weekdays' ? WEEKDAY_KEYS : WEEKEND_KEYS;
+    return keys.some(d => {
+      const userSlots = availability[d] || [];
+      return schedule.times.some(t => userSlots.includes(t));
+    });
+  });
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
 
@@ -30,7 +66,7 @@ module.exports = async function handler(req, res) {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const oppRes = await fetch(
     SUPABASE_REST + 'Opportunities?status=eq.published&created_at=gte.' + since +
-    '&select=id,name,description,slug,category',
+    '&select=id,name,description,slug,category,when',
     { headers: supaHeaders() }
   );
   if (!oppRes.ok) return res.status(500).json({ error: 'Failed to fetch opportunities' });
@@ -42,7 +78,7 @@ module.exports = async function handler(req, res) {
 
   // 2. Subscribed users with at least one interest and a stored email
   const profilesRes = await fetch(
-    SUPABASE_REST + 'profiles?unsubscribed=eq.false&interests=not.eq.%7B%7D&email=not.is.null&select=id,interests,email',
+    SUPABASE_REST + 'profiles?unsubscribed=eq.false&interests=not.eq.%7B%7D&email=not.is.null&select=id,interests,email,availability',
     { headers: supaHeaders() }
   );
   if (!profilesRes.ok) return res.status(500).json({ error: 'Failed to fetch profiles' });
@@ -63,7 +99,8 @@ module.exports = async function handler(req, res) {
     const matched   = opportunities.filter(opp => {
       if (!opp.category) return false;
       const cats = opp.category.split(/[,·]/).map(c => c.trim().toLowerCase()).filter(Boolean);
-      return interests.some(i => cats.includes(i));
+      if (!interests.some(i => cats.includes(i))) return false;
+      return availabilityMatches(_parseSchedule(opp.when), profile.availability);
     });
 
     if (!matched.length) { skipped++; continue; }

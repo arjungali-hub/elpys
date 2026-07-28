@@ -25,6 +25,12 @@
     .signout-btn:hover { color: var(--body); border-color: #aaa; }
     .delete-btn { font-family: inherit; font-size: 0.875rem; color: #991B1B; background: none; border: 1px solid #FCA5A5; border-radius: var(--radius); padding: 0.5rem 1rem; cursor: pointer; margin-left: 0.75rem; }
     .delete-btn:hover { background: #FEF2F2; }
+    .avail-grid { display: grid; grid-template-columns: 2.5rem 1fr 1fr 1fr; gap: 4px; margin-bottom: 1rem; }
+    .avail-col-header { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); text-align: center; padding-bottom: 0.25rem; }
+    .avail-day-label { font-size: 0.75rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; }
+    .avail-cell { height: 32px; background: var(--off); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: background 0.1s, border-color 0.1s; }
+    .avail-cell:hover { border-color: #aaa; background: #ebebeb; }
+    .avail-cell.active { background: var(--body); border-color: var(--body); }
     #loading-msg { color: var(--muted); font-size: 0.9375rem; padding: 3rem 0; }
   </style>
 </head>
@@ -103,11 +109,13 @@
     document.getElementById('account-section').style.display = 'block';
 
     // Load profile row (created automatically by Supabase trigger on signup)
-    var profileResult = await _supa.from('profiles').select('interests,unsubscribed').eq('id', user.id).single();
+    var profileResult = await _supa.from('profiles').select('interests,unsubscribed,availability').eq('id', user.id).single();
     var profile = profileResult.data;
 
     var currentInterests  = (profile && Array.isArray(profile.interests)) ? profile.interests : [];
-    var isUnsubscribed    = profile ? !!profile.unsubscribed : false;
+    var isUnsubscribed      = profile ? !!profile.unsubscribed : false;
+    var currentAvailability = (profile && profile.availability && typeof profile.availability === 'object')
+      ? profile.availability : {};
 
     // Post-signup: interests saved in user metadata but not yet in profile — migrate them
     var metaInterests = (user.user_metadata && Array.isArray(user.user_metadata.interests))
@@ -117,10 +125,29 @@
       currentInterests = metaInterests;
     }
 
-    render(user, currentInterests, isUnsubscribed);
+    render(user, currentInterests, isUnsubscribed, currentAvailability);
   }
 
-  function render(user, currentInterests, isUnsubscribed) {
+  var DAYS        = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+  var DAY_ABBR    = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var SLOTS       = ['morning','afternoon','evening'];
+  var SLOT_LABELS = ['Morning','Afternoon','Evening'];
+
+  function buildAvailGrid(avail) {
+    var header = '<div class="avail-col-header"></div>' +
+      SLOT_LABELS.map(function(l) { return '<div class="avail-col-header">' + l + '</div>'; }).join('');
+    var rows = DAYS.map(function(day, di) {
+      var daySlots = (avail && Array.isArray(avail[day])) ? avail[day] : [];
+      return '<div class="avail-day-label">' + DAY_ABBR[di] + '</div>' +
+        SLOTS.map(function(slot) {
+          var cls = daySlots.indexOf(slot) !== -1 ? ' active' : '';
+          return '<button class="avail-cell' + cls + '" data-day="' + day + '" data-slot="' + slot + '"></button>';
+        }).join('');
+    }).join('');
+    return '<div class="avail-grid">' + header + rows + '</div>';
+  }
+
+  function render(user, currentInterests, isUnsubscribed, currentAvailability) {
     var section = document.getElementById('account-section');
 
     var notifLabel = isUnsubscribed ? 'Enable email notifications' : 'Disable email notifications';
@@ -145,6 +172,14 @@
           '</div>' +
           '<button type="submit" class="submit-btn" id="save-btn">Save interests →</button>' +
         '</form>' +
+      '</div>' +
+
+      '<div class="account-block">' +
+        '<p class="account-block-label">My availability</p>' +
+        '<p style="font-size:0.875rem;color:#555;margin-bottom:0.75rem;">Select when you\'re generally available. We\'ll only include opportunities that fit your schedule in the weekly digest.</p>' +
+        '<div class="form-status" id="avail-status"></div>' +
+        buildAvailGrid(currentAvailability) +
+        '<button class="submit-btn" id="avail-save-btn">Save availability →</button>' +
       '</div>' +
 
       '<div class="account-block">' +
@@ -247,6 +282,32 @@
           }
         },
       });
+    });
+
+    document.querySelectorAll('.avail-cell').forEach(function(cell) {
+      cell.addEventListener('click', function() { this.classList.toggle('active'); });
+    });
+
+    document.getElementById('avail-save-btn').addEventListener('click', async function() {
+      var btn    = document.getElementById('avail-save-btn');
+      var status = document.getElementById('avail-status');
+      var avail  = {};
+      DAYS.forEach(function(day) { avail[day] = []; });
+      document.querySelectorAll('.avail-cell.active').forEach(function(cell) {
+        avail[cell.dataset.day].push(cell.dataset.slot);
+      });
+
+      btn.disabled    = true;
+      btn.textContent = 'Saving…';
+      status.style.display = 'none';
+
+      var result = await _supa.from('profiles').update({ availability: avail }).eq('id', user.id);
+
+      status.className     = 'form-status ' + (result.error ? 'error' : 'success');
+      status.textContent   = result.error ? 'Could not save: ' + result.error.message : 'Saved!';
+      status.style.display = 'block';
+      btn.disabled         = false;
+      btn.textContent      = 'Save availability →';
     });
   }
 
