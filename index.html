@@ -78,6 +78,21 @@
     <input type="number" id="age-input" min="1" placeholder="e.g. 15" oninput="applyAgeFilter()">
     <span class="age-filter-hint" id="all-ages-hint">Opportunities open to all ages are always shown.</span>
   </div>
+  <div class="time-filter" id="time-filter">
+    <div class="time-filter-group" id="day-filter-group">
+      <span class="time-filter-label">Days</span>
+      <button class="filter-btn active" onclick="setDayFilter('all',this)">Any day</button>
+      <button class="filter-btn" onclick="setDayFilter('weekdays',this)">Weekdays</button>
+      <button class="filter-btn" onclick="setDayFilter('weekends',this)">Weekends</button>
+    </div>
+    <div class="time-filter-group" id="time-filter-group">
+      <span class="time-filter-label">Time of day</span>
+      <button class="filter-btn active" onclick="setTimeFilter('all',this)">Any time</button>
+      <button class="filter-btn" onclick="setTimeFilter('morning',this)">Morning</button>
+      <button class="filter-btn" onclick="setTimeFilter('afternoon',this)">Afternoon</button>
+      <button class="filter-btn" onclick="setTimeFilter('evening',this)">Evening</button>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -147,7 +162,9 @@
     }
   }
 
-  let currentTag = 'all';
+  let currentTag        = 'all';
+  let currentDayFilter  = 'all';
+  let currentTimeFilter = 'all';
 
   // Cards marked "all" (open to everyone) are always shown. Cards marked
   // "varies" (e.g. Jubilee REACH's "Contact to confirm") have no real
@@ -212,9 +229,11 @@
 
     document.querySelectorAll('.card').forEach(card => {
       const tags = card.dataset.tags || '';
-      const tagShow = currentTag === 'all' || tags.includes(currentTag);
-      const ageShow = ageMatches(card, age);
-      const show = tagShow && ageShow;
+      const tagShow  = currentTag === 'all' || tags.includes(currentTag);
+      const ageShow  = ageMatches(card, age);
+      const dayShow  = currentDayFilter  === 'all' || (card.dataset.schedDays  || '').includes(currentDayFilter);
+      const timeShow = currentTimeFilter === 'all' || (card.dataset.schedTimes || '').includes(currentTimeFilter);
+      const show = tagShow && ageShow && dayShow && timeShow;
       card.style.display = show ? '' : 'none';
 
       const hasCondition = conditionApplies(card, age);
@@ -238,13 +257,27 @@
   }
 
   function filterCards(tag, btn) {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#filters .filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentTag = tag;
     applyFilters();
   }
 
   function applyAgeFilter() {
+    applyFilters();
+  }
+
+  function setDayFilter(val, btn) {
+    document.querySelectorAll('#day-filter-group .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentDayFilter = val;
+    applyFilters();
+  }
+
+  function setTimeFilter(val, btn) {
+    document.querySelectorAll('#time-filter-group .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTimeFilter = val;
     applyFilters();
   }
 
@@ -260,7 +293,9 @@
   // ── Card renderer ─────────────────────────────────────────────────────────
 
   function buildCardHtml(opp) {
-    const condAttr = opp._ageCondition ? ' data-age-condition="' + opp._ageCondition + '"' : '';
+    const condAttr   = opp._ageCondition ? ' data-age-condition="' + opp._ageCondition + '"' : '';
+    const schedDays  = opp._schedule ? opp._schedule.days.join(' ')  : '';
+    const schedTimes = opp._schedule ? opp._schedule.times.join(' ') : '';
     const stepsHtml = opp._steps.map((step, i) =>
       '<li><span class="n">' + (i + 1) + '</span><span>' + step + '</span></li>'
     ).join('');
@@ -268,7 +303,8 @@
     const isMailto = opp._signupLink.startsWith('mailto:');
     const btnAttrs = isMailto ? '' : ' target="_blank" rel="noopener"';
 
-    return '<div class="card" data-tags="' + opp._tags + '" data-age="' + opp._dataAge + '"' + condAttr + '>' +
+    return '<div class="card" data-tags="' + opp._tags + '" data-age="' + opp._dataAge + '"' + condAttr +
+           ' data-sched-days="' + schedDays + '" data-sched-times="' + schedTimes + '">' +
       '<div class="card-top">' +
         '<a class="card-name" href="' + opp.link + '">' + opp.name + '</a>' +
         '<span class="card-tag">' + opp.tag + '</span>' +

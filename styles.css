@@ -761,3 +761,24 @@ footer a {
   height: 100%;
   border: none;
 }
+
+/* ── Timing filter ── */
+.time-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+.time-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.time-filter-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 5.5rem;
+  flex-shrink: 0;
+}

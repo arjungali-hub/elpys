@@ -88,6 +88,7 @@ function _transformRow(row) {
     _ageCondition: row.age_condition  || null,
     _ageHtml:      ageHtml,
     _when:         row.when           || '',
+    _schedule:     _parseSchedule(row.when),
     _where:        row.where          || '',
     _signupLink:   row.signup_link    || '#',
     _signupLabel:  row.signup_label   || 'Sign up →',
@@ -104,6 +105,35 @@ function _transformRow(row) {
     _contactEmail: row.contact_email  || null,
     _contactPhone: row.contact_phone  || null,
   };
+}
+
+function _parseSchedule(when) {
+  const w = (when || '').toLowerCase();
+  const days = [];
+  const times = [];
+
+  if (/monday|tuesday|wednesday|thursday|friday|\bweekday|\bmon\b|\btue\b|\bwed\b|\bthu\b|\bfri\b/.test(w))
+    days.push('weekdays');
+  if (/saturday|sunday|\bweekend|\bsat\b|\bsun\b/.test(w))
+    days.push('weekends');
+  if (!days.length) { days.push('weekdays'); days.push('weekends'); }
+
+  if (/\bmorning\b|\b(8|9|10|11)\s*am\b/.test(w)) times.push('morning');
+  if (/\bafternoon\b|\bnoon\b|\b(12|1|2|3|4)\s*pm\b/.test(w)) times.push('afternoon');
+  if (/\bevening\b|\b(5|6|7|8|9|10|11)\s*pm\b/.test(w)) times.push('evening');
+
+  // Handle "X–Ypm" ranges: detect the start time's slot too
+  const ranges = w.match(/\b(\d{1,2})\s*[–\-]\s*\d{1,2}\s*pm\b/g) || [];
+  ranges.forEach(function(r) {
+    const s = parseInt(r);
+    if (s >= 8 && s <= 11 && times.indexOf('morning') === -1)                     times.push('morning');
+    else if ((s === 12 || (s >= 1 && s <= 4)) && times.indexOf('afternoon') === -1) times.push('afternoon');
+    else if (s >= 5 && s <= 9 && times.indexOf('evening') === -1)                  times.push('evening');
+  });
+
+  if (!times.length) { times.push('morning'); times.push('afternoon'); times.push('evening'); }
+
+  return { days: days, times: times };
 }
 
 function _nameToSlug(name) {
