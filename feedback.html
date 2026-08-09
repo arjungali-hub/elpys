@@ -23,9 +23,11 @@
     .field input, .field textarea {
       font-family: inherit; font-size: 0.9375rem; color: var(--body);
       background: var(--white); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 0.55rem 0.75rem; width: 100%;
+      border-radius: var(--radius); padding: 0.75rem 1rem; width: 100%;
+      transition: border-color 0.12s ease;
     }
-    .field input:focus, .field textarea:focus { outline: 2px solid var(--body); outline-offset: 1px; }
+    .field input:hover, .field textarea:hover { border-color: #D1D5DB; }
+    .field input:focus, .field textarea:focus { outline: 2px solid var(--body); outline-offset: 2px; }
     .field textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
 
     .optional-label { font-weight: 400; color: var(--muted); }
@@ -37,9 +39,27 @@
     }
     .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    .form-status { font-size: 0.9375rem; padding: 1rem; border-radius: var(--radius); display: none; }
-    .form-status.success { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; }
-    .form-status.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+    .form-status {
+      font-size: 0.9375rem;
+      line-height: 1.55;
+      padding: 1rem 1.15rem;
+      background: var(--off);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--body);
+      border-radius: var(--radius);
+      color: var(--body);
+      display: none;
+    }
+    .form-status .status-label {
+      display: block;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 0.3rem;
+    }
+    .form-status.error { font-weight: 600; }
 
     /* Honeypot — off-screen, never visible to real users */
     .hp-field { position: absolute; left: -9999px; top: -9999px; }
@@ -115,7 +135,12 @@
   const status = document.getElementById('form-status');
 
   function showStatus(msg, type) {
-    status.textContent = msg;
+    status.textContent = '';
+    const label = document.createElement('span');
+    label.className   = 'status-label';
+    label.textContent = type === 'error' ? 'Error' : 'Success';
+    status.appendChild(label);
+    status.appendChild(document.createTextNode(msg));
     status.className   = 'form-status ' + type;
     status.style.display = 'block';
     status.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

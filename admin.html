@@ -6,97 +6,126 @@
   <title>Admin — Elpys</title>
   <link rel="icon" type="image/svg+xml" href="elpys-favicon.svg">
   <style>
+    :root {
+      --bg-primary:     #FFFFFF;
+      --bg-secondary:   #F9FAFB;
+      --bg-surface:     #F3F4F6;
+      --border:         #E5E7EB;
+      --border-strong:  #D1D5DB;
+      --text-main:      #111827;
+      --text-muted:     #6B7280;
+      --text-subtle:    #9CA3AF;
+      --radius:         6px;
+      --radius-lg:      10px;
+      --shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.04);
+      --shadow-md:      0 4px 12px rgba(0, 0, 0, 0.05);
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: #F7F7F7; color: #1A1A1A; line-height: 1.5; font-size: 15px; padding: 2rem 1rem 4rem; }
-    h1 { font-size: 1.375rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
-    .subtitle { color: #666; font-size: 0.875rem; margin-bottom: 1.75rem; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-secondary); color: var(--text-main); line-height: 1.55; font-size: 15px; padding: 2rem 1rem 4rem; }
+    h1 { font-size: clamp(1.25rem, 2.5vw, 1.5rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.75rem; }
 
     /* Login */
     #login-panel { max-width: 340px; }
     .login-row { display: flex; gap: 0.5rem; }
-    .login-row input { flex: 1; font-family: inherit; font-size: 0.9375rem; border: 1px solid #D1D5DB; border-radius: 6px; padding: 0.5rem 0.75rem; }
-    .login-row input:focus { outline: 2px solid #1A1A1A; outline-offset: 1px; }
-    .btn-primary { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: #fff; background: #1A1A1A; border: none; border-radius: 6px; padding: 0.55rem 1rem; cursor: pointer; white-space: nowrap; }
-    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .login-row input { flex: 1; font-family: inherit; font-size: 0.9375rem; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.6rem 0.85rem; background: var(--bg-primary); }
+    .login-row input:focus { outline: 2px solid var(--text-main); outline-offset: 2px; }
+    .btn-primary { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: #fff; background: var(--text-main); border: 1px solid var(--text-main); border-radius: var(--radius); padding: 0.55rem 1rem; cursor: pointer; white-space: nowrap; transition: opacity 0.12s ease; }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* Messages */
-    .msg { font-size: 0.875rem; margin-top: 0.75rem; padding: 0.65rem 0.85rem; border-radius: 6px; display: none; }
-    .msg.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; display: block; }
+    /* Messages — monochrome, communicated via border weight + label, not color */
+    .msg { font-size: 0.875rem; margin-top: 0.75rem; padding: 0.7rem 0.9rem; background: var(--bg-primary); border: 1px solid var(--border); border-left: 3px solid var(--text-main); border-radius: var(--radius); display: none; font-weight: 600; }
+    .msg.error   { display: block; }
 
     /* Panels */
     #submissions-panel { display: none; }
-    #published-panel   { display: none; margin-top: 2.75rem; padding-top: 2.75rem; border-top: 1px solid #E5E7EB; }
-    #feedback-panel    { display: none; margin-top: 2.75rem; padding-top: 2.75rem; border-top: 1px solid #E5E7EB; }
+    #published-panel   { display: none; margin-top: 2.75rem; padding-top: 2.75rem; border-top: 1px solid var(--border); }
+    #feedback-panel    { display: none; margin-top: 2.75rem; padding-top: 2.75rem; border-top: 1px solid var(--border); }
 
-    /* Section jump nav */
-    #section-nav { display: none; margin-bottom: 2rem; display: none; gap: 0.5rem; flex-wrap: wrap; }
-    #section-nav a { font-size: 0.8125rem; font-weight: 600; color: #374151; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; padding: 0.35rem 0.75rem; text-decoration: none; }
-    #section-nav a:hover { background: #E5E7EB; }
-    .feedback-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; max-width: 820px; }
-    .feedback-card .fb-message { font-size: 0.9375rem; color: #1A1A1A; line-height: 1.55; margin-bottom: 0.5rem; }
-    .feedback-card .fb-meta { font-size: 0.8125rem; color: #666; display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin-bottom: 0.65rem; }
-    .feedback-card .fb-meta a { color: #1E40AF; word-break: break-all; }
+    /* Section jump nav — underline tab bar with scroll-spy active state */
+    #section-nav { display: none; gap: 1.5rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
+    #section-nav a {
+      font-size: 0.8125rem; font-weight: 600; color: var(--text-muted);
+      text-decoration: none; padding: 0 0.1rem 0.75rem; margin-bottom: -1px;
+      border-bottom: 2px solid transparent; transition: color 0.12s ease, border-color 0.12s ease;
+    }
+    #section-nav a:hover { color: var(--text-main); }
+    #section-nav a.active { color: var(--text-main); border-bottom-color: var(--text-main); }
+    #section-nav a span { color: var(--text-subtle); font-weight: 500; }
+
+    .feedback-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 1rem 1.25rem; margin-bottom: 0.75rem; max-width: 820px; }
+    .feedback-card .fb-message { font-size: 0.9375rem; color: var(--text-main); line-height: 1.55; margin-bottom: 0.5rem; }
+    .feedback-card .fb-meta { font-size: 0.8125rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin-bottom: 0.65rem; }
+    .feedback-card .fb-meta a { color: var(--text-main); text-decoration: underline; word-break: break-all; }
     .section-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.25rem; }
     .section-header h2 { font-size: 1rem; font-weight: 700; }
-    .count-badge { font-size: 0.75rem; background: #E5E7EB; color: #374151; border-radius: 999px; padding: 0.15rem 0.6rem; font-weight: 600; }
+    .count-badge { font-size: 0.75rem; background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 0.15rem 0.6rem; font-weight: 700; }
 
     /* Cards */
-    .submission-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; max-width: 820px; }
+    .submission-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 1.25rem 1.5rem; margin-bottom: 1rem; max-width: 820px; }
     .sub-name { font-size: 1rem; font-weight: 700; margin-bottom: 0.15rem; }
-    .sub-meta { font-size: 0.8125rem; color: #555; margin-bottom: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; }
-    .sub-meta span::before { content: '· '; color: #aaa; }
-    .sub-meta span:first-child::before { content: ''; }
-    .sub-desc { font-size: 0.875rem; color: #333; margin-bottom: 0.75rem; line-height: 1.55; }
-    .sub-steps { font-size: 0.8125rem; color: #444; padding-left: 1.1rem; margin-bottom: 0.75rem; }
+    .sub-meta { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.85rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.35rem 1rem; padding: 0.6rem 0.75rem; background: var(--bg-secondary); border-radius: var(--radius); }
+    .sub-desc { font-size: 0.875rem; color: #374151; margin-bottom: 0.75rem; line-height: 1.55; }
+    .sub-steps { font-size: 0.8125rem; color: #374151; padding-left: 1.1rem; margin-bottom: 0.75rem; }
     .sub-steps li { margin-bottom: 0.2rem; }
-    .sub-note { font-size: 0.8125rem; color: #666; font-style: italic; margin-bottom: 0.75rem; }
-    .sub-links { font-size: 0.8125rem; margin-bottom: 1rem; }
-    .sub-links a { color: #1A1A1A; text-decoration: underline; margin-right: 1rem; }
+    .sub-note { font-size: 0.8125rem; color: var(--text-muted); font-style: italic; margin-bottom: 0.75rem; }
+    .sub-links { font-size: 0.8125rem; margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; align-items: center; }
+    .sub-links a { color: var(--text-main); text-decoration: underline; }
 
     /* Pending approve fields */
-    .approve-fields { background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px; padding: 0.85rem 1rem; margin-bottom: 0.85rem; }
-    .approve-fields > p { font-size: 0.75rem; font-weight: 600; color: #555; margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .approve-fields { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem; margin-bottom: 0.85rem; }
+    .approve-fields > p { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; }
     .approve-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
     .approve-field { display: flex; flex-direction: column; gap: 0.25rem; }
-    .approve-field label { font-size: 0.75rem; font-weight: 600; color: #555; }
-    .approve-field input { font-family: inherit; font-size: 0.875rem; border: 1px solid #D1D5DB; border-radius: 5px; padding: 0.4rem 0.6rem; width: 180px; }
+    .approve-field label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+    .approve-field input { font-family: inherit; font-size: 0.875rem; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.45rem 0.65rem; background: var(--bg-primary); width: 180px; }
     .approve-field input.short { width: 110px; }
-    .approve-field input:focus { outline: 2px solid #1A1A1A; outline-offset: 1px; }
+    .approve-field input:focus { outline: 2px solid var(--text-main); outline-offset: 2px; }
 
     /* Inline edit form */
-    .edit-form { display: none; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px; padding: 1rem; margin-bottom: 0.85rem; }
+    .edit-form { display: none; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem; margin-bottom: 0.85rem; }
     .edit-form.open { display: block; }
-    .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem; }
+    .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem 1.1rem; }
     @media (max-width: 560px) { .edit-grid { grid-template-columns: 1fr; } }
-    .edit-field { display: flex; flex-direction: column; gap: 0.2rem; }
+    .edit-field { display: flex; flex-direction: column; gap: 0.25rem; }
     .edit-field.full { grid-column: 1 / -1; }
-    .edit-field label { font-size: 0.75rem; font-weight: 600; color: #555; }
+    .edit-field label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
     .edit-field input, .edit-field textarea, .edit-field select {
-      font-family: inherit; font-size: 0.875rem; border: 1px solid #D1D5DB;
-      border-radius: 5px; padding: 0.4rem 0.6rem; background: #fff; color: #1A1A1A;
+      font-family: inherit; font-size: 0.875rem; border: 1px solid var(--border-strong);
+      border-radius: var(--radius); padding: 0.5rem 0.7rem; background: var(--bg-primary); color: var(--text-main);
     }
-    .edit-field input:focus, .edit-field textarea:focus { outline: 2px solid #1A1A1A; outline-offset: 1px; }
+    .edit-field input:focus, .edit-field textarea:focus, .edit-field select:focus { outline: 2px solid var(--text-main); outline-offset: 2px; }
     .edit-field textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
-    .edit-actions { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.85rem; }
+    .edit-actions { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.9rem; }
 
-    /* Action buttons */
+    /* Action buttons — solid black for primary, ghost outline for secondary/destructive.
+       Destructive actions are distinguished by weight, not color. */
     .sub-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
-    .btn-approve   { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: #fff; background: #15803D; border: none; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer; }
-    .btn-approve:disabled   { opacity: 0.45; cursor: not-allowed; }
-    .btn-reject    { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: #991B1B; background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer; }
-    .btn-reject:disabled    { opacity: 0.45; cursor: not-allowed; }
-    .btn-edit      { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: #1E40AF; background: #EFF6FF; border: 1px solid #93C5FD; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer; }
-    .btn-edit:disabled      { opacity: 0.45; cursor: not-allowed; }
-    .btn-save      { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: #fff; background: #1A1A1A; border: none; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer; }
-    .btn-save:disabled      { opacity: 0.45; cursor: not-allowed; }
-    .btn-cancel    { font-family: inherit; font-size: 0.875rem; font-weight: 400; color: #555; background: none; border: 1px solid #D1D5DB; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer; }
-    .btn-unpublish { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: #92400E; background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer; }
-    .btn-unpublish:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btn-delete    { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: #991B1B; background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer; }
-    .btn-delete:disabled    { opacity: 0.45; cursor: not-allowed; }
-    .sub-action-msg { font-size: 0.8125rem; color: #666; }
+    .sub-actions button, .edit-actions button {
+      font-family: inherit; font-size: 0.875rem; border-radius: var(--radius);
+      padding: 0.5rem 1rem; cursor: pointer; transition: background-color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+    }
+    .sub-actions button:disabled, .edit-actions button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    .empty-state { color: #666; font-size: 0.9375rem; padding: 1.5rem 0; }
+    .btn-approve, .btn-save {
+      font-weight: 600; color: #fff; background: var(--text-main); border: 1px solid var(--text-main);
+    }
+    .btn-approve:hover, .btn-save:hover { opacity: 0.85; }
+
+    .btn-edit, .btn-unpublish, .btn-cancel {
+      font-weight: 500; color: var(--text-main); background: var(--bg-primary); border: 1px solid var(--border-strong);
+    }
+    .btn-edit:hover, .btn-unpublish:hover, .btn-cancel:hover { background: var(--bg-surface); }
+
+    .btn-reject, .btn-delete {
+      font-weight: 700; color: var(--text-main); background: var(--bg-primary); border: 1px solid var(--text-main);
+    }
+    .btn-reject:hover, .btn-delete:hover { background: var(--text-main); color: #fff; }
+
+    .sub-action-msg { font-size: 0.8125rem; color: var(--text-muted); font-weight: 600; }
+
+    .empty-state { color: var(--text-muted); font-size: 0.9375rem; padding: 1.5rem 0; }
   </style>
 </head>
 <body>
@@ -182,12 +211,33 @@
       document.getElementById('nav-pending-badge').textContent   = '(' + pending.length + ')';
       document.getElementById('nav-published-badge').textContent = '(' + published.length + ')';
       document.getElementById('nav-feedback-badge').textContent  = '(' + (feedback || []).length + ')';
+      initSectionNavScrollSpy();
     } catch (err) {
       showLoginMsg('Error: ' + err.message, 'error');
     } finally {
       btn.disabled = false;
       btn.textContent = 'Load';
     }
+  }
+
+  // Underlines the nav tab for whichever panel is currently in view.
+  function initSectionNavScrollSpy() {
+    const links = Array.from(document.querySelectorAll('#section-nav a'));
+    const sections = links
+      .map(a => document.querySelector(a.getAttribute('href')))
+      .filter(Boolean);
+
+    function setActive(id) {
+      links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + id));
+    }
+
+    const observer = new IntersectionObserver(entries => {
+      const visible = entries.filter(e => e.isIntersecting);
+      if (visible.length) setActive(visible[0].target.id);
+    }, { rootMargin: '-10% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+    setActive(sections[0] && sections[0].id);
   }
 
   function showLoginMsg(msg, type) {
@@ -214,7 +264,7 @@
     const steps = Array.isArray(row.signup_steps) ? row.signup_steps : [];
     const stepsHtml = steps.length ? '<ol class="sub-steps">' + steps.map(s => '<li>' + esc(s) + '</li>').join('') + '</ol>' : '';
     const noteHtml      = row.card_note   ? '<p class="sub-note">' + esc(row.card_note) + '</p>' : '';
-    const adminNoteHtml = row.admin_notes ? '<p style="font-size:0.8125rem;background:#FFFBEB;border:1px solid #FCD34D;border-radius:5px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;"><strong>Admin note:</strong> ' + esc(row.admin_notes) + '</p>' : '';
+    const adminNoteHtml = row.admin_notes ? '<p style="font-size:0.8125rem;background:var(--bg-secondary);border:1px solid var(--border);border-left:3px solid var(--text-main);border-radius:5px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;"><strong>Admin note:</strong> ' + esc(row.admin_notes) + '</p>' : '';
 
     card.innerHTML =
       '<div class="sub-name">' + esc(row.name) + '</div>' +
@@ -226,7 +276,7 @@
         '<span>Section: ' + esc(row.section || '—') + '</span>' +
       '</div>' +
       '<p class="sub-desc">' + esc(row.description || '') + '</p>' +
-      (row.detail_description ? '<p style="font-size:0.8125rem;font-weight:600;margin:0.5rem 0 0.2rem;">Full description</p><p class="sub-desc" style="color:#555;">' + esc(row.detail_description) + '</p>' : '') +
+      (row.detail_description ? '<p style="font-size:0.8125rem;font-weight:600;margin:0.5rem 0 0.2rem;">Full description</p><p class="sub-desc" style="color:var(--text-muted);">' + esc(row.detail_description) + '</p>' : '') +
       '<p style="font-size:0.8125rem;font-weight:600;margin-bottom:0.3rem;">Sign-up steps</p>' +
       stepsHtml + noteHtml + adminNoteHtml +
       '<div class="sub-links">' +
@@ -256,26 +306,26 @@
     const slug = document.getElementById('slug-' + id).value.trim();
     const lat  = document.getElementById('lat-'  + id).value.trim();
     const lng  = document.getElementById('lng-'  + id).value.trim();
-    if (!slug || !lat || !lng) { setCardMsg(id, 'Fill in slug, lat, and lng first.', '#991B1B'); return; }
-    if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lng))) { setCardMsg(id, 'Lat and lng must be numbers.', '#991B1B'); return; }
+    if (!slug || !lat || !lng) { setCardMsg(id, 'Fill in slug, lat, and lng first.', '#111827'); return; }
+    if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lng))) { setCardMsg(id, 'Lat and lng must be numbers.', '#111827'); return; }
 
-    setCardBtns(id, true); setCardMsg(id, 'Approving…', '#555');
+    setCardBtns(id, true); setCardMsg(id, 'Approving…', '#6B7280');
     try {
       const res = await postAction({ action: 'approve', id, slug, lat: parseFloat(lat), lng: parseFloat(lng) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'HTTP ' + res.status); }
       fadeRemove('card-' + id, checkPendingEmpty);
-    } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#991B1B'); setCardBtns(id, false); }
+    } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
   }
 
   async function handleReject(id) {
     if (!confirm('Delete this submission permanently?')) return;
-    setCardBtns(id, true); setCardMsg(id, 'Deleting…', '#555');
+    setCardBtns(id, true); setCardMsg(id, 'Deleting…', '#6B7280');
     try {
       const res = await postAction({ action: 'reject', id });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       fadeRemove('card-' + id, checkPendingEmpty);
       adjustBadge('count-badge', -1);
-    } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#991B1B'); setCardBtns(id, false); }
+    } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
   }
 
   function checkPendingEmpty() {
@@ -414,18 +464,18 @@
 
     const saveBtn = document.getElementById('edit-' + id).querySelector('.btn-save');
     saveBtn.disabled = true;
-    setCardMsg(id, 'Saving…', '#555');
+    setCardMsg(id, 'Saving…', '#6B7280');
 
     try {
       const res = await postAction(payload);
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'HTTP ' + res.status); }
-      setCardMsg(id, '✓ Saved.', '#15803D');
+      setCardMsg(id, '✓ Saved.', '#111827');
       // Update the visible name and meta in the card header
       const card = document.getElementById('card-' + id);
       card.querySelector('.sub-name').textContent = payload.name;
       setTimeout(() => setCardMsg(id, '', '#666'), 3000);
     } catch (err) {
-      setCardMsg(id, 'Error: ' + err.message, '#991B1B');
+      setCardMsg(id, 'Error: ' + err.message, '#111827');
     } finally {
       saveBtn.disabled = false;
     }
@@ -434,7 +484,7 @@
   async function handleUnpublish(row) {
     const id = row.id, name = row.name;
     if (!confirm('Move "' + name + '" back to pending? It will be hidden from the public site immediately.')) return;
-    setPublishedBtns(id, true); setCardMsg2(id, 'Unpublishing…', '#555');
+    setPublishedBtns(id, true); setCardMsg2(id, 'Unpublishing…', '#6B7280');
     try {
       const res = await postAction({ action: 'unpublish', id });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -446,18 +496,18 @@
       if (empty) empty.remove();
       pendingList.insertBefore(buildPendingCard(row), pendingList.firstChild);
       adjustBadge('count-badge', 1);
-    } catch (err) { setCardMsg2(id, 'Error: ' + err.message, '#991B1B'); setPublishedBtns(id, false); }
+    } catch (err) { setCardMsg2(id, 'Error: ' + err.message, '#111827'); setPublishedBtns(id, false); }
   }
 
   async function handleDelete(id, name) {
     if (!confirm('Delete "' + name + '" permanently? This cannot be undone.')) return;
-    setPublishedBtns(id, true); setCardMsg2(id, 'Deleting…', '#555');
+    setPublishedBtns(id, true); setCardMsg2(id, 'Deleting…', '#6B7280');
     try {
       const res = await postAction({ action: 'delete', id });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       fadeRemove('card-' + id, checkPublishedEmpty);
       adjustBadge('published-count-badge', -1);
-    } catch (err) { setCardMsg2(id, 'Error: ' + err.message, '#991B1B'); setPublishedBtns(id, false); }
+    } catch (err) { setCardMsg2(id, 'Error: ' + err.message, '#111827'); setPublishedBtns(id, false); }
   }
 
   function checkPublishedEmpty() {

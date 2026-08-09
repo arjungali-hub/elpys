@@ -1,14 +1,20 @@
-/* ── Tokens ── */
+/* ── Tokens — monochrome/grayscale system ── */
 :root {
-  --white:   #FFFFFF;
-  --off:     #F7F7F7;
-  --border:  #E2E2E2;
-  --muted:   #888888;
-  --body:    #1A1A1A;
-  --accent:  #1A1A1A;
-  --radius:  6px;
-  --max:     1080px;
-  --gap:     2rem;
+  --white:      #FFFFFF;
+  --off:        #F9FAFB;
+  --surface:    #F3F4F6;
+  --border:     #E5E7EB;
+  --muted:      #6B7280;
+  --subtle:     #9CA3AF;
+  --body:       #111827;
+  --accent:     #111827;
+  --radius:     6px;
+  --radius-lg:  12px;
+  --max:        1080px;
+  --gap:        2rem;
+  --shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-lg:  0 12px 32px rgba(0, 0, 0, 0.08);
 }
 
 /* ── Reset ── */
@@ -36,8 +42,14 @@ img { display: block; max-width: 100%; }
 
 /* ── Header ── */
 header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   border-bottom: 1px solid var(--border);
-  padding: 2rem 0 1.25rem;
+  padding: 1.5rem 0 1.1rem;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 .header-inner {
   display: flex;
@@ -102,7 +114,7 @@ header {
 
 /* ── Hero ── */
 .hero {
-  padding: 4rem 0 3rem;
+  padding: 4.5rem 0 3.5rem;
   border-bottom: 1px solid var(--border);
 }
 .hero-label {
@@ -194,10 +206,13 @@ header {
   background: var(--white);
   padding: 1.5rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .card:hover {
-  background: var(--off);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: #D1D5DB;
 }
 .filter-bar {
   display: flex;
@@ -261,8 +276,10 @@ header {
 }
 
 .age-cond-phrase.highlighted {
-  background: #FCE588;
-  border-radius: 3px;
+  background: var(--surface);
+  font-weight: 700;
+  border-bottom: 2px solid var(--body);
+  border-radius: 2px;
   padding: 0 0.2em;
 }
 
@@ -294,18 +311,27 @@ header {
 }
 
 .card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.25rem;
-  margin-bottom: 0.875rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.4rem 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.875rem;
+  background: var(--off);
+  border-radius: var(--radius);
 }
 .card-meta span {
   font-size: 0.8125rem;
   color: var(--muted);
+  line-height: 1.5;
 }
 .card-meta strong {
-  color: var(--body);
-  font-weight: 500;
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--subtle);
+  margin-bottom: 0.1rem;
 }
 
 .card-desc {
@@ -388,22 +414,26 @@ header {
 .filter-btn {
   font-size: 0.8125rem;
   font-weight: 500;
-  padding: 0.35rem 0.85rem;
+  padding: 0.4rem 0.9rem;
   border-radius: 20px;
-  border: 1px solid var(--border);
-  background: var(--white);
+  border: 1px solid transparent;
+  background: var(--surface);
   color: var(--muted);
   cursor: pointer;
-  transition: all 0.1s;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 .filter-btn:hover {
-  border-color: #aaa;
+  background: var(--border);
   color: var(--body);
 }
 .filter-btn.active {
   background: var(--body);
   color: var(--white);
   border-color: var(--body);
+}
+.filter-btn.active:hover {
+  background: var(--body);
+  opacity: 0.9;
 }
 
 /* ── Footer ── */
@@ -559,32 +589,44 @@ footer a {
 }
 .route-search {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.9rem;
-  margin-bottom: 1rem;
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
 }
 .route-search label {
   display: block;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  margin-bottom: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
 }
 .route-search-row {
   display: flex;
-  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--white);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.route-search-row:focus-within {
+  border-color: var(--body);
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
 }
 .route-search input {
   flex: 1 1 auto;
   min-width: 0;
   font: inherit;
   font-size: 0.875rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.55rem 0.7rem;
+  border: none;
+  background: transparent;
+  padding: 0.7rem 1.1rem;
 }
 .route-search input:focus {
   outline: none;
-  border-color: #999;
 }
 .route-search button,
 .map-popup-route {
@@ -593,27 +635,37 @@ footer a {
   font-weight: 600;
   color: var(--white);
   background: var(--body);
-  border: 1px solid var(--body);
-  border-radius: var(--radius);
-  padding: 0.55rem 0.85rem;
+  border: none;
+  border-radius: 0;
+  padding: 0.7rem 1.3rem;
   cursor: pointer;
+  transition: opacity 0.12s ease;
+  flex-shrink: 0;
+}
+.map-popup-route {
+  border-radius: var(--radius);
 }
 .route-search button:hover,
 .map-popup-route:hover {
-  opacity: 0.8;
+  opacity: 0.82;
 }
 .route-status {
   font-size: 0.8125rem;
   color: var(--muted);
   line-height: 1.5;
-  margin-top: 0.55rem;
+  margin-top: 0.7rem;
+  padding-left: 0.7rem;
+  border-left: 2px solid transparent;
 }
 .route-status.success {
   color: var(--body);
   font-weight: 600;
+  border-left-color: var(--body);
 }
 .route-status.error {
-  color: #A40000;
+  color: var(--body);
+  font-weight: 600;
+  border-left-color: var(--subtle);
 }
 .map-layout {
   display: flex;
@@ -627,10 +679,28 @@ footer a {
   min-height: 360px;
   overflow-y: auto;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  scrollbar-width: thin;
+  scrollbar-color: var(--subtle) transparent;
+}
+.map-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+.map-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.map-sidebar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+.map-sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--subtle);
 }
 .map-list-item-wrap {
   border-bottom: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  transition: background-color 0.12s ease, border-left-color 0.12s ease;
 }
 .map-sidebar .map-list-item-wrap:last-child {
   border-bottom: none;
@@ -641,7 +711,7 @@ footer a {
   gap: 0.2rem;
   width: 100%;
   text-align: left;
-  padding: 0.65rem 0.9rem;
+  padding: 0.65rem 0.9rem 0.65rem 0.75rem;
   cursor: pointer;
 }
 .map-list-item:hover {
@@ -652,7 +722,7 @@ footer a {
 }
 .map-list-item-wrap.active {
   background: var(--off);
-  box-shadow: inset 0 0 0 2px var(--body);
+  border-left-color: var(--body);
 }
 .map-list-name {
   font-size: 0.8125rem;
@@ -692,7 +762,8 @@ footer a {
   height: 65vh;
   min-height: 360px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   margin-bottom: 1rem;
 }
 .map-disclaimer {
@@ -701,7 +772,12 @@ footer a {
   line-height: 1.5;
 }
 .leaflet-popup-content-wrapper {
-  border-radius: 0;
+  border-radius: var(--radius);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  box-shadow: var(--shadow-lg);
+}
+.leaflet-popup-tip {
+  box-shadow: none;
 }
 .map-popup-title,
 .leaflet-popup-content .map-popup-title {
@@ -739,12 +815,14 @@ footer a {
 .mini-map-wrap {
   cursor: pointer;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: transform 0.15s ease;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .mini-map-wrap:hover {
   transform: scale(1.03);
+  box-shadow: var(--shadow-md);
 }
 .mini-map {
   width: 100%;
@@ -768,14 +846,16 @@ footer a {
   flex: 1 1 300px;
 }
 .hero-map-launcher {
-  flex: 0 0 200px;
+  flex: 0 0 240px;
 }
 .hero-map-launcher .mini-map {
-  height: 220px;
+  height: 230px;
 }
 .hero-map-launcher .mini-map-label {
   text-align: center;
   font-size: 0.7rem;
+  color: var(--muted);
+  font-weight: 500;
   margin-top: 0.9rem;
 }
 @media (max-width: 640px) {
