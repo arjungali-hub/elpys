@@ -146,6 +146,40 @@
     statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
+  // Availability picker — same shape the account page and weekly digest use.
+  var DAYS        = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+  var DAY_ABBR    = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var SLOTS       = ['morning','afternoon','evening'];
+  var SLOT_LABELS = ['Morning','Afternoon','Evening'];
+
+  var availGrid = document.getElementById('su-avail-grid');
+  availGrid.innerHTML =
+    '<div class="avail-col-header"></div>' +
+    SLOT_LABELS.map(function (l) { return '<div class="avail-col-header">' + l + '</div>'; }).join('') +
+    DAYS.map(function (day, di) {
+      return '<div class="avail-day-label">' + DAY_ABBR[di] + '</div>' +
+        SLOTS.map(function (slot) {
+          // type="button" so toggling a cell never submits the form
+          return '<button type="button" class="avail-cell" data-day="' + day + '" data-slot="' + slot + '" aria-pressed="false" aria-label="' + DAY_ABBR[di] + ' ' + slot + '"></button>';
+        }).join('');
+    }).join('');
+
+  availGrid.addEventListener('click', function (e) {
+    var cell = e.target.closest('.avail-cell');
+    if (!cell) return;
+    var on = cell.classList.toggle('active');
+    cell.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+
+  function collectAvailability() {
+    var avail = {};
+    DAYS.forEach(function (day) { avail[day] = []; });
+    availGrid.querySelectorAll('.avail-cell.active').forEach(function (cell) {
+      avail[cell.dataset.day].push(cell.dataset.slot);
+    });
+    return avail;
+  }
+
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
     statusEl.style.display = 'none';
@@ -160,7 +194,8 @@
     if (password !== password2) return showStatus("Passwords don't match.", 'error');
     if (!ageCheck)             return showStatus('You must confirm you are 13 or older to create an account.', 'error');
 
-    var interests = Array.from(form.querySelectorAll('input[name="interest"]:checked')).map(function (c) { return c.value; });
+    var interests    = Array.from(form.querySelectorAll('input[name="interest"]:checked')).map(function (c) { return c.value; });
+    var availability = collectAvailability();
 
     btn.disabled    = true;
     btn.textContent = 'Creating account…';
@@ -170,7 +205,7 @@
         email:    email,
         password: password,
         options: {
-          data: { interests: interests },
+          data: { interests: interests, availability: availability },
         },
       });
 
