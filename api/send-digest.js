@@ -60,7 +60,7 @@ module.exports = async function handler(req, res) {
     (ADMIN_PASS  && adminPw   === ADMIN_PASS);
   if (!authorized) return res.status(401).json({ error: 'Unauthorized' });
 
-  const siteUrl = 'https://' + req.headers.host;
+  const siteUrl = 'https://elpys.vercel.app';
 
   // 1. New published opportunities in the last 7 days
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
