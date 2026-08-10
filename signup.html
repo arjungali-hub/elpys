@@ -31,6 +31,12 @@
     .form-status.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
     .auth-switch { margin-top: 1.5rem; font-size: 0.9rem; color: var(--muted); }
     .auth-switch a { color: var(--body); text-decoration: underline; }
+    .avail-grid { display: grid; grid-template-columns: 2.5rem 1fr 1fr 1fr; gap: 4px; margin-top: 0.5rem; }
+    .avail-col-header { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); text-align: center; padding-bottom: 0.25rem; }
+    .avail-day-label { font-size: 0.75rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; }
+    .avail-cell { height: 32px; background: var(--off); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: background 0.1s, border-color 0.1s; }
+    .avail-cell:hover { border-color: #aaa; background: #ebebeb; }
+    .avail-cell.active { background: var(--body); border-color: var(--body); }
   </style>
 </head>
 <body>
@@ -56,7 +62,7 @@
 
       <div id="form-state">
         <h1>Create an account</h1>
-        <p class="auth-intro">Save opportunities that match your interests. Accounts are free and optional — the site works fine without one.</p>
+        <p class="auth-intro">Get a weekly email digest of new volunteer opportunities that match your interests and availability. Accounts are free and optional — the site works fine without one. <strong>Note:</strong> our notification email account is new, so digest emails may land in your spam folder for now — check there if you don't see them in your inbox.</p>
 
         <div class="form-status" id="form-status"></div>
 
@@ -85,6 +91,11 @@
               <label class="interest-label"><input type="checkbox" name="interest" value="Environment"> Environment</label>
               <label class="interest-label"><input type="checkbox" name="interest" value="Food"> Food</label>
             </div>
+          </fieldset>
+
+          <fieldset class="interests-fieldset">
+            <legend>When are you generally available? <span class="optional-tag">(optional)</span></legend>
+            <div class="avail-grid" id="su-avail-grid"></div>
           </fieldset>
 
           <label class="age-confirm-label">
