@@ -8,6 +8,9 @@
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/svg+xml" href="elpys-favicon.svg">
   <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&display=swap" rel="stylesheet">
   <!-- Cloudflare Turnstile -->
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
@@ -92,6 +95,13 @@
 
     .optional-label { font-weight: 400; color: var(--muted); }
     .field-group-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 0.25rem; }
+
+    .avail-grid { display: grid; grid-template-columns: 2.5rem 1fr 1fr 1fr; gap: 4px; margin-top: 0.5rem; }
+    .avail-col-header { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); text-align: center; padding-bottom: 0.25rem; }
+    .avail-day-label { font-size: 0.75rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; }
+    .avail-cell { height: 32px; background: var(--off); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: background 0.1s, border-color 0.1s; }
+    .avail-cell:hover { border-color: #D1D5DB; background: var(--surface); }
+    .avail-cell.active { background: var(--body); border-color: var(--body); }
   </style>
 </head>
 <body>
@@ -169,6 +179,12 @@
           <span class="hint">e.g. "Thursdays, May–October"</span>
           <input id="f-when" name="when" type="text" required placeholder="e.g. Saturdays, May–October" />
         </div>
+      </div>
+
+      <div class="field">
+        <label>Weekly schedule <span class="optional-label">(optional)</span></label>
+        <span class="hint">Select the days and times this typically runs — helps volunteers filter by their availability and get matched in the weekly digest.</span>
+        <div class="avail-grid" id="f-schedule-grid"></div>
       </div>
 
       <p class="field-group-label">Location</p>
@@ -267,6 +283,39 @@
     if (this.checked) txt.focus();
   });
 
+  // ── Weekly schedule picker (mirrors the availability grid on account.html) ──
+  const SCHED_DAYS        = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+  const SCHED_DAY_ABBR    = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const SCHED_SLOTS       = ['morning','afternoon','evening'];
+  const SCHED_SLOT_LABELS = ['Morning','Afternoon','Evening'];
+
+  (function buildScheduleGrid() {
+    const grid = document.getElementById('f-schedule-grid');
+    let html = '<div class="avail-col-header"></div>' +
+      SCHED_SLOT_LABELS.map(l => '<div class="avail-col-header">' + l + '</div>').join('');
+    SCHED_DAYS.forEach((day, i) => {
+      html += '<div class="avail-day-label">' + SCHED_DAY_ABBR[i] + '</div>' +
+        SCHED_SLOTS.map(slot =>
+          '<button type="button" class="avail-cell" data-day="' + day + '" data-slot="' + slot + '"></button>'
+        ).join('');
+    });
+    grid.innerHTML = html;
+    grid.querySelectorAll('.avail-cell').forEach(cell => {
+      cell.addEventListener('click', () => cell.classList.toggle('active'));
+    });
+  })();
+
+  function collectSchedule() {
+    const schedule = {};
+    let anySelected = false;
+    SCHED_DAYS.forEach(day => { schedule[day] = []; });
+    document.querySelectorAll('#f-schedule-grid .avail-cell.active').forEach(cell => {
+      schedule[cell.dataset.day].push(cell.dataset.slot);
+      anySelected = true;
+    });
+    return anySelected ? schedule : null;
+  }
+
   const form   = document.getElementById('submit-form');
   const btn    = document.getElementById('submit-btn');
   const status = document.getElementById('form-status');
@@ -337,6 +386,7 @@
       age_display:         form.elements.age_display.value.trim(),
       age_min:             form.elements.age_min.value ? parseInt(form.elements.age_min.value, 10) : null,
       'when':              form.elements.when.value.trim(),
+      schedule:            collectSchedule(),
       'where':             form.elements.where.value.trim(),
       address:             form.elements.address.value.trim(),
       signup_link:         form.elements.signup_link.value.trim(),

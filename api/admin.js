@@ -64,7 +64,7 @@ module.exports = async function handler(req, res) {
 
     if (action === 'update') {
       const EDITABLE = ['name','description','long_description','category','age_display','age_min',
-                        'when','where','address','lat','lng','signup_link','signup_steps','section',
+                        'when','schedule','where','address','lat','lng','signup_link','signup_steps','section',
                         'card_note','signup_label','slug','admin_notes',
                         'website','contact_email','contact_phone'];
       const updates = {};

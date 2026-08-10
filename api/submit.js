@@ -110,6 +110,22 @@ module.exports = async function handler(req, res) {
     .filter(Boolean)
     .slice(0, 20);
 
+  const SCHEDULE_DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+  const SCHEDULE_SLOTS = ['morning','afternoon','evening'];
+  let schedule = null;
+  if (body.schedule && typeof body.schedule === 'object' && !Array.isArray(body.schedule)) {
+    const clean = {};
+    let hasEntry = false;
+    for (const day of SCHEDULE_DAYS) {
+      const slots = Array.isArray(body.schedule[day])
+        ? body.schedule[day].filter(s => SCHEDULE_SLOTS.includes(s))
+        : [];
+      clean[day] = slots;
+      if (slots.length) hasEntry = true;
+    }
+    if (hasEntry) schedule = clean;
+  }
+
   const payload = {
     name:               String(body.name).trim().slice(0, 200),
     description:        String(body.description).trim().slice(0, 1000),
@@ -118,6 +134,7 @@ module.exports = async function handler(req, res) {
     age_display:        String(body.age_display).trim().slice(0, 100),
     age_min:            body.age_min ? (parseInt(body.age_min, 10) || null) : null,
     when:               String(body.when).trim().slice(0, 200),
+    schedule:           schedule,
     where:              String(body.where).trim().slice(0, 200),
     address:            String(body.address).trim().slice(0, 300),
     signup_link:        String(body.signup_link).trim().slice(0, 500),

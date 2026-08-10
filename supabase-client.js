@@ -88,7 +88,7 @@ function _transformRow(row) {
     _ageCondition: row.age_condition  || null,
     _ageHtml:      ageHtml,
     _when:         row.when           || '',
-    _schedule:     _parseSchedule(row.when),
+    _schedule:     row.schedule ? _scheduleFromStructured(row.schedule) : _parseSchedule(row.when),
     _where:        row.where          || '',
     _signupLink:   row.signup_link    || '#',
     _signupLabel:  row.signup_label   || 'Sign up →',
@@ -134,6 +134,28 @@ function _parseSchedule(when) {
   if (!times.length) { times.push('morning'); times.push('afternoon'); times.push('evening'); }
 
   return { days: days, times: times };
+}
+
+// Derives the {days, times} shape used by the timing filter from the
+// structured per-day-of-week schedule set on the submit form, e.g.
+// { monday: ['morning'], saturday: ['afternoon','evening'] }.
+// This is authoritative (submitter-picked), unlike _parseSchedule's
+// free-text guessing, so no "if empty, assume all" padding is applied —
+// an explicitly unselected day/slot means "not offered then."
+function _scheduleFromStructured(schedule) {
+  const WEEKDAY_KEYS = ['monday','tuesday','wednesday','thursday','friday'];
+  const WEEKEND_KEYS = ['saturday','sunday'];
+
+  const days = [];
+  if (WEEKDAY_KEYS.some(d => (schedule[d] || []).length)) days.push('weekdays');
+  if (WEEKEND_KEYS.some(d => (schedule[d] || []).length)) days.push('weekends');
+
+  const timesSet = new Set();
+  Object.keys(schedule).forEach(day => {
+    (schedule[day] || []).forEach(slot => timesSet.add(slot));
+  });
+
+  return { days: days, times: Array.from(timesSet) };
 }
 
 function _nameToSlug(name) {
