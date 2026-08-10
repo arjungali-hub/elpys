@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign up — Elpys</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="elpys-favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .auth-section { padding: 3rem 0 4rem; }
+    .auth-wrap { max-width: 440px; }
+    .auth-section h1 { font-size: clamp(1.375rem, 3vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+    .auth-intro { font-size: 0.9375rem; color: #444; line-height: 1.6; margin-bottom: 2rem; max-width: 52ch; }
+    .auth-form { display: flex; flex-direction: column; gap: 1.25rem; }
+    .field { display: flex; flex-direction: column; gap: 0.35rem; }
+    .field label { font-size: 0.8125rem; font-weight: 600; }
+    .field input { font-family: inherit; font-size: 0.9375rem; color: var(--body); background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.55rem 0.75rem; width: 100%; }
+    .field input:focus { outline: 2px solid var(--body); outline-offset: 1px; }
+    .interests-fieldset { border: none; padding: 0; margin: 0; }
+    .interests-fieldset legend { font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.6rem; display: block; }
+    .optional-tag { font-weight: 400; color: var(--muted); }
+    .interest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; }
+    .interest-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer; }
+    .age-confirm-label { display: flex; align-items: flex-start; gap: 0.6rem; font-size: 0.875rem; cursor: pointer; line-height: 1.5; }
+    .age-confirm-label input { margin-top: 0.2rem; flex-shrink: 0; cursor: pointer; }
+    .submit-btn { align-self: flex-start; font-family: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--white); background: var(--body); border: none; border-radius: var(--radius); padding: 0.65rem 1.5rem; cursor: pointer; }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-status { font-size: 0.9375rem; padding: 1rem; border-radius: var(--radius); display: none; }
+    .form-status.success { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; }
+    .form-status.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+    .auth-switch { margin-top: 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .auth-switch a { color: var(--body); text-decoration: underline; }
+    .avail-grid { display: grid; grid-template-columns: 2.5rem 1fr 1fr 1fr; gap: 4px; margin-top: 0.5rem; }
+    .avail-col-header { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); text-align: center; padding-bottom: 0.25rem; }
+    .avail-day-label { font-size: 0.75rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; }
+    .avail-cell { height: 32px; background: var(--off); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: background 0.1s, border-color 0.1s; }
+    .avail-cell:hover { border-color: #aaa; background: #ebebeb; }
+    .avail-cell.active { background: var(--body); border-color: var(--body); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="index.html" class="site-name">e<span class="site-name-l">l<svg class="site-name-torch" xmlns="http://www.w3.org/2000/svg" viewBox="16 1 36 91" aria-hidden="true"><path d="M33 44 C21 36 18 22 23 10 C25.5 17 30 17 30 10 C34 17 41 22 36 32 C43 27 45 15 38 3 C47 10 50 24 43 36 C39 41 35 44 33 44 Z" fill="#d9662f"/><path d="M33 38 C26 33 24 24 27 16 C28.5 20 31 20 31 16 C33 20 37 24 34 30 C38 27 39 20 36 14 C41 18 43 26 39 33 C37 36 34 38 33 38 Z" fill="#f2a03d"/><path d="M18 46 L48 46 L43 60 L23 60 Z" fill="#2b2420"/><rect x="24" y="60" width="18" height="30" rx="5" fill="#2b2420"/></svg></span>pys</a>
+      <a href="login.html" class="header-auth-link">Log in</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="auth-section">
+    <div class="auth-wrap">
+
+      <div id="check-email-state" style="display:none;">
+        <h1>Check your email</h1>
+        <p class="auth-intro">We sent a confirmation link to <strong id="confirm-email-addr"></strong>. Click it to activate your account — then come back and log in.</p>
+        <p><a href="login.html">← Go to log in</a></p>
+      </div>
+
+      <div id="form-state">
+        <h1>Create an account</h1>
+        <p class="auth-intro">Get a weekly email digest of new volunteer opportunities that match your interests and availability. Accounts are free and optional — the site works fine without one. <strong>Note:</strong> our notification email account is new, so digest emails may land in your spam folder for now — check there if you don't see them in your inbox.</p>
+
+        <div class="form-status" id="form-status"></div>
+
+        <form class="auth-form" id="signup-form" novalidate>
+
+          <div class="field">
+            <label for="su-email">Email</label>
+            <input type="email" id="su-email" name="email" required placeholder="you@example.com" autocomplete="email">
+          </div>
+
+          <div class="field">
+            <label for="su-password">Password</label>
+            <input type="password" id="su-password" name="password" required placeholder="At least 8 characters" autocomplete="new-password">
+          </div>
+
+          <div class="field">
+            <label for="su-password2">Confirm password</label>
+            <input type="password" id="su-password2" name="password2" required placeholder="Same password again" autocomplete="new-password">
+          </div>
+
+          <fieldset class="interests-fieldset">
+            <legend>What are you interested in? <span class="optional-tag">(optional)</span></legend>
+            <div class="interest-grid">
+              <label class="interest-label"><input type="checkbox" name="interest" value="Animals"> Animals</label>
+              <label class="interest-label"><input type="checkbox" name="interest" value="Community"> Community</label>
+              <label class="interest-label"><input type="checkbox" name="interest" value="Environment"> Environment</label>
+              <label class="interest-label"><input type="checkbox" name="interest" value="Food"> Food</label>
+            </div>
+          </fieldset>
+
+          <fieldset class="interests-fieldset">
+            <legend>When are you generally available? <span class="optional-tag">(optional)</span></legend>
+            <div class="avail-grid" id="su-avail-grid"></div>
+          </fieldset>
+
+          <label class="age-confirm-label">
+            <input type="checkbox" id="age-confirm" required>
+            <span>I confirm I am 13 or older. <em style="color:var(--muted);">You must be 13 or older to use Elpys.</em></span>
+          </label>
+
+          <button type="submit" class="submit-btn" id="submit-btn">Create account →</button>
+
+        </form>
+
+        <p class="auth-switch">Already have an account? <a href="login.html">Log in →</a></p>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <a href="submit.html">Submit an opportunity</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+  var _supa = supabase.createClient(
+    'https://ukrykzmehvghedrvmkjj.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrcnlrem1laHZnaGVkcnZta2pqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzODc4NzgsImV4cCI6MjA5ODk2Mzg3OH0.J1J4p3lTbQKMc3GvWVlBxAZZV1jGYPIU4Jj_ePLndgM'
+  );
+
+  // Already signed in → go straight to account
+  _supa.auth.getSession().then(function (r) {
+    if (r.data && r.data.session) location.replace('account.html');
+  });
+
+  var form      = document.getElementById('signup-form');
+  var btn       = document.getElementById('submit-btn');
+  var statusEl  = document.getElementById('form-status');
+
+  function showStatus(msg, type) {
+    statusEl.textContent    = msg;
+    statusEl.className      = 'form-status ' + type;
+    statusEl.style.display  = 'block';
+    statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    statusEl.style.display = 'none';
+
+    var email     = form.elements.email.value.trim();
+    var password  = form.elements.password.value;
+    var password2 = form.elements.password2.value;
+    var ageCheck  = document.getElementById('age-confirm').checked;
+
+    if (!email)                return showStatus('Please enter your email.', 'error');
+    if (password.length < 8)   return showStatus('Password must be at least 8 characters.', 'error');
+    if (password !== password2) return showStatus("Passwords don't match.", 'error');
+    if (!ageCheck)             return showStatus('You must confirm you are 13 or older to create an account.', 'error');
+
+    var interests = Array.from(form.querySelectorAll('input[name="interest"]:checked')).map(function (c) { return c.value; });
+
+    btn.disabled    = true;
+    btn.textContent = 'Creating account…';
+
+    try {
+      var result = await _supa.auth.signUp({
+        email:    email,
+        password: password,
+        options: {
+          data: { interests: interests },
+        },
+      });
+
+      if (result.error) {
+        showStatus(result.error.message || result.error.error_description || 'Sign-up failed (code ' + result.error.status + '). Check that email sign-ins are enabled in your Supabase project.', 'error');
+        btn.disabled    = false;
+        btn.textContent = 'Create account →';
+        return;
+      }
+
+      document.getElementById('form-state').style.display        = 'none';
+      document.getElementById('confirm-email-addr').textContent  = email;
+      document.getElementById('check-email-state').style.display = 'block';
+    } catch (err) {
+      showStatus(err.message || 'Something went wrong. Please try again.', 'error');
+      btn.disabled    = false;
+      btn.textContent = 'Create account →';
+    }
+  });
+</script>
+<script src="beta-banner.js"></script>
+
+</body>
+</html>

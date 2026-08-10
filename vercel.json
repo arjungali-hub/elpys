@@ -15,5 +15,11 @@
       "memory": 128,
       "maxDuration": 10
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/send-digest",
+      "schedule": "0 8 * * 1"
+    }
+  ]
 }
