@@ -65,17 +65,34 @@ header {
   text-decoration: none;
   color: #2b2420;
   line-height: 1;
+  /* the torch "l" is an inline-block, so without this the wordmark can break
+     across lines ("el" / "pys") when the header gets tight */
+  white-space: nowrap;
 }
 .site-name-l {
   position: relative;
   display: inline-block;
 }
-.site-name-torch {
+/* The "l" doubles as the torch handle: the bowl sits across its top and the
+   flame rises above it. Sizes are in em so the mark tracks the wordmark's
+   font-size, preserving the proportions of the full logo lockup.
+   The offsets are the lockup's (-0.333em / 0.233em) shifted up by 0.3em:
+   .site-name sets line-height 1 against Baloo 2's natural 1.6 content area,
+   and that negative half-leading lifts the glyph by half the difference. */
+.site-name-flame {
   position: absolute;
-  width: 0.4em;
+  width: 0.5em;
   height: auto;
-  bottom: 1em;
-  left: 38%;
+  top: -0.633em;
+  left: 0.133em;
+  transform: translateX(-50%);
+}
+.site-name-torch-base {
+  position: absolute;
+  width: 0.333em;
+  height: auto;
+  top: -0.067em;
+  left: 0.133em;
   transform: translateX(-50%);
 }
 .header-submit-link,
