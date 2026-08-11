@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My account â€” Elpys</title>
+  <title>My account — Elpys</title>
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/svg+xml" href="elpys-favicon.svg">
   <link rel="stylesheet" href="styles.css">
@@ -50,15 +50,15 @@
 </header>
 
 <div class="wrap">
-  <a href="index.html" class="back-link" style="display:block;margin-top:2rem;">â† Back to opportunities</a>
-  <p id="loading-msg">Loadingâ€¦</p>
+  <a href="index.html" class="back-link" style="display:block;margin-top:2rem;">← Back to opportunities</a>
+  <p id="loading-msg">Loading…</p>
   <section class="account-section" id="account-section" style="display:none;"></section>
 </div>
 
 <footer>
   <div class="wrap">
     <div class="footer-inner">
-      <p>All listings verified June 2026. Links and details may change â€” always confirm with the org before your first visit.</p>
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
     </div>
   </div>
 </footer>
@@ -70,7 +70,7 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-box">' +
-        '<button class="modal-close" aria-label="Close">Ã—</button>' +
+        '<button class="modal-close" aria-label="Close">×</button>' +
         '<p class="modal-title">' + opts.title + '</p>' +
         '<p class="modal-body">' + opts.body + '</p>' +
         '<div class="modal-actions">' +
@@ -120,7 +120,7 @@
     var currentAvailability = (profile && profile.availability && typeof profile.availability === 'object')
       ? profile.availability : {};
 
-    // Post-signup: interests saved in user metadata but not yet in profile â€” migrate them
+    // Post-signup: interests saved in user metadata but not yet in profile — migrate them
     var metaInterests = (user.user_metadata && Array.isArray(user.user_metadata.interests))
       ? user.user_metadata.interests : [];
     if (currentInterests.length === 0 && metaInterests.length > 0) {
@@ -173,7 +173,7 @@
               return '<label class="interest-label"><input type="checkbox" name="interest" value="' + cat + '"' + checked + '> ' + cat + '</label>';
             }).join('') +
           '</div>' +
-          '<button type="submit" class="submit-btn" id="save-btn">Save interests â†’</button>' +
+          '<button type="submit" class="submit-btn" id="save-btn">Save interests →</button>' +
         '</form>' +
       '</div>' +
 
@@ -182,7 +182,7 @@
         '<p style="font-size:0.875rem;color:#555;margin-bottom:0.75rem;">Select when you\'re generally available. We\'ll only include opportunities that fit your schedule in the weekly digest.</p>' +
         '<div class="form-status" id="avail-status"></div>' +
         buildAvailGrid(currentAvailability) +
-        '<button class="submit-btn" id="avail-save-btn">Save availability â†’</button>' +
+        '<button class="submit-btn" id="avail-save-btn">Save availability →</button>' +
       '</div>' +
 
       '<div class="account-block">' +
@@ -205,7 +205,7 @@
       var saveStatus = document.getElementById('save-status');
 
       saveBtn.disabled    = true;
-      saveBtn.textContent = 'Savingâ€¦';
+      saveBtn.textContent = 'Saving…';
       saveStatus.style.display = 'none';
 
       var result = await _supa.from('profiles').update({ interests: selected }).eq('id', user.id);
@@ -214,7 +214,7 @@
       saveStatus.textContent   = result.error ? 'Could not save: ' + result.error.message : 'Saved!';
       saveStatus.style.display = 'block';
       saveBtn.disabled         = false;
-      saveBtn.textContent      = 'Save interests â†’';
+      saveBtn.textContent      = 'Save interests →';
     });
 
     var _unsubscribed = isUnsubscribed;
@@ -224,7 +224,7 @@
       var newVal      = !_unsubscribed;
 
       btn.disabled    = true;
-      btn.textContent = 'Savingâ€¦';
+      btn.textContent = 'Saving…';
       notifStatus.style.display = 'none';
 
       var result = await _supa.from('profiles').update({ unsubscribed: newVal }).eq('id', user.id);
@@ -301,7 +301,7 @@
       });
 
       btn.disabled    = true;
-      btn.textContent = 'Savingâ€¦';
+      btn.textContent = 'Saving…';
       status.style.display = 'none';
 
       var result = await _supa.from('profiles').update({ availability: avail }).eq('id', user.id);
@@ -310,7 +310,7 @@
       status.textContent   = result.error ? 'Could not save: ' + result.error.message : 'Saved!';
       status.style.display = 'block';
       btn.disabled         = false;
-      btn.textContent      = 'Save availability â†’';
+      btn.textContent      = 'Save availability →';
     });
   }
 

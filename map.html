@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Map â€” Elpys</title>
+  <title>Map — Elpys</title>
   <!-- noindex: remove this tag when ready to launch publicly -->
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/svg+xml" href="elpys-favicon.svg">
@@ -28,9 +28,9 @@
 
 <div class="wrap">
   <section class="map-section">
-    <a href="index.html" class="back-link">â† Back to all opportunities</a>
+    <a href="index.html" class="back-link">← Back to all opportunities</a>
     <h1 style="font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.75rem;">Opportunities near you</h1>
-    <p class="map-intro">Every verified opportunity is pinned below. Some organizations operate at one fixed address; others run events at multiple parks or serve several cities â€” those pins mark a representative location, not an exact site. Click a name on the left (or a pin), then enter where you're starting from to estimate the drive and show the route.</p>
+    <p class="map-intro">Every verified opportunity is pinned below. Some organizations operate at one fixed address; others run events at multiple parks or serve several cities — those pins mark a representative location, not an exact site. Click a name on the left (or a pin), then enter where you're starting from to estimate the drive and show the route.</p>
     <form class="route-search" id="route-form">
       <label for="route-origin">Starting place</label>
       <div class="route-search-row">
@@ -52,7 +52,7 @@
 <footer>
   <div class="wrap">
     <div class="footer-inner">
-      <p>All listings verified June 2026. Links and details may change â€” always confirm with the org before your first visit.</p>
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
     </div>
   </div>
 </footer>
@@ -228,7 +228,7 @@
 
       const directionsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(opp.address);
       const approxNote = opp.approx
-        ? '<span class="map-popup-tag">Approximate area â€” operates at multiple sites</span>'
+        ? '<span class="map-popup-tag">Approximate area — operates at multiple sites</span>'
         : (opp.liveUrl ? '<span class="map-popup-tag">Nearest location shown</span>' : '');
       const actionLink = (opp.approx && opp.liveUrl)
         ? '<a href="' + opp.liveUrl + '" target="_blank" rel="noopener">Find exact locations on their website</a>'
@@ -268,12 +268,12 @@
       if (opp.approx && opp.liveUrl) {
         const note = document.createElement('div');
         note.className = 'map-list-live-note';
-        note.innerHTML = 'Operates at multiple locations â€” <a href="' + opp.liveUrl + '" target="_blank" rel="noopener">view their live event page â†’</a>';
+        note.innerHTML = 'Operates at multiple locations — <a href="' + opp.liveUrl + '" target="_blank" rel="noopener">view their live event page →</a>';
         wrap.appendChild(note);
       } else if (!opp.approx && opp.liveUrl) {
         const note = document.createElement('div');
         note.className = 'map-list-live-note';
-        note.innerHTML = 'Nearest location shown â€” <a href="' + opp.liveUrl + '" target="_blank" rel="noopener">view all locations â†’</a>';
+        note.innerHTML = 'Nearest location shown — <a href="' + opp.liveUrl + '" target="_blank" rel="noopener">view all locations →</a>';
         wrap.appendChild(note);
       }
 

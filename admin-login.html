@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin login Ã¢â‚¬â€ Elpys</title>
+  <title>Admin login — Elpys</title>
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/svg+xml" href="elpys-favicon.svg">
   <link rel="stylesheet" href="styles.css">
@@ -51,10 +51,10 @@
           <label for="li-password">Password</label>
           <input type="password" id="li-password" name="password" required autocomplete="current-password" placeholder="Admin password">
         </div>
-        <button type="submit" class="submit-btn" id="submit-btn">Log in Ã¢â€ â€™</button>
+        <button type="submit" class="submit-btn" id="submit-btn">Log in →</button>
       </form>
 
-      <p class="auth-switch"><a href="login.html">Ã¢â€ Â Back to regular login</a></p>
+      <p class="auth-switch"><a href="login.html">← Back to regular login</a></p>
     </div>
   </section>
 </div>
@@ -62,7 +62,7 @@
 <footer>
   <div class="wrap">
     <div class="footer-inner">
-      <p>All listings verified June 2026. Links and details may change Ã¢â‚¬â€ always confirm with the org before your first visit.</p>
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
       <a href="submit.html">Submit an opportunity</a>
     </div>
   </div>
@@ -87,7 +87,7 @@
     if (!password) return showError('Please enter the admin password.');
 
     btn.disabled    = true;
-    btn.textContent = 'Logging inÃ¢â‚¬Â¦';
+    btn.textContent = 'Logging in…';
 
     try {
       var res = await fetch('/api/admin-login', {
@@ -99,7 +99,7 @@
       if (res.status === 401) {
         showError('Incorrect password.');
         btn.disabled    = false;
-        btn.textContent = 'Log in Ã¢â€ â€™';
+        btn.textContent = 'Log in →';
         return;
       }
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -109,7 +109,7 @@
     } catch (err) {
       showError(err.message || 'Something went wrong. Please try again.');
       btn.disabled    = false;
-      btn.textContent = 'Log in Ã¢â€ â€™';
+      btn.textContent = 'Log in →';
     }
   });
 </script>

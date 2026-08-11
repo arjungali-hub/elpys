@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Elpys â€” Bellevue Teen Volunteering</title>
+  <title>Elpys — Bellevue Teen Volunteering</title>
   <!-- noindex: remove this tag when ready to launch publicly -->
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/svg+xml" href="elpys-favicon.svg">
@@ -15,7 +15,7 @@
 </head>
 <body>
 
-<!-- â”€â”€ Header â”€â”€ -->
+<!-- ── Header ── -->
 <header>
   <div class="wrap">
     <div class="header-inner">
@@ -27,14 +27,14 @@
   </div>
 </header>
 
-<!-- â”€â”€ Hero â”€â”€ -->
+<!-- ── Hero ── -->
 <section class="hero">
   <div class="wrap">
     <div class="hero-title-row">
       <div class="hero-text-col">
         <p class="hero-label">Bellevue, WA</p>
         <h1>Find a place to volunteer.<br>Show up and help.</h1>
-        <p>Every listing here has been verified. You'll see exactly what to do<br class="hero-break">to sign up â€” no dead links, no guessing, no adult required on-site.</p>
+        <p>Every listing here has been verified. You'll see exactly what to do<br class="hero-break">to sign up — no dead links, no guessing, no adult required on-site.</p>
       </div>
       <div class="hero-map-launcher">
         <div class="mini-map-wrap" id="hero-map-launcher">
@@ -46,7 +46,7 @@
   </div>
 </section>
 
-<!-- â”€â”€ How it works â”€â”€ -->
+<!-- ── How it works ── -->
 <section class="how">
   <div class="wrap">
     <p class="steps-label">How it works</p>
@@ -59,7 +59,7 @@
       <div class="how-step">
         <span class="step-num">Step 2</span>
         <span class="step-title">Follow the sign-up steps</span>
-        <span class="step-desc">Each listing shows the exact steps to register â€” no hunting around.</span>
+        <span class="step-desc">Each listing shows the exact steps to register — no hunting around.</span>
       </div>
       <div class="how-step">
         <span class="step-num">Step 3</span>
@@ -70,7 +70,7 @@
   </div>
 </section>
 
-<!-- â”€â”€ Filter bar â”€â”€ -->
+<!-- ── Filter bar ── -->
 <div class="wrap" style="padding-top: 2rem;">
   <div class="filter-bar">
     <div class="filters" id="filters">
@@ -100,9 +100,9 @@
   </div>
 </div>
 
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     SECTION 1 â€” SIGN UP ONLINE
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<!-- ══════════════════════════════════════════
+     SECTION 1 — SIGN UP ONLINE
+════════════════════════════════════════════ -->
 <div class="wrap">
   <div class="section">
     <div class="section-header">
@@ -117,9 +117,9 @@
   </div>
 </div>
 
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     SECTION 2 â€” CONTACT TO SIGN UP
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<!-- ══════════════════════════════════════════
+     SECTION 2 — CONTACT TO SIGN UP
+════════════════════════════════════════════ -->
 <div class="wrap">
   <div class="section" style="padding-top: 0;">
     <div class="section-header">
@@ -134,16 +134,16 @@
   </div>
 </div>
 
-<!-- â”€â”€ Footer â”€â”€ -->
+<!-- ── Footer ── -->
 <footer>
   <div class="wrap">
     <div class="footer-inner">
-      <p>All listings verified June 2026. Links and details may change â€” always confirm with the org before your first visit.</p>
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
     </div>
   </div>
 </footer>
 
-<!-- â”€â”€ Filter logic â”€â”€ -->
+<!-- ── Filter logic ── -->
 <script>
   // Every card draws its own right and bottom border (the grid's outer
   // border only covers the top/left edges), so a lone card left in the
@@ -173,7 +173,7 @@
   // Cards marked "all" (open to everyone) are always shown. Cards marked
   // "varies" (e.g. Jubilee REACH's "Contact to confirm") have no real
   // numeric cutoff, so they're always shown too. Everything else uses its
-  // lowest stated age as the cutoff â€” e.g. "13+ solo, 8â€“12 w/ adult" shows
+  // lowest stated age as the cutoff — e.g. "13+ solo, 8–12 w/ adult" shows
   // for any typed age of 8 or older.
   function ageMatches(card, age) {
     if (!age) return true;
@@ -296,7 +296,7 @@
 <script src="supabase-auth.js"></script>
 <script src="beta-banner.js"></script>
 <script>
-  // â”€â”€ Card renderer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Card renderer ─────────────────────────────────────────────────────────
 
   function buildCardHtml(opp) {
     const condAttr   = opp._ageCondition ? ' data-age-condition="' + opp._ageCondition + '"' : '';
@@ -335,16 +335,16 @@
     const onlineGrid  = document.getElementById('online-cards');
     const contactGrid = document.getElementById('contact-cards');
 
-    onlineGrid.innerHTML  = '<p class="card-loading">Loading opportunitiesâ€¦</p>';
+    onlineGrid.innerHTML  = '<p class="card-loading">Loading opportunities…</p>';
     contactGrid.innerHTML = '';
 
     const opportunities = await fetchOpportunities();
 
     // Build category filter buttons dynamically from live data
     const filtersEl = document.getElementById('filters');
-    const categoryMap = new Map(); // lowercase key â†’ display label
+    const categoryMap = new Map(); // lowercase key → display label
     opportunities.forEach(opp => {
-      (opp.tag || '').split(/[Â·,]/).forEach(cat => {
+      (opp.tag || '').split(/[·,]/).forEach(cat => {
         const trimmed = cat.trim();
         if (!trimmed) return;
         const key   = trimmed.toLowerCase();
@@ -376,7 +376,7 @@
     applyFilters();
   }
 
-  // â”€â”€ Hero mini-map + card render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Hero mini-map + card render ───────────────────────────────────────────
 
   document.addEventListener('DOMContentLoaded', () => {
     renderAllMiniMap('hero-mini-map');
