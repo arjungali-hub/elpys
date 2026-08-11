@@ -44,7 +44,8 @@ img { display: block; max-width: 100%; }
 header {
   position: sticky;
   top: 0;
-  z-index: 50;
+  /* above page content (incl. any stray third-party z-index), below modals */
+  z-index: 100;
   border-bottom: 1px solid var(--border);
   padding: 1.5rem 0 1.1rem;
   background: rgba(255, 255, 255, 0.82);
@@ -197,6 +198,21 @@ header {
 .modal-btn-action:hover { opacity: 0.85; }
 .modal-btn-action.danger { background: #991B1B; }
 .modal-btn-action.danger:hover { background: #7F1D1D; opacity: 1; }
+
+/* ── Beta badge — remove once site launches ── */
+.beta-badge {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: #E5E7EB;
+  color: #4B5563;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  /* clears the logo's sparkle field, which overhangs the wordmark's box */
+  margin-left: 0.35rem;
+  flex-shrink: 0;
+}
 
 /* ── Beta banner — remove once site launches ── */
 #beta-banner {
@@ -932,6 +948,14 @@ footer a {
 }
 
 /* ── Mini map previews (detail pages + main page launcher) ── */
+/* Leaflet gives its panes and controls z-index 400-1000. A map container that
+   makes no stacking context of its own lets those escape into the root one,
+   where they paint over the sticky header. isolation: isolate contains them
+   without touching layout. */
+#map,
+.mini-map-wrap {
+  isolation: isolate;
+}
 .mini-map-wrap {
   cursor: pointer;
   border: 1px solid var(--border);
