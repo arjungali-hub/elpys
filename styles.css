@@ -390,27 +390,29 @@ header {
 }
 
 .card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 1.125rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.card-meta > span {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.4rem 1rem;
-  margin-bottom: 1rem;
-  padding: 0.75rem 0.875rem;
-  background: var(--off);
-  border-radius: var(--radius);
-}
-.card-meta span {
+  grid-template-columns: 3.25rem 1fr;
+  gap: 0.75rem;
+  align-items: baseline;
   font-size: 0.8125rem;
-  color: var(--muted);
-  line-height: 1.5;
+  color: #444;
+  line-height: 1.45;
 }
-.card-meta strong {
-  display: block;
+.card-meta > span > strong {
   font-size: 0.6875rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--subtle);
-  margin-bottom: 0.1rem;
 }
 
 .card-desc {

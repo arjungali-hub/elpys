@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sign up — Elpys</title>
+  <title>Sign up â€” Elpys</title>
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/svg+xml" href="elpys-favicon.svg">
   <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&display=swap" rel="stylesheet">
   <style>
     .auth-section { padding: 3rem 0 4rem; }
     .auth-wrap { max-width: 440px; }
@@ -56,13 +59,13 @@
 
       <div id="check-email-state" style="display:none;">
         <h1>Check your email</h1>
-        <p class="auth-intro">We sent a confirmation link to <strong id="confirm-email-addr"></strong>. Click it to activate your account — then come back and log in.</p>
-        <p><a href="login.html">← Go to log in</a></p>
+        <p class="auth-intro">We sent a confirmation link to <strong id="confirm-email-addr"></strong>. Click it to activate your account â€” then come back and log in.</p>
+        <p><a href="login.html">â† Go to log in</a></p>
       </div>
 
       <div id="form-state">
         <h1>Create an account</h1>
-        <p class="auth-intro">Get a weekly email digest of new volunteer opportunities that match your interests and availability. Accounts are free and optional — the site works fine without one. <strong>Note:</strong> our notification email account is new, so digest emails may land in your spam folder for now — check there if you don't see them in your inbox.</p>
+        <p class="auth-intro">Get a weekly email digest of new volunteer opportunities that match your interests and availability. Accounts are free and optional â€” the site works fine without one. <strong>Note:</strong> our notification email account is new, so digest emails may land in your spam folder for now â€” check there if you don't see them in your inbox.</p>
 
         <div class="form-status" id="form-status"></div>
 
@@ -103,11 +106,11 @@
             <span>I confirm I am 13 or older. <em style="color:var(--muted);">You must be 13 or older to use Elpys.</em></span>
           </label>
 
-          <button type="submit" class="submit-btn" id="submit-btn">Create account →</button>
+          <button type="submit" class="submit-btn" id="submit-btn">Create account â†’</button>
 
         </form>
 
-        <p class="auth-switch">Already have an account? <a href="login.html">Log in →</a></p>
+        <p class="auth-switch">Already have an account? <a href="login.html">Log in â†’</a></p>
       </div>
 
     </div>
@@ -117,7 +120,7 @@
 <footer>
   <div class="wrap">
     <div class="footer-inner">
-      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <p>All listings verified June 2026. Links and details may change â€” always confirm with the org before your first visit.</p>
       <a href="submit.html">Submit an opportunity</a>
     </div>
   </div>
@@ -130,7 +133,7 @@
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrcnlrem1laHZnaGVkcnZta2pqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzODc4NzgsImV4cCI6MjA5ODk2Mzg3OH0.J1J4p3lTbQKMc3GvWVlBxAZZV1jGYPIU4Jj_ePLndgM'
   );
 
-  // Already signed in → go straight to account
+  // Already signed in â†’ go straight to account
   _supa.auth.getSession().then(function (r) {
     if (r.data && r.data.session) location.replace('account.html');
   });
@@ -146,7 +149,7 @@
     statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  // Availability picker — same shape the account page and weekly digest use.
+  // Availability picker â€” same shape the account page and weekly digest use.
   var DAYS        = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
   var DAY_ABBR    = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   var SLOTS       = ['morning','afternoon','evening'];
@@ -198,7 +201,7 @@
     var availability = collectAvailability();
 
     btn.disabled    = true;
-    btn.textContent = 'Creating account…';
+    btn.textContent = 'Creating accountâ€¦';
 
     try {
       var result = await _supa.auth.signUp({
@@ -212,7 +215,7 @@
       if (result.error) {
         showStatus(result.error.message || result.error.error_description || 'Sign-up failed (code ' + result.error.status + '). Check that email sign-ins are enabled in your Supabase project.', 'error');
         btn.disabled    = false;
-        btn.textContent = 'Create account →';
+        btn.textContent = 'Create account â†’';
         return;
       }
 
@@ -222,7 +225,7 @@
     } catch (err) {
       showStatus(err.message || 'Something went wrong. Please try again.', 'error');
       btn.disabled    = false;
-      btn.textContent = 'Create account →';
+      btn.textContent = 'Create account â†’';
     }
   });
 </script>
