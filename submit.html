@@ -382,10 +382,14 @@
       name:                form.elements.name.value.trim(),
       description:         form.elements.description.value.trim(),
       long_description:    form.elements.long_description.value.trim(),
+      // Lowercase, comma-separated — the format the existing rows use
+      // ("community, food"). The card display uppercases it in CSS.
       category:            checkedCategories
                              .map(el => el.value === '__other__' ? otherText : el.value)
+                             .map(c => c.trim().toLowerCase())
+                             .filter(Boolean)
                              .sort()
-                             .join(' · '),
+                             .join(', '),
       age_display:         form.elements.age_display.value.trim(),
       age_min:             form.elements.age_min.value ? parseInt(form.elements.age_min.value, 10) : null,
       'when':              form.elements.when.value.trim(),
@@ -394,10 +398,14 @@
       address:             form.elements.address.value.trim(),
       signup_link:         form.elements.signup_link.value.trim(),
       signup_label:        form.elements.signup_label.value.trim() || 'Sign up →',
+      // One " | "-separated string, not an array — signup_steps is a TEXT
+      // column. A literal pipe in a step would break the delimiter, so it
+      // becomes a slash.
       signup_steps:        form.elements.signup_steps.value
                              .split('\n')
-                             .map(s => s.trim())
-                             .filter(s => s.length > 0),
+                             .map(s => s.replace(/\|/g, '/').trim())
+                             .filter(s => s.length > 0)
+                             .join(' | '),
       website_url:         form.elements.website_url.value.trim()    || null,
       contact_email:       form.elements.contact_email.value.trim()  || null,
       contact_phone:       form.elements.contact_phone.value.trim()  || null,

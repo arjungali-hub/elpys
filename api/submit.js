@@ -11,7 +11,18 @@
 // dropped from Supabase after deploying this function:
 //   DROP POLICY IF EXISTS "Anyone can submit a pending opportunity" ON "Opportunities";
 
-const SUPABASE_URL      = process.env.SUPABASE_URL;
+// Accepts SUPABASE_URL either as the bare project URL or with /rest/v1/ already
+// on it — the rest of this file appends table names directly, so a missing
+// suffix silently turns every query into a 404.
+function restBase(url) {
+  if (!url) return null;
+  let u = String(url).trim();
+  if (!u.endsWith('/')) u += '/';
+  if (!/\/rest\/v1\/$/.test(u)) u += 'rest/v1/';
+  return u;
+}
+
+const SUPABASE_URL      = restBase(process.env.SUPABASE_URL);
 const SUPABASE_KEY      = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TURNSTILE_SECRET  = process.env.TURNSTILE_SECRET_KEY;
 
@@ -29,12 +40,34 @@ function supabaseHeaders(extra) {
   }, extra);
 }
 
+// Anything thrown below (bad env, network failure, malformed JSON) would
+// otherwise surface as a bodyless 500 with no way to tell what broke.
 module.exports = async function handler(req, res) {
+  try {
+    return await handleSubmit(req, res);
+  } catch (err) {
+    console.error('/api/submit unhandled error:', err && err.stack ? err.stack : err);
+    return res.status(500).json({
+      error:   'Submission failed.',
+      message: err && err.message ? err.message : String(err),
+    });
+  }
+};
+
+async function handleSubmit(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.error('/api/submit misconfigured: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set');
+    return res.status(500).json({
+      error:   'Submission failed.',
+      message: 'Server is missing Supabase configuration (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).',
+    });
+  }
 
   const body = req.body || {};
 
@@ -95,7 +128,11 @@ module.exports = async function handler(req, res) {
     SUPABASE_URL + 'Opportunities?name=ilike.' + encodeURIComponent(escapedName) + '&select=id,status&limit=1',
     { headers: supabaseHeaders() }
   );
-  if (dupRes.ok) {
+  if (!dupRes.ok) {
+    // Not fatal — the insert below is the real gate — but a failure here almost
+    // always means the URL or key is wrong, which would otherwise stay silent.
+    console.error('Duplicate check failed:', dupRes.status, await dupRes.text().catch(() => ''));
+  } else {
     const dups = await dupRes.json();
     if (Array.isArray(dups) && dups.length > 0) {
       const existing = dups[0];
@@ -105,10 +142,35 @@ module.exports = async function handler(req, res) {
   }
 
   // ── 6. Build sanitized payload ────────────────────────────────────────────
-  const steps = (Array.isArray(body.signup_steps) ? body.signup_steps : [])
-    .map(s => String(s).trim())
+  // signup_steps is a TEXT column storing " | "-separated steps, e.g.
+  //   "Register online | Complete the waiver | Show up"
+  // Accept an array too, since a cached copy of the old form still posts one —
+  // that mismatch is what stored ["a"] as a literal string on an earlier row.
+  // Pipes inside a step would corrupt the delimiter, so they become slashes.
+  const rawSteps = Array.isArray(body.signup_steps)
+    ? body.signup_steps
+    : String(body.signup_steps == null ? '' : body.signup_steps).split(/[\n|]/);
+  const steps = rawSteps
+    .map(s => String(s).replace(/\|/g, '/').trim())
     .filter(Boolean)
     .slice(0, 20);
+  if (!steps.length) {
+    return res.status(400).json({ error: 'Missing required field: signup_steps' });
+  }
+  const signupSteps = steps.join(' | ');
+
+  // category is a TEXT column storing lowercase, comma-separated values, e.g.
+  // "community, food". Accept "·" as a separator as well, which is how the
+  // published rows are rendered and how the old form joined them.
+  const category = String(body.category == null ? '' : body.category)
+    .split(/\s*[·,]\s*/)
+    .map(c => c.trim().toLowerCase())
+    .filter(Boolean)
+    .sort()
+    .join(', ');
+  if (!category) {
+    return res.status(400).json({ error: 'Missing required field: category' });
+  }
 
   const SCHEDULE_DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
   const SCHEDULE_SLOTS = ['morning','afternoon','evening'];
@@ -130,7 +192,7 @@ module.exports = async function handler(req, res) {
     name:               String(body.name).trim().slice(0, 200),
     description:        String(body.description).trim().slice(0, 1000),
     long_description:   body.long_description ? String(body.long_description).trim().slice(0, 5000) : null,
-    category:           String(body.category).trim().slice(0, 100),
+    category:           category.slice(0, 100),
     age_display:        String(body.age_display).trim().slice(0, 100),
     age_min:            body.age_min ? (parseInt(body.age_min, 10) || null) : null,
     when:               String(body.when).trim().slice(0, 200),
@@ -139,7 +201,7 @@ module.exports = async function handler(req, res) {
     address:            String(body.address).trim().slice(0, 300),
     signup_link:        String(body.signup_link).trim().slice(0, 500),
     signup_label:       body.signup_label ? String(body.signup_label).trim().slice(0, 50) : 'Sign up →',
-    signup_steps:       steps,
+    signup_steps:       signupSteps,
     section:            body.section,
     website:            body.website_url   ? String(body.website_url).trim().slice(0, 300)   : null,
     contact_email:      body.contact_email ? String(body.contact_email).trim().slice(0, 200) : null,
@@ -158,9 +220,22 @@ module.exports = async function handler(req, res) {
 
   if (!r.ok) {
     const detail = await r.text().catch(() => '');
+    let parsed = null;
+    try { parsed = JSON.parse(detail); } catch (_) { /* not JSON — fall back to raw text */ }
     console.error('Supabase insert failed:', r.status, detail);
-    return res.status(500).json({ error: 'Submission failed. Please try again.' });
+
+    // Surface PostgREST's actual complaint (message/details/hint/code) instead
+    // of a bare 500, so a column-type or constraint mismatch is diagnosable
+    // from the response rather than only from the Vercel logs.
+    return res.status(500).json({
+      error:          'Submission failed. Please try again.',
+      supabaseStatus: r.status,
+      message:        (parsed && parsed.message) || detail.slice(0, 500) || null,
+      details:        (parsed && parsed.details) || null,
+      hint:           (parsed && parsed.hint)    || null,
+      code:           (parsed && parsed.code)    || null,
+    });
   }
 
   return res.status(200).json({ ok: true });
-};
+}
