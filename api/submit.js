@@ -24,7 +24,22 @@ function restBase(url) {
 
 const SUPABASE_URL      = restBase(process.env.SUPABASE_URL);
 const SUPABASE_KEY      = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const TURNSTILE_SECRET  = process.env.TURNSTILE_SECRET_KEY;
+// Trimmed: a trailing newline or stray space pasted into the Vercel dashboard
+// is invisible there but makes Cloudflare answer "invalid-input-secret".
+const TURNSTILE_SECRET  = (process.env.TURNSTILE_SECRET_KEY || '').trim();
+
+// Cloudflare's siteverify error codes, translated into what to actually do.
+const TURNSTILE_CODE_HELP = {
+  'missing-input-secret':   'TURNSTILE_SECRET_KEY is not set on the server.',
+  'invalid-input-secret':   'TURNSTILE_SECRET_KEY is not a valid Turnstile secret key (wrong value, or a site key was pasted instead of the secret key).',
+  'missing-input-response': 'No CAPTCHA token was sent with the submission.',
+  'invalid-input-response': 'The CAPTCHA token is malformed, or it was issued by a different site key than the secret key belongs to.',
+  'timeout-or-duplicate':   'The CAPTCHA token was already used or has expired. Tokens are single-use and valid for about 5 minutes, so a retry must use a freshly issued token.',
+  'bad-request':            'Cloudflare rejected the verification request as malformed.',
+  'invalid-widget-id':      'The widget id in the token does not exist for this secret key.',
+  'invalid-parsed-secret':  'The secret key could not be parsed.',
+  'internal-error':         'Cloudflare had an internal error verifying the token. Retrying usually works.',
+};
 
 // ── In-memory rate limit store ────────────────────────────────────────────────
 // Resets on each cold start / deploy. Per-instance, not global across Vercel
@@ -83,16 +98,53 @@ async function handleSubmit(req, res) {
   if (TURNSTILE_SECRET) {
     const token = body['cf-turnstile-response'];
     if (!token) {
-      return res.status(400).json({ error: 'Please complete the CAPTCHA.' });
+      return res.status(400).json({
+        error:  'Please complete the CAPTCHA.',
+        reason: 'no-token-in-request',
+      });
     }
-    const tsRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: TURNSTILE_SECRET, response: token }),
-    });
-    const ts = await tsRes.json();
-    if (!ts.success) {
-      return res.status(400).json({ error: 'CAPTCHA verification failed. Please try again.' });
+
+    let tsRes, tsRaw = '', ts = null;
+    try {
+      tsRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // remoteip is deliberately omitted: behind a proxy it can disagree with
+        // the IP Cloudflare saw when issuing the token and fail verification.
+        body: JSON.stringify({ secret: TURNSTILE_SECRET, response: token }),
+      });
+      tsRaw = await tsRes.text();
+      try { ts = JSON.parse(tsRaw); } catch (_) { /* non-JSON — kept in tsRaw */ }
+    } catch (err) {
+      console.error('Turnstile siteverify request failed:', err && err.stack ? err.stack : err);
+      return res.status(502).json({
+        error:   'Could not reach the CAPTCHA service. Please try again.',
+        message: err && err.message ? err.message : String(err),
+      });
+    }
+
+    if (!ts || ts.success !== true) {
+      const codes = (ts && Array.isArray(ts['error-codes'])) ? ts['error-codes'] : [];
+      // Log the full picture server-side, including secret *shape* (never the
+      // value) so a wrong/blank env var is distinguishable from a bad token.
+      console.error('Turnstile verification failed:', JSON.stringify({
+        httpStatus:   tsRes ? tsRes.status : null,
+        errorCodes:   codes,
+        raw:          tsRaw.slice(0, 300),
+        tokenLength:  String(token).length,
+        secretLength: TURNSTILE_SECRET.length,
+        secretPrefix: TURNSTILE_SECRET.slice(0, 3),
+      }));
+
+      return res.status(400).json({
+        error:            'CAPTCHA verification failed. Please try again.',
+        turnstileCodes:   codes,
+        turnstileHints:   codes.map(c => TURNSTILE_CODE_HELP[c] || ('Unrecognized Cloudflare error code: ' + c)),
+        turnstileStatus:  tsRes ? tsRes.status : null,
+        turnstileRaw:     codes.length ? undefined : tsRaw.slice(0, 300),
+        secretConfigured: true,
+        secretLength:     TURNSTILE_SECRET.length,
+      });
     }
   }
 

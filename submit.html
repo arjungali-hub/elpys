@@ -262,7 +262,10 @@
       <!-- Cloudflare Turnstile widget
            Replace data-sitekey with your real site key from dash.cloudflare.com → Turnstile
            The corresponding secret key goes in Vercel env var: TURNSTILE_SECRET_KEY -->
-      <div class="cf-turnstile" data-sitekey="0x4AAAAAADxuIIEw7hNrIcR3" data-theme="light"></div>
+      <!-- refresh-expired/retry auto: tokens expire after ~5 minutes, so a
+           slowly-filled form would otherwise post a stale one -->
+      <div class="cf-turnstile" data-sitekey="0x4AAAAAADxuIIEw7hNrIcR3" data-theme="light"
+           data-refresh-expired="auto" data-retry="auto"></div>
 
       <button type="submit" class="submit-btn" id="submit-btn">Submit for review →</button>
 
@@ -322,6 +325,16 @@
   const form   = document.getElementById('submit-form');
   const btn    = document.getElementById('submit-btn');
   const status = document.getElementById('form-status');
+
+  // Forces Turnstile to issue a new token. Safe to call before the widget
+  // script has loaded — the next load issues a fresh token regardless.
+  function resetCaptcha() {
+    try {
+      if (window.turnstile && typeof window.turnstile.reset === 'function') {
+        window.turnstile.reset();
+      }
+    } catch (_) { /* nothing to reset yet */ }
+  }
 
   function showStatus(msg, type) {
     status.textContent = '';
@@ -437,6 +450,10 @@
       showStatus('Something went wrong: ' + err.message + '. Please try again.', 'error');
       btn.disabled = false;
       btn.textContent = 'Submit for review →';
+      // Turnstile tokens are single-use. The one in the hidden input was just
+      // spent on the attempt that failed, so without this reset every retry
+      // re-sends a consumed token and fails with timeout-or-duplicate.
+      resetCaptcha();
     }
   });
 </script>
