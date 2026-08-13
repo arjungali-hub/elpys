@@ -7,8 +7,7 @@
     // ── Dismissible beta banner below the header ─────────────────────────────
     if (sessionStorage.getItem(DISMISSED_KEY)) return;
 
-    var isSubdir = location.pathname.indexOf('/opportunities/') !== -1;
-    var feedbackHref = (isSubdir ? '../' : '') + 'feedback.html?from=' + encodeURIComponent(location.href);
+    var feedbackHref = 'feedback.html?from=' + encodeURIComponent(location.href);
 
     var banner = document.createElement('div');
     banner.id = 'beta-banner';

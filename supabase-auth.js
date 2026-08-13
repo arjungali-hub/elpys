@@ -33,9 +33,6 @@ function showModal(opts) {
   var SUPA_URL  = 'https://ukrykzmehvghedrvmkjj.supabase.co';
   var SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrcnlrem1laHZnaGVkcnZta2pqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzODc4NzgsImV4cCI6MjA5ODk2Mzg3OH0.J1J4p3lTbQKMc3GvWVlBxAZZV1jGYPIU4Jj_ePLndgM';
 
-  var isSubdir = location.pathname.indexOf('/opportunities/') !== -1;
-  var base     = isSubdir ? '../' : '';
-
   var authEl   = document.getElementById('header-auth-link');
   var signupEl = document.getElementById('header-signup-link');
 
@@ -61,16 +58,16 @@ function showModal(opts) {
         return a;
       }
 
-      adminGroup.appendChild(makeAdminLink('Feedback',              base + 'admin.html?view=feedback'));
-      adminGroup.appendChild(makeAdminLink('Edit opportunities',    base + 'admin.html?view=edit'));
-      adminGroup.appendChild(makeAdminLink('Approve opportunities', base + 'admin.html?view=confirm'));
+      adminGroup.appendChild(makeAdminLink('Feedback',              'admin.html?view=feedback'));
+      adminGroup.appendChild(makeAdminLink('Edit opportunities',    'admin.html?view=edit'));
+      adminGroup.appendChild(makeAdminLink('Approve opportunities', 'admin.html?view=confirm'));
 
       var adminLogoutBtn = document.createElement('button');
       adminLogoutBtn.textContent = 'Log out';
       adminLogoutBtn.className   = 'header-logout-btn';
       adminLogoutBtn.addEventListener('click', function () {
         sessionStorage.removeItem('elpys_admin_pw');
-        location.href = base + 'index.html';
+        location.href = 'index.html';
       });
       adminGroup.appendChild(adminLogoutBtn);
       inner.appendChild(adminGroup);
@@ -80,7 +77,7 @@ function showModal(opts) {
       sub.className = 'header-admin-sub';
 
       var subSubmit = document.createElement('a');
-      subSubmit.href      = base + 'submit.html';
+      subSubmit.href      = 'submit.html';
       subSubmit.textContent = 'Submit an opportunity';
       subSubmit.className   = 'header-admin-link';
       sub.appendChild(subSubmit);
@@ -122,7 +119,7 @@ function showModal(opts) {
   // ── Normal user session (async Supabase check) ───────────────────────────
   if (!authEl) return;
 
-  authEl.href        = base + 'login.html';
+  authEl.href        = 'login.html';
   authEl.textContent = 'Log in';
 
   var client = supabase.createClient(SUPA_URL, SUPA_ANON);
@@ -130,7 +127,7 @@ function showModal(opts) {
     var session = result.data && result.data.session;
     if (!session) return;
 
-    authEl.href        = base + 'account.html';
+    authEl.href        = 'account.html';
     authEl.textContent = 'My account';
 
     var logoutBtn = document.createElement('button');
@@ -143,7 +140,7 @@ function showModal(opts) {
         confirmText: 'Log out',
         onConfirm:   function () {
           client.auth.signOut().then(function () {
-            location.href = base + 'index.html';
+            location.href = 'index.html';
           });
         },
       });

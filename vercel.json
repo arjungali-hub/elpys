@@ -16,6 +16,13 @@
       "maxDuration": 10
     }
   },
+  "redirects": [
+    {
+      "source": "/opportunities/detail.html",
+      "destination": "/opportunities-detail.html",
+      "permanent": false
+    }
+  ],
   "crons": [
     {
       "path": "/api/send-digest",

@@ -73,7 +73,7 @@ function _transformRow(row) {
     name:    row.name,
     tag:     normalizedCategory,
     slug:    slug,
-    link:    'opportunities/detail.html?slug=' + slug,
+    link:    'opportunities-detail.html?slug=' + slug,
     address: row.address    || '',
     lat:     parseFloat(row.lat),
     lng:     parseFloat(row.lng),
