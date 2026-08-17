@@ -167,8 +167,7 @@ function opportunitySlug(opp) {
 }
 
 // ── Map marker icon ──────────────────────────────────────────────────────────
-// Inline SVG so the fill is an exact hex color. Moved here from
-// opportunities-data.js, which is now superseded by this file.
+// Inline SVG so the fill is an exact hex color.
 
 const MARKER_COLOR = '#FF2A00';
 const MARKER_SVG =
