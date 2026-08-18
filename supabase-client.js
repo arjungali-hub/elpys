@@ -95,8 +95,17 @@ function _transformRow(row) {
     _steps:        (() => {
                      const v = row.signup_steps;
                      if (!v) return [];
-                     const raw = Array.isArray(v) ? v.join(' | ') : String(v);
-                     return raw.split('|').map(s => s.trim()).filter(Boolean);
+                     if (Array.isArray(v)) return v.map(s => String(s).trim()).filter(Boolean);
+                     const s = String(v).trim();
+                     // Some early rows stored a JSON array in the text column;
+                     // render those as steps rather than as one line of JSON.
+                     if (s.charAt(0) === '[' && s.charAt(s.length - 1) === ']') {
+                       try {
+                         const parsed = JSON.parse(s);
+                         if (Array.isArray(parsed)) return parsed.map(x => String(x).trim()).filter(Boolean);
+                       } catch (e) { /* not JSON — fall through */ }
+                     }
+                     return s.split('|').map(x => x.trim()).filter(Boolean);
                    })(),
     _section:      (row.section       || 'online').toLowerCase(),
     _note:         row.card_note      || null,

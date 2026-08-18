@@ -45,21 +45,54 @@ module.exports = async function handler(req, res) {
     const { action, id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing id' });
 
+    // PATCH with return=minimal answers 204 even when the filter matched no
+    // rows, so a write that changed nothing looked identical to a successful
+    // one. Ask for the rows back and treat an empty result as a failure.
+    async function patchRow(body) {
+      const r = await fetch(
+        SUPABASE_URL + 'Opportunities?id=eq.' + encodeURIComponent(id),
+        {
+          method: 'PATCH',
+          headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' }),
+          body: JSON.stringify(body),
+        }
+      );
+      const text = await r.text().catch(() => '');
+      let parsed = null;
+      try { parsed = JSON.parse(text); } catch (_) { /* leave raw */ }
+
+      if (!r.ok) {
+        console.error('Admin PATCH failed:', r.status, text);
+        return {
+          ok: false, status: r.status,
+          payload: {
+            error:   'Save failed.',
+            message: (parsed && parsed.message) || text.slice(0, 500) || null,
+            details: (parsed && parsed.details) || null,
+            hint:    (parsed && parsed.hint)    || null,
+            code:    (parsed && parsed.code)    || null,
+          },
+        };
+      }
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        console.error('Admin PATCH matched no rows for id', id);
+        return {
+          ok: false, status: 404,
+          payload: { error: 'Nothing was saved — no opportunity matched id ' + id + '.' },
+        };
+      }
+      return { ok: true, row: parsed[0] };
+    }
+
     if (action === 'approve') {
       const { lat, lng, slug } = req.body;
       if (!slug || lat == null || lng == null) {
         return res.status(400).json({ error: 'slug, lat, and lng are required to approve' });
       }
 
-      const r = await fetch(
-        SUPABASE_URL + 'Opportunities?id=eq.' + encodeURIComponent(id),
-        {
-          method: 'PATCH',
-          headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
-          body: JSON.stringify({ status: 'published', slug: slug.trim(), lat: parseFloat(lat), lng: parseFloat(lng) }),
-        }
-      );
-      return res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
+      const out = await patchRow({ status: 'published', slug: slug.trim(), lat: parseFloat(lat), lng: parseFloat(lng) });
+      if (!out.ok) return res.status(out.status).json(out.payload);
+      return res.status(200).json({ ok: true });
     }
 
     if (action === 'update') {
@@ -74,27 +107,15 @@ module.exports = async function handler(req, res) {
       if (Object.keys(updates).length === 0) {
         return res.status(400).json({ error: 'No fields to update' });
       }
-      const r = await fetch(
-        SUPABASE_URL + 'Opportunities?id=eq.' + encodeURIComponent(id),
-        {
-          method: 'PATCH',
-          headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
-          body: JSON.stringify(updates),
-        }
-      );
-      return res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
+      const out = await patchRow(updates);
+      if (!out.ok) return res.status(out.status).json(out.payload);
+      return res.status(200).json({ ok: true, saved: Object.keys(updates) });
     }
 
     if (action === 'unpublish') {
-      const r = await fetch(
-        SUPABASE_URL + 'Opportunities?id=eq.' + encodeURIComponent(id),
-        {
-          method: 'PATCH',
-          headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
-          body: JSON.stringify({ status: 'pending' }),
-        }
-      );
-      return res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
+      const out = await patchRow({ status: 'pending' });
+      if (!out.ok) return res.status(out.status).json(out.payload);
+      return res.status(200).json({ ok: true });
     }
 
     if (action === 'reject' || action === 'delete') {

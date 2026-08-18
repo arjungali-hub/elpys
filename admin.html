@@ -311,7 +311,7 @@
     card.className = 'submission-card';
     card.id = 'card-' + row.id;
 
-    const steps = Array.isArray(row.signup_steps) ? row.signup_steps : [];
+    const steps = stepsToArray(row.signup_steps);
     const stepsHtml = steps.length ? '<ol class="sub-steps">' + steps.map(s => '<li>' + esc(s) + '</li>').join('') + '</ol>' : '';
     const noteHtml      = row.card_note   ? '<p class="sub-note">' + esc(row.card_note) + '</p>' : '';
     const adminNoteHtml = row.admin_notes ? '<p style="font-size:0.8125rem;background:var(--bg-secondary);border:1px solid var(--border);border-left:3px solid var(--text-main);border-radius:5px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;"><strong>Admin note:</strong> ' + esc(row.admin_notes) + '</p>' : '';
@@ -326,7 +326,7 @@
         '<span>Section: ' + esc(row.section || '—') + '</span>' +
       '</div>' +
       '<p class="sub-desc">' + esc(row.description || '') + '</p>' +
-      (row.detail_description ? '<p style="font-size:0.8125rem;font-weight:600;margin:0.5rem 0 0.2rem;">Full description</p><p class="sub-desc" style="color:var(--text-muted);">' + esc(row.detail_description) + '</p>' : '') +
+      (row.long_description ? '<p style="font-size:0.8125rem;font-weight:600;margin:0.5rem 0 0.2rem;">Full description</p><p class="sub-desc" style="color:var(--text-muted);">' + esc(row.long_description) + '</p>' : '') +
       '<p style="font-size:0.8125rem;font-weight:600;margin-bottom:0.3rem;">Sign-up steps</p>' +
       stepsHtml + noteHtml + adminNoteHtml +
       '<div class="sub-links">' +
@@ -341,12 +341,20 @@
           '<div class="approve-field"><label for="lng-' + row.id + '">Longitude</label><input id="lng-' + row.id + '" type="text" class="short" placeholder="e.g. -122.2054" /></div>' +
         '</div>' +
       '</div>' +
-      '<div class="sub-actions">' +
+      // Same inline editor as published cards, so a submission can be cleaned up
+      // before approving rather than published and then fixed. Slug/lat/lng stay
+      // in the approve panel above so there is only one place to enter them.
+      editFormHtml(row, { withPlacement: false, withMsg: false }) +
+      '<div class="sub-actions" id="actions-' + row.id + '">' +
+        '<button class="btn-edit">Edit</button>' +
         '<button class="btn-approve">Approve</button>' +
         '<button class="btn-reject">Reject</button>' +
         '<span class="sub-action-msg" id="msg-' + row.id + '"></span>' +
       '</div>';
 
+    card.querySelector('.btn-edit').addEventListener('click',    () => toggleEdit(row.id));
+    card.querySelector('.btn-save').addEventListener('click',    () => handleSave(row.id));
+    card.querySelector('.btn-cancel').addEventListener('click',  () => toggleEdit(row.id, false));
     card.querySelector('.btn-approve').addEventListener('click', () => handleApprove(row.id));
     card.querySelector('.btn-reject').addEventListener('click',  () => handleReject(row.id));
     return card;
@@ -401,8 +409,6 @@
     card.className = 'submission-card';
     card.id = 'card-' + row.id;
 
-    const stepsText = Array.isArray(row.signup_steps) ? row.signup_steps.join('\n') : '';
-
     card.innerHTML =
       '<div class="sub-name">' + esc(row.name) + '</div>' +
       '<div class="sub-meta">' +
@@ -415,34 +421,7 @@
         '<span>Lng: ' + esc(row.lng != null ? row.lng : '—') + '</span>' +
       '</div>' +
 
-      // ── Inline edit form ──
-      '<div class="edit-form" id="edit-' + row.id + '">' +
-        '<div class="edit-grid">' +
-          ef('Name',          'text',     'e-name-'    + row.id, esc(row.name || '')) +
-          ef('Category',      'text',     'e-cat-'     + row.id, esc(row.category || '')) +
-          ef('Age display',   'text',     'e-age-'     + row.id, esc(row.age_display || '')) +
-          ef('Age min',       'number',   'e-agemin-'  + row.id, esc(row.age_min != null ? row.age_min : '')) +
-          ef('When',          'text',     'e-when-'    + row.id, esc(row['when'] || '')) +
-          ef('Where',         'text',     'e-where-'   + row.id, esc(row['where'] || '')) +
-          ef('Address',       'text',     'e-addr-'    + row.id, esc(row.address || '')) +
-          ef('Slug',          'text',     'e-slug-'    + row.id, esc(row.slug || '')) +
-          ef('Latitude',      'text',     'e-lat-'     + row.id, esc(row.lat != null ? row.lat : '')) +
-          ef('Longitude',     'text',     'e-lng-'     + row.id, esc(row.lng != null ? row.lng : '')) +
-          ef('Sign-up link',  'text',     'e-link-'    + row.id, esc(row.signup_link || '')) +
-          ef('Sign-up label', 'text',     'e-label-'   + row.id, esc(row.signup_label || '')) +
-          efSelect('Section', 'e-section-' + row.id, row.section || 'online') +
-          efArea('Card description', 'e-desc-' + row.id, esc(row.description || ''), false) +
-          efArea('Full description (detail page)', 'e-detaildesc-' + row.id, esc(row.detail_description || ''), false) +
-          efArea('Sign-up steps (one per line)', 'e-steps-' + row.id, esc(stepsText), false) +
-          efArea('Card note', 'e-note-' + row.id, esc(row.card_note || ''), false) +
-          efArea('Admin notes (not shown on site)', 'e-adminnotes-' + row.id, esc(row.admin_notes || ''), false) +
-        '</div>' +
-        '<div class="edit-actions">' +
-          '<button class="btn-save">Save changes</button>' +
-          '<button class="btn-cancel">Cancel</button>' +
-          '<span class="sub-action-msg" id="msg-' + row.id + '"></span>' +
-        '</div>' +
-      '</div>' +
+      editFormHtml(row, { withPlacement: true, withMsg: true }) +
 
       '<div class="sub-actions" id="actions-' + row.id + '">' +
         '<button class="btn-edit">Edit</button>' +
@@ -457,6 +436,66 @@
     card.querySelector('.btn-unpublish').addEventListener('click', () => handleUnpublish(row));
     card.querySelector('.btn-delete').addEventListener('click',    () => handleDelete(row.id, row.name));
     return card;
+  }
+
+  // signup_steps is a TEXT column holding " | "-separated steps. Older rows can
+  // still hold a JSON array, so read both shapes but always write the string.
+  function stepsToArray(v) {
+    if (!v) return [];
+    if (Array.isArray(v)) return v;
+    const s = String(v).trim();
+    // Rows written before the format fix hold a JSON array serialised into the
+    // text column, e.g. ["a","b"]. Parse those back so they show as real steps
+    // and get rewritten in the correct format on the next save.
+    if (s.charAt(0) === '[' && s.charAt(s.length - 1) === ']') {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed.map(x => String(x).trim()).filter(Boolean);
+      } catch (_) { /* not JSON after all — treat as a normal string */ }
+    }
+    return s.split('|').map(x => x.trim()).filter(Boolean);
+  }
+  function stepsToLines(v) { return stepsToArray(v).join('\n'); }
+  function linesToSteps(text) {
+    return String(text == null ? '' : text).split('\n')
+      .map(s => s.replace(/\|/g, '/').trim()).filter(Boolean).join(' | ');
+  }
+
+  // The inline edit form, shared by pending and published cards.
+  // Pending cards keep slug/lat/lng in the approve panel instead, and reuse the
+  // message span already in their action row.
+  function editFormHtml(row, opts) {
+    opts = opts || {};
+    const stepsText = stepsToLines(row.signup_steps);
+    return '<div class="edit-form" id="edit-' + row.id + '">' +
+      '<div class="edit-grid">' +
+        ef('Name',          'text',   'e-name-'    + row.id, esc(row.name || '')) +
+        ef('Category',      'text',   'e-cat-'     + row.id, esc(row.category || '')) +
+        ef('Age display',   'text',   'e-age-'     + row.id, esc(row.age_display || '')) +
+        ef('Age min',       'number', 'e-agemin-'  + row.id, esc(row.age_min != null ? row.age_min : '')) +
+        ef('When',          'text',   'e-when-'    + row.id, esc(row['when'] || '')) +
+        ef('Where',         'text',   'e-where-'   + row.id, esc(row['where'] || '')) +
+        ef('Address',       'text',   'e-addr-'    + row.id, esc(row.address || '')) +
+        (opts.withPlacement
+          ? ef('Slug',      'text',   'e-slug-'    + row.id, esc(row.slug || '')) +
+            ef('Latitude',  'text',   'e-lat-'     + row.id, esc(row.lat != null ? row.lat : '')) +
+            ef('Longitude', 'text',   'e-lng-'     + row.id, esc(row.lng != null ? row.lng : ''))
+          : '') +
+        ef('Sign-up link',  'text',   'e-link-'    + row.id, esc(row.signup_link || '')) +
+        ef('Sign-up label', 'text',   'e-label-'   + row.id, esc(row.signup_label || '')) +
+        efSelect('Section', 'e-section-' + row.id, row.section || 'online') +
+        efArea('Card description', 'e-desc-' + row.id, esc(row.description || ''), false) +
+        efArea('Full description (detail page)', 'e-detaildesc-' + row.id, esc(row.long_description || ''), false) +
+        efArea('Sign-up steps (one per line)', 'e-steps-' + row.id, esc(stepsText), false) +
+        efArea('Card note', 'e-note-' + row.id, esc(row.card_note || ''), false) +
+        efArea('Admin notes (not shown on site)', 'e-adminnotes-' + row.id, esc(row.admin_notes || ''), false) +
+      '</div>' +
+      '<div class="edit-actions">' +
+        '<button class="btn-save">Save changes</button>' +
+        '<button class="btn-cancel">Cancel</button>' +
+        (opts.withMsg ? '<span class="sub-action-msg" id="msg-' + row.id + '"></span>' : '') +
+      '</div>' +
+    '</div>';
   }
 
   // Small helpers for building edit form fields
@@ -486,31 +525,44 @@
   }
 
   async function handleSave(id) {
-    const g = fid => document.getElementById(fid).value;
-    const stepsRaw = g('e-steps-' + id).split('\n').map(s => s.trim()).filter(Boolean);
+    // Returns null when the field is not on this card — pending cards omit
+    // slug/lat/lng — so an absent field is left untouched rather than blanked.
+    const g = fid => { const el = document.getElementById(fid); return el ? el.value : null; };
 
-    const payload = {
-      action:       'update',
-      id,
-      name:         g('e-name-'    + id).trim(),
-      description:        g('e-desc-'       + id).trim(),
-      detail_description: g('e-detaildesc-' + id).trim() || null,
-      category:     g('e-cat-'     + id).trim(),
-      age_display:  g('e-age-'     + id).trim(),
-      age_min:      g('e-agemin-'  + id) ? parseInt(g('e-agemin-' + id), 10) : null,
-      'when':       g('e-when-'    + id).trim(),
-      'where':      g('e-where-'   + id).trim(),
-      address:      g('e-addr-'    + id).trim(),
-      slug:         g('e-slug-'    + id).trim(),
-      lat:          parseFloat(g('e-lat-' + id)) || null,
-      lng:          parseFloat(g('e-lng-' + id)) || null,
-      signup_link:  g('e-link-'   + id).trim(),
-      signup_label: g('e-label-'  + id).trim() || null,
-      signup_steps: stepsRaw,
-      section:      g('e-section-' + id),
-      card_note:    g('e-note-'       + id).trim() || null,
-      admin_notes:  g('e-adminnotes-' + id).trim() || null,
-    };
+    const payload = { action: 'update', id };
+    const set = (key, val) => { if (val !== null && val !== undefined) payload[key] = val; };
+    const text = fid => { const v = g(fid); return v === null ? null : v.trim(); };
+    const orNull = fid => { const v = text(fid); return v === null ? null : (v || null); };
+
+    set('name',             text('e-name-' + id));
+    set('description',      text('e-desc-' + id));
+    // The column is long_description; sending detail_description silently
+    // dropped every full-description edit, since the API ignores unknown keys.
+    set('long_description', orNull('e-detaildesc-' + id));
+    set('category',         text('e-cat-' + id));
+    set('age_display',      text('e-age-' + id));
+    set('when',             text('e-when-' + id));
+    set('where',            text('e-where-' + id));
+    set('address',          text('e-addr-' + id));
+    set('signup_link',      text('e-link-' + id));
+    set('signup_label',     orNull('e-label-' + id));
+    set('section',          g('e-section-' + id));
+    set('card_note',        orNull('e-note-' + id));
+    set('admin_notes',      orNull('e-adminnotes-' + id));
+
+    const ageMin = g('e-agemin-' + id);
+    if (ageMin !== null) payload.age_min = ageMin ? parseInt(ageMin, 10) : null;
+
+    // signup_steps is TEXT — join, never send an array
+    const stepsVal = g('e-steps-' + id);
+    if (stepsVal !== null) payload.signup_steps = linesToSteps(stepsVal);
+
+    const slug = text('e-slug-' + id);
+    if (slug !== null) payload.slug = slug;
+    const latVal = g('e-lat-' + id);
+    if (latVal !== null) payload.lat = parseFloat(latVal) || null;
+    const lngVal = g('e-lng-' + id);
+    if (lngVal !== null) payload.lng = parseFloat(lngVal) || null;
 
     const saveBtn = document.getElementById('edit-' + id).querySelector('.btn-save');
     saveBtn.disabled = true;
@@ -518,7 +570,15 @@
 
     try {
       const res = await postAction(payload);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'HTTP ' + res.status); }
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        console.error('Save failed — full response:', e);
+        const parts = [e.error || 'HTTP ' + res.status];
+        if (e.message) parts.push(e.message);
+        if (e.details) parts.push(e.details);
+        if (e.hint)    parts.push('Hint: ' + e.hint);
+        throw new Error(parts.join(' — '));
+      }
       setCardMsg(id, '✓ Saved.', '#111827');
       // Update the visible name and meta in the card header
       const card = document.getElementById('card-' + id);
