@@ -91,6 +91,22 @@
     .edit-field { display: flex; flex-direction: column; gap: 0.25rem; }
     .edit-field.full { grid-column: 1 / -1; }
     .edit-field label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+    /* Category picker — same four options as the public submit form, so a
+       typo or stray capital can no longer create a one-off category. */
+    .cat-group { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; padding: 0.15rem 0; }
+    .cat-check { display: flex; align-items: center; gap: 0.35rem; font-size: 0.875rem;
+                 font-weight: 400; color: var(--text-main); cursor: pointer; text-transform: none; }
+    .cat-check input { width: auto; }
+    .cat-other { margin-top: 0.35rem; }
+    /* Weekly schedule grid — mirrors the picker on the submit form */
+    .sched-grid { display: grid; grid-template-columns: 2.6rem 1fr 1fr 1fr; gap: 3px; margin-top: 0.3rem; }
+    .sched-head { font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+                  color: var(--text-subtle); text-align: center; padding-bottom: 0.15rem; }
+    .sched-day { font-size: 0.6875rem; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; }
+    .avail-cell { height: 26px; padding: 0; background: var(--bg-surface); border: 1px solid var(--border);
+                  border-radius: 4px; cursor: pointer; transition: background 0.1s, border-color 0.1s; }
+    .avail-cell:hover { border-color: var(--border-strong); }
+    .avail-cell.active { background: var(--text-main); border-color: var(--text-main); }
     .edit-field input, .edit-field textarea, .edit-field select {
       font-family: inherit; font-size: 0.875rem; border: 1px solid var(--border-strong);
       border-radius: var(--radius); padding: 0.5rem 0.7rem; background: var(--bg-primary); color: var(--text-main);
@@ -352,6 +368,7 @@
         '<span class="sub-action-msg" id="msg-' + row.id + '"></span>' +
       '</div>';
 
+    wireScheduleCells(card);
     card.querySelector('.btn-edit').addEventListener('click',    () => toggleEdit(row.id));
     card.querySelector('.btn-save').addEventListener('click',    () => handleSave(row.id));
     card.querySelector('.btn-cancel').addEventListener('click',  () => toggleEdit(row.id, false));
@@ -430,6 +447,7 @@
         '<span class="sub-action-msg" id="msg2-' + row.id + '"></span>' +
       '</div>';
 
+    wireScheduleCells(card);
     card.querySelector('.btn-edit').addEventListener('click',      () => toggleEdit(row.id));
     card.querySelector('.btn-save').addEventListener('click',      () => handleSave(row.id));
     card.querySelector('.btn-cancel').addEventListener('click',    () => toggleEdit(row.id, false));
@@ -470,7 +488,6 @@
     return '<div class="edit-form" id="edit-' + row.id + '">' +
       '<div class="edit-grid">' +
         ef('Name',          'text',   'e-name-'    + row.id, esc(row.name || '')) +
-        ef('Category',      'text',   'e-cat-'     + row.id, esc(row.category || '')) +
         ef('Age display',   'text',   'e-age-'     + row.id, esc(row.age_display || '')) +
         ef('Age min',       'number', 'e-agemin-'  + row.id, esc(row.age_min != null ? row.age_min : '')) +
         ef('When',          'text',   'e-when-'    + row.id, esc(row['when'] || '')) +
@@ -484,6 +501,8 @@
         ef('Sign-up link',  'text',   'e-link-'    + row.id, esc(row.signup_link || '')) +
         ef('Sign-up label', 'text',   'e-label-'   + row.id, esc(row.signup_label || '')) +
         efSelect('Section', 'e-section-' + row.id, row.section || 'online') +
+        efCategories(row.id, row.category) +
+        efSchedule(row.id, row.schedule) +
         efArea('Card description', 'e-desc-' + row.id, esc(row.description || ''), false) +
         efArea('Full description (detail page)', 'e-detaildesc-' + row.id, esc(row.long_description || ''), false) +
         efArea('Sign-up steps (one per line)', 'e-steps-' + row.id, esc(stepsText), false) +
@@ -496,6 +515,86 @@
         (opts.withMsg ? '<span class="sub-action-msg" id="msg-' + row.id + '"></span>' : '') +
       '</div>' +
     '</div>';
+  }
+
+  // ── Category picker ────────────────────────────────────────────────────────
+  // Categories are stored lowercase and comma-separated ("community, food").
+  const CATEGORIES = ['Animals', 'Community', 'Environment', 'Food'];
+
+  function splitCategories(value) {
+    return String(value == null ? '' : value)
+      .split(/\s*[·,]\s*/).map(c => c.trim().toLowerCase()).filter(Boolean);
+  }
+
+  function efCategories(id, value) {
+    const current = splitCategories(value);
+    const known   = CATEGORIES.map(c => c.toLowerCase());
+    const extras  = current.filter(c => known.indexOf(c) === -1);
+    const boxes = CATEGORIES.map(c => {
+      const v = c.toLowerCase();
+      return '<label class="cat-check"><input type="checkbox" data-cat="' + id + '" value="' + v + '"' +
+             (current.indexOf(v) !== -1 ? ' checked' : '') + '> ' + c + '</label>';
+    }).join('');
+    return '<div class="edit-field full"><label>Category</label>' +
+             '<div class="cat-group">' + boxes + '</div>' +
+             '<input class="cat-other" id="e-cat-other-' + id + '" type="text" ' +
+               'placeholder="Anything else, comma-separated" value="' + esc(extras.join(', ')) + '" />' +
+           '</div>';
+  }
+
+  function readCategories(id) {
+    const boxes = Array.prototype.slice
+      .call(document.querySelectorAll('input[data-cat="' + id + '"]:checked'))
+      .map(b => b.value);
+    const otherEl = document.getElementById('e-cat-other-' + id);
+    const extras = otherEl ? splitCategories(otherEl.value) : [];
+    return boxes.concat(extras).filter((v, i, a) => a.indexOf(v) === i).sort();
+  }
+
+  // ── Weekly schedule grid ───────────────────────────────────────────────────
+  const SCHED_DAYS  = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+  const SCHED_ABBR  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const SCHED_SLOTS = ['morning','afternoon','evening'];
+
+  function efSchedule(id, schedule) {
+    const s = (schedule && typeof schedule === 'object' && !Array.isArray(schedule)) ? schedule : {};
+    const head = '<div class="sched-head"></div>' +
+      ['Morning','Afternoon','Evening'].map(l => '<div class="sched-head">' + l + '</div>').join('');
+    const rows = SCHED_DAYS.map((day, i) => {
+      const on = Array.isArray(s[day]) ? s[day] : [];
+      return '<div class="sched-day">' + SCHED_ABBR[i] + '</div>' +
+        SCHED_SLOTS.map(slot =>
+          '<button type="button" class="avail-cell' + (on.indexOf(slot) !== -1 ? ' active' : '') + '"' +
+          ' data-sched="' + id + '" data-day="' + day + '" data-slot="' + slot + '"' +
+          ' aria-pressed="' + (on.indexOf(slot) !== -1 ? 'true' : 'false') + '"' +
+          ' aria-label="' + SCHED_ABBR[i] + ' ' + slot + '"></button>'
+        ).join('');
+    }).join('');
+    return '<div class="edit-field full"><label>Weekly schedule</label>' +
+             '<div class="sched-grid">' + head + rows + '</div>' +
+           '</div>';
+  }
+
+  function readSchedule(id) {
+    const cells = document.querySelectorAll('[data-sched="' + id + '"]');
+    if (!cells.length) return undefined;          // grid not on this card
+    const out = {};
+    SCHED_DAYS.forEach(d => { out[d] = []; });
+    let any = false;
+    Array.prototype.forEach.call(cells, c => {
+      if (c.classList.contains('active')) { out[c.dataset.day].push(c.dataset.slot); any = true; }
+    });
+    return any ? out : null;                       // null clears the column
+  }
+
+  // Toggling a schedule cell, for cards built via innerHTML.
+  function wireScheduleCells(card) {
+    card.addEventListener('click', function (e) {
+      const cell = e.target.closest ? e.target.closest('.avail-cell') : null;
+      if (!cell) return;
+      const on = cell.classList.toggle('active');
+      cell.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
   }
 
   // Small helpers for building edit form fields
@@ -539,7 +638,6 @@
     // The column is long_description; sending detail_description silently
     // dropped every full-description edit, since the API ignores unknown keys.
     set('long_description', orNull('e-detaildesc-' + id));
-    set('category',         text('e-cat-' + id));
     set('age_display',      text('e-age-' + id));
     set('when',             text('e-when-' + id));
     set('where',            text('e-where-' + id));
@@ -552,6 +650,20 @@
 
     const ageMin = g('e-agemin-' + id);
     if (ageMin !== null) payload.age_min = ageMin ? parseInt(ageMin, 10) : null;
+
+    // Category comes from the checkboxes plus anything in the "other" box.
+    // Refuse to save it away entirely rather than blank a required field.
+    const cats = readCategories(id);
+    if (document.getElementById('e-cat-other-' + id)) {
+      if (!cats.length) {
+        setCardMsg(id, 'Pick at least one category.', '#111827');
+        return;
+      }
+      payload.category = cats.join(', ');
+    }
+
+    const sched = readSchedule(id);
+    if (sched !== undefined) payload.schedule = sched;
 
     // signup_steps is TEXT — join, never send an array
     const stepsVal = g('e-steps-' + id);
