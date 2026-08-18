@@ -264,28 +264,52 @@ async function handleSubmit(req, res) {
   };
 
   // ── 7. Insert via service role key ────────────────────────────────────────
-  const r = await fetch(SUPABASE_URL + 'Opportunities', {
-    method:  'POST',
-    headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
-    body:    JSON.stringify(payload),
-  });
-
-  if (!r.ok) {
+  async function insertRow(row) {
+    const r = await fetch(SUPABASE_URL + 'Opportunities', {
+      method:  'POST',
+      headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+      body:    JSON.stringify(row),
+    });
+    if (r.ok) return { ok: true };
     const detail = await r.text().catch(() => '');
     let parsed = null;
     try { parsed = JSON.parse(detail); } catch (_) { /* not JSON — fall back to raw text */ }
-    console.error('Supabase insert failed:', r.status, detail);
+    return { ok: false, status: r.status, detail, parsed };
+  }
+
+  let result = await insertRow(payload);
+
+  // The submit form's weekly schedule picker posts a `schedule` object, but the
+  // Opportunities table has no such column — PostgREST rejects the whole insert
+  // (PGRST204) even when the value is null, which failed every submission.
+  // Drop it and retry rather than lose the submission; once the column exists
+  // the first insert succeeds and this path stops running. To keep the
+  // structured schedule (used for availability matching in the weekly digest):
+  //   alter table "Opportunities" add column schedule jsonb;
+  if (!result.ok && result.parsed && result.parsed.code === 'PGRST204' &&
+      /schedule/.test(String(result.parsed.message || ''))) {
+    console.warn('Opportunities.schedule column missing — retrying without it. ' +
+                 'Add it with: alter table "Opportunities" add column schedule jsonb;');
+    const retry = Object.assign({}, payload);
+    delete retry.schedule;
+    result = await insertRow(retry);
+    if (result.ok) return res.status(200).json({ ok: true, warning: 'schedule-column-missing' });
+  }
+
+  if (!result.ok) {
+    console.error('Supabase insert failed:', result.status, result.detail);
+    const p = result.parsed;
 
     // Surface PostgREST's actual complaint (message/details/hint/code) instead
     // of a bare 500, so a column-type or constraint mismatch is diagnosable
     // from the response rather than only from the Vercel logs.
     return res.status(500).json({
       error:          'Submission failed. Please try again.',
-      supabaseStatus: r.status,
-      message:        (parsed && parsed.message) || detail.slice(0, 500) || null,
-      details:        (parsed && parsed.details) || null,
-      hint:           (parsed && parsed.hint)    || null,
-      code:           (parsed && parsed.code)    || null,
+      supabaseStatus: result.status,
+      message:        (p && p.message) || String(result.detail || '').slice(0, 500) || null,
+      details:        (p && p.details) || null,
+      hint:           (p && p.hint)    || null,
+      code:           (p && p.code)    || null,
     });
   }
 
