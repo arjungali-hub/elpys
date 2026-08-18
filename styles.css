@@ -55,7 +55,10 @@ header {
 .header-inner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* The split is done by margin-right:auto on .beta-badge, not by
+     space-between: only some pages carry the submit link, and with
+     space-between those pages spread every item evenly across the bar. */
+  justify-content: flex-start;
   gap: 1rem;
 }
 .site-name {
@@ -81,8 +84,8 @@ header {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 3.8em;
-  height: 2.2em;
+  width: 3.1em;
+  height: 2.0em;
   transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: -1;
@@ -135,7 +138,6 @@ header {
 .header-signup-btn:hover,
 .header-admin-link:hover,
 .header-logout-btn:hover { background: var(--off); }
-.header-submit-link { margin-left: auto; }
 .header-admin-sub {
   display: flex;
   align-items: center;
@@ -209,8 +211,10 @@ header {
   color: #4B5563;
   border-radius: 999px;
   padding: 0.1rem 0.45rem;
-  /* clears the logo's sparkle field, which overhangs the wordmark's box */
-  margin-left: 0.35rem;
+  /* Sits beside the wordmark and pushes everything after it to the right,
+     so the nav groups on the right on every page whatever links it has.
+     The 1rem flex gap already clears the logo's sparkle overhang. */
+  margin-right: auto;
   flex-shrink: 0;
 }
 
