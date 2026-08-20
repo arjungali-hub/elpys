@@ -218,6 +218,21 @@ header {
   flex-shrink: 0;
 }
 
+/* Signals that the header is in admin mode. Inverted against .beta-badge so
+   the two read as different things sitting side by side. */
+.admin-badge {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--body);
+  color: var(--white);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+}
+
 /* ── Beta banner — remove once site launches ── */
 #beta-banner {
   position: relative;

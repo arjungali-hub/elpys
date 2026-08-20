@@ -52,6 +52,29 @@ function failure(label, status, text, parsed) {
   };
 }
 
+// Is the Supabase project reachable? A paused project refuses connections or
+// answers 5xx, which is distinguishable from a bad key (401) or a missing table
+// (404) — those are reported as 'error' rather than silently called "paused".
+async function probeSupabase() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const r = await fetch(SUPABASE_URL + 'Opportunities?select=id&limit=1', {
+      headers: supabaseHeaders(), signal: controller.signal,
+    });
+    if (r.ok) return { state: 'active', detail: null };
+    const body = await readJson(r);
+    const message = (body.parsed && body.parsed.message) || String(body.text || '').slice(0, 200) || null;
+    if (r.status >= 500) return { state: 'paused', detail: 'HTTP ' + r.status + (message ? ' — ' + message : '') };
+    return { state: 'error', detail: 'HTTP ' + r.status + (message ? ' — ' + message : '') };
+  } catch (err) {
+    const detail = err && err.name === 'AbortError' ? 'No response within 8s' : (err && err.message) || String(err);
+    return { state: 'paused', detail: detail };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 module.exports = async function handler(req, res) {
   try {
     return await handleReview(req, res);
@@ -85,6 +108,14 @@ async function handleReview(req, res) {
 
   // ── GET — pending queue + recently resolved ─────────────────────────────────
   if (req.method === 'GET') {
+    // Supabase pauses free projects after inactivity, and a paused project fails
+    // every REST call. Probe a known table first so the page can report "paused"
+    // rather than dying on the flag queries with a generic error.
+    const supabase = await probeSupabase();
+    if (supabase.state !== 'active') {
+      return res.status(200).json({ supabase, pending: [], resolved: [] });
+    }
+
     const [pendingRes, resolvedRes] = await Promise.all([
       fetch(SUPABASE_URL + 'data_review_flags?status=eq.pending&select=*&order=last_flagged_at.desc.nullslast,created_at.desc',
         { headers: supabaseHeaders() }),
@@ -130,6 +161,7 @@ async function handleReview(req, res) {
     });
 
     return res.status(200).json({
+      supabase,
       pending:  pending.map(attach),
       resolved: resolved.map(attach),
     });

@@ -32,6 +32,15 @@
            background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
     .head-row a:hover, .head-row button:hover { color: var(--text-main); }
 
+    /* Supabase reachability, checked server-side on each load */
+    .supa-status { font-size: 0.75rem; color: var(--text-muted); display: inline-flex; align-items: center;
+      gap: 0.35rem; border: 1px solid var(--border); background: var(--bg-primary);
+      border-radius: 999px; padding: 0.1rem 0.55rem; white-space: nowrap; }
+    .supa-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-subtle); flex-shrink: 0; }
+    .supa-status.is-active .supa-dot { background: var(--text-main); }
+    .supa-status.is-paused { color: var(--text-main); border-color: var(--text-main); }
+    .supa-status.is-paused .supa-dot { background: var(--bg-primary); border: 1.5px solid var(--text-main); }
+
     /* Login */
     #login-panel { max-width: 340px; }
     .login-row { display: flex; gap: 0.5rem; }
@@ -109,9 +118,8 @@
 
   <div class="head-row">
     <h1 style="margin-bottom:0;display:flex;align-items:center;gap:0.4rem;"><img src="logos/elpys-logo-mark.svg" style="height:22px;width:auto;display:block;" alt="" aria-hidden="true">Data Review</h1>
-    <a href="admin.html">← Admin</a>
-    <a href="index.html">Home</a>
-    <button id="admin-logout-btn" onclick="adminLogout()" style="display:none;">Log out</button>
+    <a href="index.html">← Home</a>
+    <span id="supabase-status" class="supa-status" hidden></span>
   </div>
   <p class="subtitle">Flags raised by the weekly automated accuracy check. Your decision is recorded here; the next scheduled run applies the fix and resolves the flag.</p>
 
@@ -156,9 +164,18 @@
     el.style.color = type === 'error' ? '#111827' : '#6B7280';
   }
 
-  function adminLogout() {
-    sessionStorage.removeItem('elpys_admin_pw');
-    location.reload();
+  // Reachability of the Supabase project, as reported by the server.
+  function renderSupabaseStatus(status) {
+    const el = document.getElementById('supabase-status');
+    const state = (status && status.state) || 'unknown';
+    const label = state === 'active' ? 'Active'
+                : state === 'paused' ? 'Paused'
+                : state === 'error'  ? 'Error'
+                : 'Unknown';
+    el.className = 'supa-status' + (state === 'active' ? ' is-active' : state === 'paused' ? ' is-paused' : '');
+    el.innerHTML = '<span class="supa-dot"></span>Supabase: ' + esc(label);
+    if (status && status.detail) el.title = status.detail;
+    el.hidden = false;
   }
 
   // ── Auth ───────────────────────────────────────────────────────────────────
@@ -190,11 +207,21 @@
         throw new Error([e.error || 'HTTP ' + res.status, e.message, e.details].filter(Boolean).join(' — '));
       }
 
-      const { pending, resolved } = await res.json();
+      const { pending, resolved, supabase } = await res.json();
       sessionStorage.setItem('elpys_admin_pw', _password);
       document.getElementById('login-panel').style.display = 'none';
-      document.getElementById('admin-logout-btn').style.display = 'inline';
       document.getElementById('content').style.display = 'block';
+      renderSupabaseStatus(supabase);
+      if (supabase && supabase.state !== 'active') {
+        // Nothing could be read, so show why rather than an empty queue that
+        // looks like "no flags".
+        document.getElementById('pending-list').innerHTML =
+          '<div class="empty-state">Could not reach Supabase (' + esc(supabase.state) + ')' +
+          (supabase.detail ? ': ' + esc(supabase.detail) : '') +
+          '. The queue cannot load until the project is running again.</div>';
+        document.getElementById('resolved-list').innerHTML = '';
+        return;
+      }
       renderPending(pending || []);
       renderResolved(resolved || []);
     } catch (err) {

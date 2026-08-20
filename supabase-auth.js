@@ -46,6 +46,16 @@ function showModal(opts) {
 
     var inner = document.querySelector('.header-inner');
     if (inner) {
+      // Mode indicator, next to the wordmark so it reads as state rather than
+      // as another nav item. Sits before .beta-badge, whose margin-right:auto
+      // is what splits the header into left and right groups.
+      var adminBadge = document.createElement('span');
+      adminBadge.className   = 'admin-badge';
+      adminBadge.textContent = 'Admin';
+      var siteName = inner.querySelector('.site-name');
+      if (siteName && siteName.nextSibling) inner.insertBefore(adminBadge, siteName.nextSibling);
+      else if (siteName) inner.appendChild(adminBadge);
+
       // ── Row 1: admin nav links ───────────────────────────────────────────
       var adminGroup = document.createElement('div');
       adminGroup.style.cssText = 'display:flex;gap:0.5rem;align-items:center;margin-left:auto;';
@@ -59,7 +69,6 @@ function showModal(opts) {
       }
 
       adminGroup.appendChild(makeAdminLink('Feedback',              'admin.html?view=feedback'));
-      adminGroup.appendChild(makeAdminLink('Edit opportunities',    'admin.html?view=edit'));
       adminGroup.appendChild(makeAdminLink('Approve opportunities', 'admin.html?view=confirm'));
       adminGroup.appendChild(makeAdminLink('Data review',           'review.html'));
 
@@ -73,9 +82,15 @@ function showModal(opts) {
       adminGroup.appendChild(adminLogoutBtn);
       inner.appendChild(adminGroup);
 
-      // ── Row 2: submit link + digest button ──────────────────────────────
+      // ── Row 2: edit opportunities + submit link + digest button ─────────
       var sub = document.createElement('div');
       sub.className = 'header-admin-sub';
+
+      var subEdit = document.createElement('a');
+      subEdit.href        = 'admin.html?view=edit';
+      subEdit.textContent = 'Edit opportunities';
+      subEdit.className   = 'header-admin-link';
+      sub.appendChild(subEdit);
 
       var subSubmit = document.createElement('a');
       subSubmit.href      = 'submit.html';
