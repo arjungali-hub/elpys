@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Review — Elpys</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="logos/elpys-favicon.svg">
+  <style>
+    :root {
+      --bg-primary:     #FFFFFF;
+      --bg-secondary:   #F9FAFB;
+      --bg-surface:     #F3F4F6;
+      --border:         #E5E7EB;
+      --border-strong:  #D1D5DB;
+      --text-main:      #111827;
+      --text-muted:     #6B7280;
+      --text-subtle:    #9CA3AF;
+      --radius:         6px;
+      --radius-lg:      10px;
+      --shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+           background: var(--bg-secondary); color: var(--text-main); line-height: 1.55; font-size: 15px;
+           padding: 2rem 1rem 4rem; }
+    .wrap { max-width: 880px; margin: 0 auto; }
+    h1 { font-size: clamp(1.25rem, 2.5vw, 1.5rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.75rem; }
+    .head-row { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; margin-bottom: 0.15rem; }
+    .head-row a, .head-row button { font-size: 0.875rem; color: var(--text-muted); text-decoration: none;
+           background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
+    .head-row a:hover, .head-row button:hover { color: var(--text-main); }
+
+    /* Login */
+    #login-panel { max-width: 340px; }
+    .login-row { display: flex; gap: 0.5rem; }
+    input[type=password], input[type=text], textarea {
+      font-family: inherit; font-size: 0.875rem; color: var(--text-main); background: var(--bg-primary);
+      border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.45rem 0.6rem; width: 100%;
+    }
+    textarea { min-height: 68px; resize: vertical; line-height: 1.5; }
+    input:focus, textarea:focus { outline: 2px solid var(--text-main); outline-offset: 1px; }
+    .btn-primary { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: var(--bg-primary);
+      background: var(--text-main); border: none; border-radius: var(--radius); padding: 0.45rem 1rem; cursor: pointer; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn { font-family: inherit; font-size: 0.8125rem; font-weight: 600; color: var(--text-main);
+      background: var(--bg-primary); border: 1px solid var(--border-strong); border-radius: var(--radius);
+      padding: 0.35rem 0.8rem; cursor: pointer; }
+    .btn:hover { background: var(--bg-surface); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .msg { font-size: 0.8125rem; margin-top: 0.5rem; color: var(--text-muted); min-height: 1.1em; }
+
+    /* Sections */
+    .section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--text-muted); margin: 2rem 0 0.75rem; display: flex; align-items: baseline; gap: 0.5rem; }
+    .count { color: var(--text-subtle); font-weight: 600; }
+    .empty-state { font-size: 0.875rem; color: var(--text-muted); background: var(--bg-primary);
+      border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 1.25rem; }
+
+    /* Flag card */
+    .flag-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 1.1rem 1.2rem; margin-bottom: 0.85rem; box-shadow: var(--shadow-sm); }
+    .flag-top { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .flag-name { font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
+    .flag-name a { color: inherit; text-decoration: none; }
+    .flag-name a:hover { text-decoration: underline; }
+    .flag-field { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-muted); background: var(--bg-surface); border-radius: 999px; padding: 0.1rem 0.5rem;
+      white-space: nowrap; }
+    .flag-meta { font-size: 0.75rem; color: var(--text-subtle); margin-top: 0.15rem; }
+    .flag-summary { font-size: 0.9375rem; margin: 0.7rem 0 0.6rem; }
+    .flag-block { margin-top: 0.6rem; }
+    .flag-label { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-subtle); margin-bottom: 0.15rem; }
+    .flag-body { font-size: 0.875rem; color: #444; white-space: pre-wrap; }
+    .flag-suggested { font-size: 0.875rem; background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.5rem 0.7rem; white-space: pre-wrap; }
+
+    .flag-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+      margin-top: 0.9rem; padding-top: 0.85rem; border-top: 1px solid var(--border); }
+    .note-area { display: none; margin-top: 0.75rem; }
+    .note-area.open { display: block; }
+    .note-prompt { font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.3rem; }
+    .note-hint { font-weight: 400; color: var(--text-muted); }
+    .note-buttons { display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center; }
+    .card-msg { font-size: 0.8125rem; color: var(--text-muted); }
+
+    /* Decision already recorded, still awaiting the automated run */
+    .decided { border-left: 3px solid var(--text-main); }
+    .decided-banner { font-size: 0.8125rem; background: var(--bg-surface); border-radius: var(--radius);
+      padding: 0.5rem 0.7rem; margin-top: 0.8rem; }
+    .decided-banner strong { font-weight: 700; }
+
+    /* Resolved list */
+    .resolved-row { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 0.7rem 0.9rem; margin-bottom: 0.5rem; font-size: 0.875rem; }
+    .resolved-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+    .resolved-head a { color: inherit; text-decoration: none; font-weight: 600; }
+    .resolved-head a:hover { text-decoration: underline; }
+    .resolved-type { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-muted); }
+    .resolved-when { font-size: 0.75rem; color: var(--text-subtle); white-space: nowrap; }
+    .resolved-note { font-size: 0.8125rem; color: #444; margin-top: 0.3rem; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head-row">
+    <h1 style="margin-bottom:0;display:flex;align-items:center;gap:0.4rem;"><img src="logos/elpys-logo-mark.svg" style="height:22px;width:auto;display:block;" alt="" aria-hidden="true">Data Review</h1>
+    <a href="admin.html">← Admin</a>
+    <a href="index.html">Home</a>
+    <button id="admin-logout-btn" onclick="adminLogout()" style="display:none;">Log out</button>
+  </div>
+  <p class="subtitle">Flags raised by the weekly automated accuracy check. Your decision is recorded here; the next scheduled run applies the fix and resolves the flag.</p>
+
+  <div id="login-panel">
+    <div class="login-row">
+      <input type="password" id="password-input" placeholder="Admin password" autocomplete="current-password" />
+      <button class="btn-primary" id="login-btn">Load</button>
+    </div>
+    <div class="msg" id="login-msg"></div>
+  </div>
+
+  <div id="content" style="display:none;">
+    <div class="section-title">Needs review <span class="count" id="pending-count"></span></div>
+    <div id="pending-list"></div>
+
+    <div class="section-title">Recently resolved <span class="count" id="resolved-count"></span></div>
+    <div id="resolved-list"></div>
+  </div>
+
+</div>
+
+<script>
+  const API = '/api/review';
+  let _password = '';
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  function fmtDate(v) {
+    if (!v) return '—';
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) +
+           ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function showLoginMsg(msg, type) {
+    const el = document.getElementById('login-msg');
+    el.textContent = msg;
+    el.style.color = type === 'error' ? '#111827' : '#6B7280';
+  }
+
+  function adminLogout() {
+    sessionStorage.removeItem('elpys_admin_pw');
+    location.reload();
+  }
+
+  // ── Auth ───────────────────────────────────────────────────────────────────
+  // Shares the session key with admin.html, so logging in on either carries over.
+  (function () {
+    const stored = sessionStorage.getItem('elpys_admin_pw');
+    if (stored) { _password = stored; loadAll(); }
+  }());
+
+  document.getElementById('login-btn').addEventListener('click', () => loadAll());
+  document.getElementById('password-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') loadAll();
+  });
+
+  async function loadAll() {
+    if (!_password) _password = document.getElementById('password-input').value;
+    if (!_password) { showLoginMsg('Enter a password.', 'error'); return; }
+
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true;
+    btn.textContent = 'Loading…';
+
+    try {
+      const res = await fetch(API, { headers: { 'x-admin-password': _password } });
+      if (res.status === 401) { _password = ''; sessionStorage.removeItem('elpys_admin_pw'); showLoginMsg('Incorrect password.', 'error'); return; }
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        console.error('Load failed — full response:', e);
+        throw new Error([e.error || 'HTTP ' + res.status, e.message, e.details].filter(Boolean).join(' — '));
+      }
+
+      const { pending, resolved } = await res.json();
+      sessionStorage.setItem('elpys_admin_pw', _password);
+      document.getElementById('login-panel').style.display = 'none';
+      document.getElementById('admin-logout-btn').style.display = 'inline';
+      document.getElementById('content').style.display = 'block';
+      renderPending(pending || []);
+      renderResolved(resolved || []);
+    } catch (err) {
+      showLoginMsg('Error: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Load';
+    }
+  }
+
+  // ── Pending queue ──────────────────────────────────────────────────────────
+  function renderPending(rows) {
+    const list = document.getElementById('pending-list');
+    document.getElementById('pending-count').textContent = rows.length ? '(' + rows.length + ')' : '';
+    list.innerHTML = '';
+    if (!rows.length) {
+      list.innerHTML = '<div class="empty-state">Nothing flagged. The weekly check has not raised any open issues.</div>';
+      return;
+    }
+    rows.forEach(row => list.appendChild(buildFlagCard(row)));
+  }
+
+  function oppLink(flag) {
+    const opp = flag.opportunity;
+    if (!opp) return '<span title="opportunity ' + esc(flag.opportunity_id) + '">Unknown opportunity</span>';
+    if (!opp.slug) return esc(opp.name || 'Untitled');
+    return '<a href="opportunities-detail.html?slug=' + encodeURIComponent(opp.slug) + '" target="_blank" rel="noopener">' +
+           esc(opp.name || opp.slug) + '</a>';
+  }
+
+  function block(label, value) {
+    if (!value) return '';
+    return '<div class="flag-block"><div class="flag-label">' + label + '</div>' +
+           '<div class="flag-body">' + esc(value) + '</div></div>';
+  }
+
+  function buildFlagCard(flag) {
+    const card = document.createElement('div');
+    card.className = 'flag-card' + (flag.human_decision ? ' decided' : '');
+    card.id = 'flag-' + flag.id;
+
+    const meta = [];
+    if (flag.times_flagged) meta.push('flagged ' + flag.times_flagged + (flag.times_flagged === 1 ? ' time' : ' times'));
+    if (flag.last_flagged_at) meta.push('last seen ' + fmtDate(flag.last_flagged_at));
+    if (flag.issue_key) meta.push(flag.issue_key);
+
+    // A decision does not resolve the row — the scheduled check does that on its
+    // next run — so a decided flag stays in the queue, marked and re-decidable.
+    const decidedBanner = flag.human_decision
+      ? '<div class="decided-banner">Recorded: <strong>' +
+          (flag.human_decision === 'change_needed' ? 'Change needed' : 'Fine as is') + '</strong>' +
+          (flag.decided_at ? ' on ' + esc(fmtDate(flag.decided_at)) : '') +
+          (flag.human_note ? '<br>' + esc(flag.human_note) : '') +
+          '<br><span class="note-hint">Waiting for the next automated run to apply it.</span></div>'
+      : '';
+
+    card.innerHTML =
+      '<div class="flag-top">' +
+        '<div class="flag-name">' + oppLink(flag) + '</div>' +
+        '<span class="flag-field">' + esc(flag.field || 'unknown field') + '</span>' +
+      '</div>' +
+      (meta.length ? '<div class="flag-meta">' + esc(meta.join(' · ')) + '</div>' : '') +
+      '<div class="flag-summary">' + esc(flag.issue_summary || '') + '</div>' +
+      block('Evidence', flag.evidence) +
+      block('How to verify', flag.verification_steps) +
+      (flag.suggested_value
+        ? '<div class="flag-block"><div class="flag-label">Suggested value</div>' +
+          '<div class="flag-suggested">' + esc(flag.suggested_value) + '</div></div>'
+        : '') +
+      decidedBanner +
+      '<div class="flag-actions">' +
+        '<button class="btn btn-change">' + (flag.human_decision ? 'Change decision: change needed' : 'Change needed') + '</button>' +
+        '<button class="btn btn-fine">' + (flag.human_decision ? 'Change decision: fine as is' : 'Fine as is') + '</button>' +
+        '<span class="card-msg" id="msg-' + flag.id + '"></span>' +
+      '</div>' +
+      '<div class="note-area" id="note-' + flag.id + '">' +
+        '<div class="note-prompt" id="note-prompt-' + flag.id + '"></div>' +
+        '<textarea id="note-text-' + flag.id + '"></textarea>' +
+        '<div class="note-buttons">' +
+          '<button class="btn-primary btn-submit">Submit</button>' +
+          '<button class="btn btn-cancel">Cancel</button>' +
+        '</div>' +
+      '</div>';
+
+    let decision = null;
+    const noteArea = card.querySelector('.note-area');
+    const prompt   = card.querySelector('.note-prompt');
+    const textEl   = card.querySelector('textarea');
+
+    function openNote(which) {
+      decision = which;
+      prompt.innerHTML = which === 'change_needed'
+        ? 'What needs changing? <span class="note-hint">(required)</span>'
+        : 'Why is this fine? <span class="note-hint">(optional)</span>';
+      noteArea.classList.add('open');
+      if (flag.human_note) textEl.value = flag.human_note;
+      textEl.focus();
+    }
+
+    card.querySelector('.btn-change').addEventListener('click', () => openNote('change_needed'));
+    card.querySelector('.btn-fine').addEventListener('click',   () => openNote('fine_as_is'));
+    card.querySelector('.btn-cancel').addEventListener('click', () => {
+      noteArea.classList.remove('open');
+      setMsg(flag.id, '');
+    });
+    card.querySelector('.btn-submit').addEventListener('click', () => submitDecision(flag, decision, textEl.value));
+
+    return card;
+  }
+
+  function setMsg(id, text) {
+    const el = document.getElementById('msg-' + id);
+    if (el) el.textContent = text;
+  }
+
+  async function submitDecision(flag, decision, note) {
+    if (!decision) return;
+    if (decision === 'change_needed' && !String(note || '').trim()) {
+      setMsg(flag.id, 'A note is required for "change needed".');
+      return;
+    }
+
+    const card = document.getElementById('flag-' + flag.id);
+    const buttons = card.querySelectorAll('button');
+    buttons.forEach(b => { b.disabled = true; });
+    setMsg(flag.id, 'Saving…');
+
+    try {
+      const res = await fetch(API, {
+        method:  'POST',
+        headers: { 'x-admin-password': _password, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id: flag.id, decision, note }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        console.error('Save failed — full response:', e);
+        throw new Error([e.error || 'HTTP ' + res.status, e.message, e.details, e.hint].filter(Boolean).join(' — '));
+      }
+      const { flag: saved } = await res.json();
+      // Re-render in place so the recorded decision, note and timestamp show
+      // exactly what the server stored.
+      card.replaceWith(buildFlagCard(Object.assign({}, flag, saved)));
+    } catch (err) {
+      setMsg(flag.id, 'Error: ' + err.message);
+      buttons.forEach(b => { b.disabled = false; });
+    }
+  }
+
+  // ── Recently resolved ──────────────────────────────────────────────────────
+  function renderResolved(rows) {
+    const list = document.getElementById('resolved-list');
+    document.getElementById('resolved-count').textContent = rows.length ? '(' + rows.length + ')' : '';
+    list.innerHTML = '';
+    if (!rows.length) {
+      list.innerHTML = '<div class="empty-state">Nothing resolved yet.</div>';
+      return;
+    }
+    rows.forEach(row => {
+      const el = document.createElement('div');
+      el.className = 'resolved-row';
+      el.innerHTML =
+        '<div class="resolved-head">' +
+          '<div>' + oppLink(row) + ' <span class="flag-field">' + esc(row.field || '—') + '</span></div>' +
+          '<span class="resolved-when">' + esc(fmtDate(row.resolved_at)) + '</span>' +
+        '</div>' +
+        '<div class="resolved-type">' + esc(row.resolution_type || 'resolved') + '</div>' +
+        (row.resolution_note ? '<div class="resolved-note">' + esc(row.resolution_note) + '</div>' : '');
+      list.appendChild(el);
+    });
+  }
+</script>
+</body>
+</html>

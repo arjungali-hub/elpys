@@ -61,6 +61,7 @@ function showModal(opts) {
       adminGroup.appendChild(makeAdminLink('Feedback',              'admin.html?view=feedback'));
       adminGroup.appendChild(makeAdminLink('Edit opportunities',    'admin.html?view=edit'));
       adminGroup.appendChild(makeAdminLink('Approve opportunities', 'admin.html?view=confirm'));
+      adminGroup.appendChild(makeAdminLink('Data review',           'review.html'));
 
       var adminLogoutBtn = document.createElement('button');
       adminLogoutBtn.textContent = 'Log out';
