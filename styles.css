@@ -147,6 +147,10 @@ header {
   margin-top: 0.5rem;
 }
 .header-digest-msg { font-size: 0.8125rem; }
+/* Empty until a digest is sent. Left in the flow it is still a flex item, so
+   the row's gap sat between it and the button and pushed the button 12px in,
+   out of line with the row above. */
+.header-digest-msg:empty { display: none; }
 
 /* ── Modal ── */
 .modal-overlay {
