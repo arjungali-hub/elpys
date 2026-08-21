@@ -5,76 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin — Elpys</title>
   <link rel="icon" type="image/svg+xml" href="logos/elpys-favicon.svg">
+  <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&display=swap" rel="stylesheet">
 
   <style>
-    /* Wordmark — rules copied from styles.css, which this page does not load */
-    .site-name {
-      position: relative;
-      z-index: 0;
-      font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      font-size: 1.625rem;
-      font-weight: 700;
-      letter-spacing: 0;
-      text-decoration: none;
-      color: #2b2420;
-      line-height: 1;
-    /* the torch "l" is an inline-block, so without this the wordmark can break
-      across lines ("el" / "pys") when the header gets tight */
-      white-space: nowrap;
-    }
-    .site-name-sparkles {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 3.1em;
-      height: 2.0em;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      z-index: -1;
-    }
-    .site-name-l {
-      position: relative;
-      display: inline-block;
-    }
-    .site-name-flame {
-      position: absolute;
-      width: 0.5em;
-      height: auto;
-      top: -0.633em;
-      left: 0.133em;
-      transform: translateX(-50%);
-    }
-    .site-name-torch-base {
-      position: absolute;
-      width: 0.333em;
-      height: auto;
-      top: -0.067em;
-      left: 0.133em;
-      transform: translateX(-50%);
-    }
-    .page-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .page-head .site-name { font-size: 1.5rem; }
+    /* Layered on styles.css: tokens, reset, type scale, .wrap and the wordmark
+       all come from there, so these screens stay in step with the public site.
+       The names below are the ones this page's rules already use, remapped onto
+       the site's tokens rather than given their own values. */
     :root {
-      --bg-primary:     #FFFFFF;
-      --bg-secondary:   #F9FAFB;
-      --bg-surface:     #F3F4F6;
-      --border:         #E5E7EB;
-      --border-strong:  #D1D5DB;
-      --text-main:      #111827;
-      --text-muted:     #6B7280;
-      --text-subtle:    #9CA3AF;
-      --radius:         6px;
-      --radius-lg:      10px;
-      --shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.04);
-      --shadow-md:      0 4px 12px rgba(0, 0, 0, 0.05);
+      --bg-primary:    var(--white);
+      --bg-secondary:  var(--off);
+      --bg-surface:    var(--surface);
+      --border-strong: #D1D5DB;
+      --text-main:     var(--body);
+      --text-muted:    var(--muted);
+      --text-subtle:   var(--subtle);
     }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-secondary); color: var(--text-main); line-height: 1.55; font-size: 15px; padding: 2rem 1rem 4rem; }
-    h1 { font-size: clamp(1.25rem, 2.5vw, 1.5rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
-    .subtitle { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.75rem; }
+    body { padding-bottom: 4rem; }
+    .page-head { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap;
+                 padding-top: 2.25rem; margin-bottom: 0.2rem; }
+    /* "elpys Admin" reads as one title: the page name takes the wordmark's own
+       typeface, size, weight and colour, and sits on the same baseline. The gap
+       clears the sparkle field, which overhangs the wordmark's box on each side. */
+    .page-title { display: flex; align-items: baseline; gap: 0.85rem;
+                  font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+                  font-size: 1.5rem; font-weight: 700; letter-spacing: 0;
+                  color: #2b2420; line-height: 1; }
+    .page-title .site-name { font-size: 1em; }
+    .page-head a, .page-head button { font-size: 0.875rem; color: var(--muted); text-decoration: none;
+                  background: none; border: none; padding: 0; font-family: inherit; cursor: pointer; }
+    .page-head a:hover, .page-head button:hover { color: var(--body); }
+    .subtitle { color: var(--muted); font-size: 0.9375rem; margin-bottom: 2rem; max-width: 62ch; }
 
     /* Login */
     #login-panel { max-width: 340px; }
@@ -105,18 +69,32 @@
     #section-nav a.active { color: var(--text-main); border-bottom-color: var(--text-main); }
     #section-nav a span { color: var(--text-subtle); font-weight: 500; }
 
-    .feedback-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 1rem 1.25rem; margin-bottom: 0.75rem; max-width: 820px; }
+    .feedback-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; margin-bottom: 0.75rem; max-width: 860px; }
     .feedback-card .fb-message { font-size: 0.9375rem; color: var(--text-main); line-height: 1.55; margin-bottom: 0.5rem; }
     .feedback-card .fb-meta { font-size: 0.8125rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin-bottom: 0.65rem; }
     .feedback-card .fb-meta a { color: var(--text-main); text-decoration: underline; word-break: break-all; }
-    .section-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.25rem; }
-    .section-header h2 { font-size: 1rem; font-weight: 700; }
-    .count-badge { font-size: 0.75rem; background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 0.15rem 0.6rem; font-weight: 700; }
+    /* Section headers match the public site: a hairline under the title. */
+    .section-header { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 1.5rem;
+                      padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+    .section-header h2 { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+    .count-badge { font-size: 0.875rem; color: var(--muted); font-weight: 500; }
 
-    /* Cards */
-    .submission-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 1.25rem 1.5rem; margin-bottom: 1rem; max-width: 820px; }
-    .sub-name { font-size: 1rem; font-weight: 700; margin-bottom: 0.15rem; }
-    .sub-meta { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.85rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.35rem 1rem; padding: 0.6rem 0.75rem; background: var(--bg-secondary); border-radius: var(--radius); }
+    /* Cards — hairline first, lift on hover, like .card on the public site,
+       rather than carrying a shadow all the time. */
+    .submission-card, .feedback-card {
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .submission-card:hover, .feedback-card:hover {
+      transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--border-strong);
+    }
+    .submission-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem; max-width: 860px; }
+    .sub-name { font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.15rem; }
+    /* Hairline-delimited spec list, not a filled panel — a grey box inside an
+       already-bordered card reads as a card within a card. */
+    .sub-meta { font-size: 0.8125rem; color: var(--muted); margin-bottom: 1.125rem;
+                display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 0.35rem 1.25rem; padding: 0.75rem 0;
+                border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
     .sub-desc { font-size: 0.875rem; color: #374151; margin-bottom: 0.75rem; line-height: 1.55; }
     .sub-steps { font-size: 0.8125rem; color: #374151; padding-left: 1.1rem; margin-bottom: 0.75rem; }
     .sub-steps li { margin-bottom: 0.2rem; }
@@ -125,7 +103,7 @@
     .sub-links a { color: var(--text-main); text-decoration: underline; }
 
     /* Pending approve fields */
-    .approve-fields { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem; margin-bottom: 0.85rem; }
+    .approve-fields { border-top: 1px solid var(--border); padding: 1rem 0 0.25rem; margin-bottom: 0.85rem; }
     .approve-fields > p { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; }
     .approve-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
     .approve-field { display: flex; flex-direction: column; gap: 0.25rem; }
@@ -135,7 +113,8 @@
     .approve-field input:focus { outline: 2px solid var(--text-main); outline-offset: 2px; }
 
     /* Inline edit form */
-    .edit-form { display: none; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem; margin-bottom: 0.85rem; }
+    .edit-form { display: none; background: var(--off); border: 1px solid var(--border);
+                 border-radius: var(--radius); padding: 1.25rem; margin-bottom: 0.85rem; }
     .edit-form.open { display: block; }
     .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem 1.1rem; }
     @media (max-width: 560px) { .edit-grid { grid-template-columns: 1fr; } }
@@ -196,12 +175,13 @@
   </style>
 </head>
 <body>
+<div class="wrap">
 
-<div style="display:flex;align-items:baseline;gap:1.5rem;margin-bottom:0.25rem;">
-  <h1 style="margin-bottom:0;display:flex;align-items:center;gap:0.4rem;" class="page-head"><span class="site-name"><svg class="site-name-sparkles" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 129" aria-hidden="true"><g fill="#d9662f"><path d="M11 21 C11 27.3 11 27.3 17.3 30 C11 32.7 11 32.7 11 39 C11 32.7 11 32.7 4.7 30 C11 27.3 11 27.3 11 21 Z"/><path d="M189 17 C189 23.3 189 23.3 195.3 26 C189 28.7 189 28.7 189 35 C189 28.7 189 28.7 182.7 26 C189 23.3 189 23.3 189 17 Z"/></g><g fill="#e8935f"><path d="M8 73.8 C8 78.1 8 78.1 12.3 80 C8 81.9 8 81.9 8 86.2 C8 81.9 8 81.9 3.7 80 C8 78.1 8 78.1 8 73.8 Z"/><path d="M192 69.8 C192 74.1 192 74.1 196.3 76 C192 77.9 192 77.9 192 82.2 C192 77.9 192 77.9 187.7 76 C192 74.1 192 74.1 192 69.8 Z"/><path d="M70 111.8 C70 116.1 70 116.1 74.3 118 C70 119.9 70 119.9 70 124.2 C70 119.9 70 119.9 65.7 118 C70 116.1 70 116.1 70 111.8 Z"/><path d="M133 112.8 C133 117.1 133 117.1 137.3 119 C133 120.9 133 120.9 133 125.2 C133 120.9 133 120.9 128.7 119 C133 117.1 133 117.1 133 112.8 Z"/></g></svg>e<span class="site-name-l">l<svg class="site-name-flame" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 34" aria-hidden="true"><path d="M15 34 C9 30 7.5 23 10 17 C11.2 20.5 13.5 20.5 13.5 17 C15.5 20.5 19 23 16.5 28 C20 25.5 21 19.5 17.5 13.5 C22 17 23.5 24 20 30 C18 32.5 16 34 15 34 Z" fill="#d9662f"/><path d="M15 30 C12 28 11 24.5 12.4 21.5 C13 23.3 14.2 23.3 14.2 21.5 C15.2 23.3 17 24.5 15.6 27 C17.4 25.7 18 22.5 16.2 19.5 C18.5 21.3 19.2 25 17.4 28 C16.4 29.3 15.5 30 15 30 Z" fill="#f2a03d"/></svg><svg class="site-name-torch-base" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 12" aria-hidden="true"><path d="M3 0 L17 0 L14.5 6 L5.5 6 Z" fill="#2b2420"/><rect x="4.5" y="6" width="11" height="3.2" rx="1.6" fill="#2b2420"/></svg></span>pys</span> Admin</h1>
-  <a href="index.html" style="font-size:0.875rem;color:#6B7280;text-decoration:none;">← Home</a>
-  <a href="review.html" id="hdr-review-link" style="font-size:0.875rem;color:#6B7280;text-decoration:none;">Data review</a>
-  <button id="admin-logout-btn" onclick="adminLogout()" style="display:none;font-family:inherit;font-size:0.875rem;color:#6B7280;background:none;border:none;cursor:pointer;padding:0;">Log out</button>
+<div class="page-head">
+  <h1 class="page-title"><span class="site-name"><svg class="site-name-sparkles" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 129" aria-hidden="true"><g fill="#d9662f"><path d="M11 21 C11 27.3 11 27.3 17.3 30 C11 32.7 11 32.7 11 39 C11 32.7 11 32.7 4.7 30 C11 27.3 11 27.3 11 21 Z"/><path d="M189 17 C189 23.3 189 23.3 195.3 26 C189 28.7 189 28.7 189 35 C189 28.7 189 28.7 182.7 26 C189 23.3 189 23.3 189 17 Z"/></g><g fill="#e8935f"><path d="M8 73.8 C8 78.1 8 78.1 12.3 80 C8 81.9 8 81.9 8 86.2 C8 81.9 8 81.9 3.7 80 C8 78.1 8 78.1 8 73.8 Z"/><path d="M192 69.8 C192 74.1 192 74.1 196.3 76 C192 77.9 192 77.9 192 82.2 C192 77.9 192 77.9 187.7 76 C192 74.1 192 74.1 192 69.8 Z"/><path d="M70 111.8 C70 116.1 70 116.1 74.3 118 C70 119.9 70 119.9 70 124.2 C70 119.9 70 119.9 65.7 118 C70 116.1 70 116.1 70 111.8 Z"/><path d="M133 112.8 C133 117.1 133 117.1 137.3 119 C133 120.9 133 120.9 133 125.2 C133 120.9 133 120.9 128.7 119 C133 117.1 133 117.1 133 112.8 Z"/></g></svg>e<span class="site-name-l">l<svg class="site-name-flame" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 34" aria-hidden="true"><path d="M15 34 C9 30 7.5 23 10 17 C11.2 20.5 13.5 20.5 13.5 17 C15.5 20.5 19 23 16.5 28 C20 25.5 21 19.5 17.5 13.5 C22 17 23.5 24 20 30 C18 32.5 16 34 15 34 Z" fill="#d9662f"/><path d="M15 30 C12 28 11 24.5 12.4 21.5 C13 23.3 14.2 23.3 14.2 21.5 C15.2 23.3 17 24.5 15.6 27 C17.4 25.7 18 22.5 16.2 19.5 C18.5 21.3 19.2 25 17.4 28 C16.4 29.3 15.5 30 15 30 Z" fill="#f2a03d"/></svg><svg class="site-name-torch-base" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 12" aria-hidden="true"><path d="M3 0 L17 0 L14.5 6 L5.5 6 Z" fill="#2b2420"/><rect x="4.5" y="6" width="11" height="3.2" rx="1.6" fill="#2b2420"/></svg></span>pys</span> Admin</h1>
+  <a href="index.html">← Home</a>
+  <a href="review.html" id="hdr-review-link">Data review</a>
+  <button id="admin-logout-btn" onclick="adminLogout()" style="display:none;">Log out</button>
 </div>
 <p class="subtitle">Review pending submissions and manage published listings</p>
 
@@ -246,6 +226,8 @@
   </div>
   <div id="feedback-list"></div>
 </div>
+
+</div><!-- /wrap -->
 
 <script>
   const API = '/api/admin';
