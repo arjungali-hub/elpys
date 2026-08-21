@@ -75,16 +75,27 @@
         '<p class="modal-title">' + opts.title + '</p>' +
         '<p class="modal-body">' + opts.body + '</p>' +
         '<div class="modal-actions">' +
-          '<button class="modal-btn-cancel">Cancel</button>' +
-          '<button class="modal-btn-action' + (opts.danger ? ' danger' : '') + '">' + opts.confirmText + '</button>' +
+          // A notice has nothing to cancel — just a way to dismiss it.
+          (opts.notice ? '' : '<button class="modal-btn-cancel">Cancel</button>') +
+          '<button class="modal-btn-action' + (opts.danger ? ' danger' : '') + '">' + (opts.confirmText || 'OK') + '</button>' +
         '</div>' +
       '</div>';
     function close() { overlay.remove(); }
     overlay.querySelector('.modal-close').addEventListener('click', close);
-    overlay.querySelector('.modal-btn-cancel').addEventListener('click', close);
-    overlay.querySelector('.modal-btn-action').addEventListener('click', function () { close(); opts.onConfirm(); });
+    var cancelBtn = overlay.querySelector('.modal-btn-cancel');
+    if (cancelBtn) cancelBtn.addEventListener('click', close);
+    overlay.querySelector('.modal-btn-action').addEventListener('click', function () {
+      close();
+      if (opts.onConfirm) opts.onConfirm();
+    });
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
     document.body.appendChild(overlay);
+  }
+
+  // Replaces alert(), which the browser renders as an unstyled bar at the top
+  // of the window.
+  function notify(title, body) {
+    showModal({ title: title, body: body, notice: true });
   }
 
   var _supa = supabase.createClient(
@@ -271,7 +282,7 @@
         onConfirm:   async function () {
           var sessionResult = await _supa.auth.getSession();
           var token = sessionResult.data && sessionResult.data.session && sessionResult.data.session.access_token;
-          if (!token) { alert('Could not get session. Please refresh and try again.'); return; }
+          if (!token) { notify('Could not get your session', 'Please refresh the page and try again.'); return; }
 
           var res = await fetch('/api/delete-account', {
             method:  'DELETE',
@@ -282,7 +293,7 @@
             await _supa.auth.signOut();
             location.replace('index.html');
           } else {
-            alert('Could not delete account. Please try again.');
+            notify('Could not delete your account', 'Something went wrong. Please try again.');
           }
         },
       });

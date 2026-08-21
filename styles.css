@@ -219,12 +219,18 @@ header {
 }
 
 /* Signals that the header is in admin mode. Plain text, not a badge — it is a
-   statement of what you are logged in as, not a label on the product. */
+   statement of what you are logged in as, not a label on the product. Takes the
+   wordmark's typeface, size, weight and colour so "elpys Admin" reads as one
+   line rather than two mismatched pieces. */
 .admin-badge {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--body);
-  margin-left: 0.5rem;
+  font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  color: #2b2420;
+  /* the 1rem header gap already clears the sparkle field's overhang */
+  margin-left: 0;
   flex-shrink: 0;
 }
 

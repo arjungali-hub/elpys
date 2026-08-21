@@ -127,8 +127,17 @@
     activeOpportunity = opp;
     opp.marker.setIcon(pinIcon(true));
     opp.marker.openPopup();
-    map.flyTo([opp.lat, opp.lng], Math.max(map.getZoom(), 13), { duration: 0.5 });
-    setRouteStatus('Selected ' + opp.name + '. Enter a starting place and show the route.');
+
+    // With a route already drawn, switching opportunity redraws it to the new
+    // one straight away rather than leaving a stale route on the map until
+    // "Show route" is pressed again. Skip the flyTo in that case — the route
+    // fits its own bounds, and the two animations would fight each other.
+    if (routeLayer && routeOrigin.value.trim()) {
+      showRouteFromInput();
+    } else {
+      map.flyTo([opp.lat, opp.lng], Math.max(map.getZoom(), 13), { duration: 0.5 });
+      setRouteStatus('Selected ' + opp.name + '. Enter a starting place and show the route.');
+    }
 
     if (listItem) {
       const wrap = listItem.closest('.map-list-item-wrap') || listItem;
@@ -138,7 +147,13 @@
     }
   }
 
+  // Remembers the last lookup: switching between opportunities re-routes from
+  // the same starting place, and Nominatim asks callers not to hammer it.
+  let lastGeocode = null;
+
   async function geocodePlace(query) {
+    if (lastGeocode && lastGeocode.query === query) return lastGeocode.place;
+
     const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us&q=' + encodeURIComponent(query);
     const res = await fetch(url, {
       headers: { Accept: 'application/json' }
@@ -148,11 +163,13 @@
     const matches = await res.json();
     if (!matches.length) throw new Error('No matching starting place found.');
 
-    return {
+    const place = {
       lat: parseFloat(matches[0].lat),
       lng: parseFloat(matches[0].lon),
       label: matches[0].display_name
     };
+    lastGeocode = { query: query, place: place };
+    return place;
   }
 
   async function fetchDriveRoute(origin, opp) {

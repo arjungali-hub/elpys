@@ -243,6 +243,63 @@
     if (reviewLink) reviewLink.style.display = 'none';
   }
 
+  // ── Dialogs ────────────────────────────────────────────────────────────────
+  // Replaces window.confirm/alert, which render as a browser chrome bar at the
+  // top of the window and cannot be styled. Uses the .modal-* classes the rest
+  // of the site already uses (styles.css), so these match account.html.
+  function showModal(opts) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-box" role="dialog" aria-modal="true">' +
+        '<button class="modal-close" aria-label="Close">&times;</button>' +
+        '<p class="modal-title">' + esc(opts.title) + '</p>' +
+        '<p class="modal-body">' + esc(opts.body) + '</p>' +
+        '<div class="modal-actions">' +
+          (opts.confirmText
+            ? '<button class="modal-btn-cancel">' + esc(opts.cancelText || 'Cancel') + '</button>' +
+              '<button class="modal-btn-action' + (opts.danger ? ' danger' : '') + '">' + esc(opts.confirmText) + '</button>'
+            : '<button class="modal-btn-action">' + esc(opts.dismissText || 'OK') + '</button>') +
+        '</div>' +
+      '</div>';
+
+    const prevFocus = document.activeElement;
+    function close() {
+      overlay.remove();
+      document.removeEventListener('keydown', onKey);
+      if (prevFocus && prevFocus.focus) prevFocus.focus();
+    }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+
+    const cancelBtn = overlay.querySelector('.modal-btn-cancel');
+    if (cancelBtn) cancelBtn.addEventListener('click', close);
+    overlay.querySelector('.modal-close').addEventListener('click', close);
+    overlay.querySelector('.modal-btn-action').addEventListener('click', function () {
+      close();
+      if (opts.onConfirm) opts.onConfirm();
+    });
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', onKey);
+
+    document.body.appendChild(overlay);
+    overlay.querySelector('.modal-btn-action').focus();
+  }
+
+  // Drop-in for confirm(): runs onConfirm only if the action button is pressed.
+  // Styled as destructive unless told otherwise — red is reserved for actions
+  // that cannot be undone, so a reversible one does not cry wolf.
+  function confirmAction(title, body, confirmText, onConfirm, danger) {
+    showModal({
+      title: title, body: body, confirmText: confirmText,
+      danger: danger !== false, onConfirm: onConfirm,
+    });
+  }
+
+  // Drop-in for alert().
+  function notify(title, body) {
+    showModal({ title: title, body: body });
+  }
+
   function adminLogout() {
     sessionStorage.removeItem('elpys_admin_pw');
     location.href = 'index.html';
@@ -438,8 +495,13 @@
     } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
   }
 
-  async function handleReject(id) {
-    if (!confirm('Delete this submission permanently?')) return;
+  function handleReject(id) {
+    confirmAction('Reject this submission?',
+      'It will be deleted permanently. This cannot be undone.',
+      'Delete', function () { doReject(id); });
+  }
+
+  async function doReject(id) {
     setCardBtns(id, true); setCardMsg(id, 'Deleting…', '#6B7280');
     try {
       const res = await postAction({ action: 'reject', id });
@@ -749,9 +811,14 @@
     }
   }
 
-  async function handleUnpublish(row) {
-    const id = row.id, name = row.name;
-    if (!confirm('Move "' + name + '" back to pending? It will be hidden from the public site immediately.')) return;
+  function handleUnpublish(row) {
+    confirmAction('Move "' + row.name + '" back to pending?',
+      'It will be hidden from the public site immediately, and will reappear in Pending submissions.',
+      'Unpublish', function () { doUnpublish(row); }, false);
+  }
+
+  async function doUnpublish(row) {
+    const id = row.id;
     setPublishedBtns(id, true); setCardMsg2(id, 'Unpublishing…', '#6B7280');
     try {
       const res = await postAction({ action: 'unpublish', id });
@@ -767,8 +834,13 @@
     } catch (err) { setCardMsg2(id, 'Error: ' + err.message, '#111827'); setPublishedBtns(id, false); }
   }
 
-  async function handleDelete(id, name) {
-    if (!confirm('Delete "' + name + '" permanently? This cannot be undone.')) return;
+  function handleDelete(id, name) {
+    confirmAction('Delete "' + name + '" permanently?',
+      'The listing and its details are removed from the database. This cannot be undone.',
+      'Delete permanently', function () { doDelete(id); });
+  }
+
+  async function doDelete(id) {
     setPublishedBtns(id, true); setCardMsg2(id, 'Deleting…', '#6B7280');
     try {
       const res = await postAction({ action: 'delete', id });
@@ -873,8 +945,13 @@
     return card;
   }
 
-  async function handleDeleteFeedback(id) {
-    if (!confirm('Delete this feedback permanently?')) return;
+  function handleDeleteFeedback(id) {
+    confirmAction('Delete this feedback?',
+      'It will be removed permanently. This cannot be undone.',
+      'Delete', function () { doDeleteFeedback(id); });
+  }
+
+  async function doDeleteFeedback(id) {
     const btn = document.querySelector('#fb-' + id + ' .btn-delete-fb');
     if (btn) btn.disabled = true;
     try {
@@ -890,7 +967,7 @@
       });
     } catch (err) {
       if (btn) btn.disabled = false;
-      alert('Error: ' + err.message);
+      notify('Could not delete that feedback', err.message);
     }
   }
 
