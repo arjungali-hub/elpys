@@ -788,8 +788,7 @@ footer a {
 .route-search input:focus {
   outline: none;
 }
-.route-search button,
-.map-popup-route {
+.route-search button {
   font: inherit;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -802,11 +801,7 @@ footer a {
   transition: opacity 0.12s ease;
   flex-shrink: 0;
 }
-.map-popup-route {
-  border-radius: var(--radius);
-}
-.route-search button:hover,
-.map-popup-route:hover {
+.route-search button:hover {
   opacity: 0.82;
 }
 .route-status {
@@ -965,12 +960,6 @@ footer a {
   text-decoration: underline;
   margin-top: 0.2rem;
 }
-.map-popup-route {
-  display: block;
-  width: 100%;
-  margin: 0.4rem 0 0.35rem;
-}
-
 /* ── Mini map previews (detail pages + main page launcher) ── */
 /* Leaflet gives its panes and controls z-index 400-1000. A map container that
    makes no stacking context of its own lets those escape into the root one,
