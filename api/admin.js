@@ -90,7 +90,13 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'slug, lat, and lng are required to approve' });
       }
 
-      const out = await patchRow({ status: 'published', slug: slug.trim(), lat: parseFloat(lat), lng: parseFloat(lng) });
+      const out = await patchRow({
+        status: 'published',
+        slug: slug.trim(),
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+        published_at: new Date().toISOString(),
+      });
       if (!out.ok) return res.status(out.status).json(out.payload);
       return res.status(200).json({ ok: true });
     }
@@ -113,7 +119,9 @@ module.exports = async function handler(req, res) {
     }
 
     if (action === 'unpublish') {
-      const out = await patchRow({ status: 'pending' });
+      // Clearing published_at means a later re-approval stamps a fresh one
+      // rather than keeping a stale date the digest would skip over.
+      const out = await patchRow({ status: 'pending', published_at: null });
       if (!out.ok) return res.status(out.status).json(out.payload);
       return res.status(200).json({ ok: true });
     }

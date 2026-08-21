@@ -65,7 +65,7 @@ module.exports = async function handler(req, res) {
   // 1. New published opportunities in the last 7 days
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const oppRes = await fetch(
-    SUPABASE_REST + 'Opportunities?status=eq.published&created_at=gte.' + since +
+    SUPABASE_REST + 'Opportunities?status=eq.published&published_at=gte.' + since +
     '&select=id,name,description,slug,category,when',
     { headers: supaHeaders() }
   );
