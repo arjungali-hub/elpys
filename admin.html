@@ -492,6 +492,7 @@
       const res = await postAction({ action: 'approve', id, slug, lat: parseFloat(lat), lng: parseFloat(lng) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'HTTP ' + res.status); }
       fadeRemove('card-' + id, checkPendingEmpty);
+      adjustBadge('count-badge', -1);
     } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
   }
 
