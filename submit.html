@@ -336,6 +336,17 @@
     } catch (_) { /* nothing to reset yet */ }
   }
 
+  // Most errors from /api/submit already end with their own "Please try again."
+  // Appending another produced "...try again.. Please try again.", so only add
+  // the hint when the message does not already carry one.
+  function withRetryHint(message) {
+    const text = String(message == null ? '' : message).trim();
+    // The caller already says "Something went wrong:", so don't repeat it here.
+    if (!text) return 'Please try again.';
+    if (/try again/i.test(text)) return text;
+    return text.replace(/[.\s]+$/, '') + '. Please try again.';
+  }
+
   function showStatus(msg, type) {
     status.textContent = '';
     const label = document.createElement('span');
@@ -457,7 +468,7 @@
         'success'
       );
     } catch (err) {
-      showStatus('Something went wrong: ' + err.message + '. Please try again.', 'error');
+      showStatus('Something went wrong: ' + withRetryHint(err.message), 'error');
       btn.disabled = false;
       btn.textContent = 'Submit for review →';
       // Turnstile tokens are single-use. The one in the hidden input was just
