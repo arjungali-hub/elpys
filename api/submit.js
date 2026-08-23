@@ -57,6 +57,51 @@ function supabaseHeaders(extra) {
 
 // Anything thrown below (bad env, network failure, malformed JSON) would
 // otherwise surface as a bodyless 500 with no way to tell what broke.
+// Turns a submitted address into coordinates so the admin gets a map pin to
+// confirm rather than a blank pair of boxes to fill in by hand.
+//
+// Never throws and never blocks a submission: a vague address, a slow response
+// or an outage all resolve to nulls, which the admin panel surfaces as "could
+// not locate this" so the coordinates can be entered by hand. Nominatim's usage
+// policy asks for an identifying User-Agent, so one is sent.
+async function geocodeAddress(address) {
+  const query = String(address || '').trim();
+  if (!query) return { lat: null, lng: null, error: 'No address provided.' };
+
+  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q='
+            + encodeURIComponent(query);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const r = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'Elpys/1.0 (https://elpys.vercel.app; elpysnotifications@gmail.com)',
+      },
+      signal: controller.signal,
+    });
+    if (!r.ok) return { lat: null, lng: null, error: 'Geocoder returned HTTP ' + r.status + '.' };
+
+    const matches = await r.json();
+    if (!Array.isArray(matches) || !matches.length) {
+      return { lat: null, lng: null, error: 'No match found for this address.' };
+    }
+    const lat = parseFloat(matches[0].lat);
+    const lng = parseFloat(matches[0].lon);
+    if (!isFinite(lat) || !isFinite(lng)) {
+      return { lat: null, lng: null, error: 'Geocoder returned unusable coordinates.' };
+    }
+    return { lat: lat, lng: lng, error: null };
+  } catch (err) {
+    const detail = err && err.name === 'AbortError' ? 'timed out after 8s' : (err && err.message) || String(err);
+    console.error('Geocoding failed for', JSON.stringify(query), '-', detail);
+    return { lat: null, lng: null, error: 'Could not reach the geocoder (' + detail + ').' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 module.exports = async function handler(req, res) {
   try {
     return await handleSubmit(req, res);
@@ -259,6 +304,15 @@ async function handleSubmit(req, res) {
     if (hasEntry) schedule = clean;
   }
 
+  // Geocode before inserting so the pending row already carries coordinates.
+  // Deliberately awaited rather than fired off afterwards: the admin needs the
+  // pin on the very first look at the card, and a failure here is non-fatal.
+  const submittedAddress = String(body.address).trim().slice(0, 300);
+  const geocoded = await geocodeAddress(submittedAddress);
+  if (geocoded.error) {
+    console.warn('Submission stored without coordinates:', JSON.stringify(submittedAddress), '-', geocoded.error);
+  }
+
   const payload = {
     name:               String(body.name).trim().slice(0, 200),
     description:        String(body.description).trim().slice(0, 1000),
@@ -273,7 +327,12 @@ async function handleSubmit(req, res) {
     // client somehow sent one (matches the DB's event_date/type CHECK intent).
     schedule:           opportunityType === 'one_time' ? null : schedule,
     where:              String(body.where).trim().slice(0, 200),
-    address:            String(body.address).trim().slice(0, 300),
+    address:            submittedAddress,
+    // Best-effort coordinates for the admin's map preview; null when the
+    // geocoder couldn't place the address, which the panel flags for manual
+    // entry. Either way the admin confirms them before the listing publishes.
+    lat:                geocoded.lat,
+    lng:                geocoded.lng,
     signup_link:        String(body.signup_link).trim().slice(0, 500),
     signup_label:       body.signup_label ? String(body.signup_label).trim().slice(0, 50) : 'Sign up →',
     signup_steps:       signupSteps,

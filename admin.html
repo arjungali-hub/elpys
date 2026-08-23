@@ -9,6 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&display=swap" rel="stylesheet">
+  <!-- Leaflet, for the location preview on pending cards -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
   <style>
     /* Layered on styles.css: tokens, reset, type scale, .wrap and the wordmark
@@ -106,6 +109,23 @@
     .approve-fields { border-top: 1px solid var(--border); padding: 1rem 0 0.25rem; margin-bottom: 0.85rem; }
     .approve-fields > p { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; }
     .approve-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
+
+    /* Location preview — confirm the geocoded pin before publishing */
+    .approve-map { height: 220px; border: 1px solid var(--border); border-radius: var(--radius);
+                   margin-top: 0.85rem; isolation: isolate; }
+    /* Overrides the uppercase label styling that .approve-fields > p applies —
+       that treatment is meant for the section label, not for sentence copy. */
+    .approve-fields > p.approve-map-hint {
+      font-size: 0.75rem; color: var(--text-muted); margin: 0.4rem 0 0;
+      text-transform: none; letter-spacing: normal; font-weight: 400;
+    }
+    /* Shown when the geocoder couldn't place the address. Monochrome like the
+       rest of the panel — the weight and the left rule carry the emphasis. */
+    .geocode-warning { font-size: 0.8125rem; font-weight: 600; color: var(--text-main);
+                       background: var(--bg-secondary); border: 1px solid var(--border);
+                       border-left: 3px solid var(--text-main); border-radius: var(--radius);
+                       padding: 0.55rem 0.75rem; margin-top: 0.85rem; }
+    .geocode-warning span { font-weight: 400; color: var(--text-muted); display: block; margin-top: 0.15rem; }
     .approve-field { display: flex; flex-direction: column; gap: 0.25rem; }
     .approve-field label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
     .approve-field input { font-family: inherit; font-size: 0.875rem; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.45rem 0.65rem; background: var(--bg-primary); width: 180px; }
@@ -423,6 +443,9 @@
     if (rows.length === 0) { list.innerHTML = '<p class="empty-state">No pending submissions right now.</p>'; return; }
     list.innerHTML = '';
     rows.forEach(row => list.appendChild(buildPendingCard(row)));
+    // Maps are built only once the cards are in the document — Leaflet sizes
+    // itself from its container, which a detached node doesn't have.
+    rows.forEach(row => initApproveMap(row));
   }
 
   function buildPendingCard(row) {
@@ -430,6 +453,10 @@
     card.className = 'submission-card';
     card.id = 'card-' + row.id;
 
+    // Coordinates are geocoded at submission time; null means the geocoder
+    // couldn't place the address and the admin has to set them.
+    const hasCoords = row.lat != null && row.lng != null &&
+                      isFinite(parseFloat(row.lat)) && isFinite(parseFloat(row.lng));
     const steps = stepsToArray(row.signup_steps);
     const stepsHtml = steps.length ? '<ol class="sub-steps">' + steps.map(s => '<li>' + esc(s) + '</li>').join('') + '</ol>' : '';
     const noteHtml      = row.card_note   ? '<p class="sub-note">' + esc(row.card_note) + '</p>' : '';
@@ -447,12 +474,21 @@
         '<span style="color:#999;font-size:0.8125rem;">Submitted: ' + (row.created_at ? new Date(row.created_at).toLocaleDateString() : '—') + '</span>' +
       '</div>' +
       '<div class="approve-fields">' +
-        '<p>Fill in before approving</p>' +
+        '<p>Confirm before approving</p>' +
         '<div class="approve-row">' +
           '<div class="approve-field"><label for="slug-' + row.id + '">Slug</label><input id="slug-' + row.id + '" type="text" placeholder="e.g. food-lifeline" value="' + esc(autoSlug(row.name)) + '" /></div>' +
-          '<div class="approve-field"><label for="lat-' + row.id + '">Latitude</label><input id="lat-' + row.id + '" type="text" class="short" placeholder="e.g. 47.6264" /></div>' +
-          '<div class="approve-field"><label for="lng-' + row.id + '">Longitude</label><input id="lng-' + row.id + '" type="text" class="short" placeholder="e.g. -122.2054" /></div>' +
+          '<div class="approve-field"><label for="lat-' + row.id + '">Latitude</label><input id="lat-' + row.id + '" type="text" class="short" placeholder="e.g. 47.6264" value="' + esc(hasCoords ? row.lat : '') + '" /></div>' +
+          '<div class="approve-field"><label for="lng-' + row.id + '">Longitude</label><input id="lng-' + row.id + '" type="text" class="short" placeholder="e.g. -122.2054" value="' + esc(hasCoords ? row.lng : '') + '" /></div>' +
         '</div>' +
+        (hasCoords ? '' :
+          '<div class="geocode-warning">Couldn’t place this address automatically.' +
+            '<span>Drag the pin to the right spot, or type the coordinates above. ' +
+            'Address given: ' + esc(row.address || '—') + '</span></div>') +
+        '<div class="approve-map" id="map-' + row.id + '"></div>' +
+        '<p class="approve-map-hint">' +
+          (hasCoords ? 'Geocoded from the submitted address. ' : '') +
+          'Drag the pin to correct it — the coordinates update as you move it.' +
+        '</p>' +
       '</div>' +
       // Same inline editor as published cards, so a submission can be cleaned up
       // before approving rather than published and then fixed. Slug/lat/lng stay
@@ -487,6 +523,10 @@
     try {
       const res = await postAction({ action: 'approve', id, slug, lat: parseFloat(lat), lng: parseFloat(lng) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'HTTP ' + res.status); }
+      // Tear the map down with the card: Leaflet keeps listeners alive, and a
+      // stale entry would stop the map rebuilding if this row comes back to
+      // pending later via unpublish.
+      destroyApproveMap(id);
       fadeRemove('card-' + id, checkPendingEmpty);
       adjustBadge('count-badge', -1);
 
@@ -514,6 +554,10 @@
     try {
       const res = await postAction({ action: 'reject', id });
       if (!res.ok) throw new Error('HTTP ' + res.status);
+      // Tear the map down with the card: Leaflet keeps listeners alive, and a
+      // stale entry would stop the map rebuilding if this row comes back to
+      // pending later via unpublish.
+      destroyApproveMap(id);
       fadeRemove('card-' + id, checkPendingEmpty);
       adjustBadge('count-badge', -1);
     } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
@@ -868,6 +912,7 @@
       const empty = pendingList.querySelector('.empty-state');
       if (empty) empty.remove();
       pendingList.insertBefore(buildPendingCard(row), pendingList.firstChild);
+      initApproveMap(row);   // now in the document, so it can be measured
       adjustBadge('count-badge', 1);
     } catch (err) { setCardMsg2(id, 'Error: ' + err.message, '#111827'); setPublishedBtns(id, false); }
   }
@@ -935,6 +980,69 @@
 
   // The summary line under a card's name. Shared so it can be regenerated after
   // an edit is saved, instead of the card showing stale values until a reload.
+  // ── Location preview ───────────────────────────────────────────────────────
+  // Must run *after* the card is in the document: Leaflet measures its
+  // container on creation, and a detached div has no size.
+  const BELLEVUE = [47.6101, -122.2015];   // fallback centre when unlocatable
+  const _approveMaps = {};
+
+  function initApproveMap(row) {
+    if (!window.L) return;                       // Leaflet blocked or offline
+    const el = document.getElementById('map-' + row.id);
+    if (!el || _approveMaps[row.id]) return;
+
+    const lat = parseFloat(row.lat), lng = parseFloat(row.lng);
+    const located = isFinite(lat) && isFinite(lng);
+    const centre = located ? [lat, lng] : BELLEVUE;
+
+    const map = L.map(el, { scrollWheelZoom: false }).setView(centre, located ? 15 : 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    const marker = L.marker(centre, { draggable: true, icon: makeApproveIcon() }).addTo(map);
+    const latEl = document.getElementById('lat-' + row.id);
+    const lngEl = document.getElementById('lng-' + row.id);
+
+    // Pin -> inputs. Six decimals is ~10cm, far finer than needed here.
+    marker.on('dragend', function () {
+      const p = marker.getLatLng();
+      if (latEl) latEl.value = p.lat.toFixed(6);
+      if (lngEl) lngEl.value = p.lng.toFixed(6);
+    });
+
+    // Inputs -> pin, so typing coordinates moves it too.
+    function syncFromInputs() {
+      const a = parseFloat(latEl && latEl.value), b = parseFloat(lngEl && lngEl.value);
+      if (!isFinite(a) || !isFinite(b)) return;
+      marker.setLatLng([a, b]);
+      map.setView([a, b], Math.max(map.getZoom(), 15));
+    }
+    if (latEl) latEl.addEventListener('change', syncFromInputs);
+    if (lngEl) lngEl.addEventListener('change', syncFromInputs);
+
+    // The card is inserted then measured; nudge Leaflet once layout settles.
+    setTimeout(function () { map.invalidateSize(); }, 60);
+    _approveMaps[row.id] = map;
+  }
+
+  function makeApproveIcon() {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 41">' +
+        '<path d="M12.5 0C5.6 0 0 5.6 0 12.5c0 9.4 12.5 28.5 12.5 28.5S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0z" fill="#FF2A00" stroke="#ffffff" stroke-width="1.5"/>' +
+        '<circle cx="12.5" cy="12.5" r="5" fill="#ffffff" opacity="0.9"/>' +
+      '</svg>';
+    return L.icon({
+      iconUrl: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+      iconSize: [25, 41], iconAnchor: [12, 41],
+    });
+  }
+
+  function destroyApproveMap(id) {
+    if (_approveMaps[id]) { _approveMaps[id].remove(); delete _approveMaps[id]; }
+  }
+
   function typeMetaLabel(row) {
     if (row.opportunity_type === 'one_time') {
       return 'One-time' + (row.event_date ? ' — ' + esc(row.event_date) : '');
