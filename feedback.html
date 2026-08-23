@@ -67,6 +67,7 @@
     /* Honeypot — off-screen, never visible to real users */
     .hp-field { position: absolute; left: -9999px; top: -9999px; }
   </style>
+  <script src="analytics.js"></script>
 </head>
 <body>
 
@@ -127,6 +128,11 @@
   <div class="wrap">
     <div class="footer-inner">
       <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <nav class="footer-links">
+        <a href="about.html">About</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms of Service</a>
+      </nav>
     </div>
   </div>
 </footer>
@@ -183,6 +189,7 @@
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || 'HTTP ' + res.status);
 
+      if (window.posthog) posthog.capture('feedback_submitted');
       form.style.display = 'none';
       showStatus('Thanks — we got your feedback!', 'success');
     } catch (err) {

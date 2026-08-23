@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About — Elpys</title>
+  <!-- noindex: remove this tag when ready to launch publicly -->
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="logos/elpys-favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&display=swap" rel="stylesheet">
+  <style>
+    .about-section { padding: 3rem 0 4rem; }
+    .about-section h1 { font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+    .about-section .page-intro { font-size: 0.9375rem; color: #444; line-height: 1.6; max-width: 62ch; margin-bottom: 2.5rem; }
+    .about-body { max-width: 62ch; display: flex; flex-direction: column; gap: 1.5rem; }
+    .about-body h2 { font-size: 1.0625rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 0.5rem; }
+    .about-body p { font-size: 0.9375rem; line-height: 1.65; color: var(--body); }
+    /* The flex gap only separates the section blocks; this spaces paragraphs
+       that follow another paragraph or a list inside one. */
+    .about-body > div > * + p { margin-top: 0.75rem; }
+    .about-body ul { margin: 0.25rem 0 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.4rem; }
+    .about-body li { font-size: 0.9375rem; line-height: 1.55; color: var(--body); }
+    .about-cta { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem; }
+  </style>
+  <script src="analytics.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="index.html" class="site-name"><svg class="site-name-sparkles" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 129" aria-hidden="true"><g fill="#d9662f"><path d="M11 21 C11 27.3 11 27.3 17.3 30 C11 32.7 11 32.7 11 39 C11 32.7 11 32.7 4.7 30 C11 27.3 11 27.3 11 21 Z"/><path d="M189 17 C189 23.3 189 23.3 195.3 26 C189 28.7 189 28.7 189 35 C189 28.7 189 28.7 182.7 26 C189 23.3 189 23.3 189 17 Z"/></g><g fill="#e8935f"><path d="M8 73.8 C8 78.1 8 78.1 12.3 80 C8 81.9 8 81.9 8 86.2 C8 81.9 8 81.9 3.7 80 C8 78.1 8 78.1 8 73.8 Z"/><path d="M192 69.8 C192 74.1 192 74.1 196.3 76 C192 77.9 192 77.9 192 82.2 C192 77.9 192 77.9 187.7 76 C192 74.1 192 74.1 192 69.8 Z"/><path d="M70 111.8 C70 116.1 70 116.1 74.3 118 C70 119.9 70 119.9 70 124.2 C70 119.9 70 119.9 65.7 118 C70 116.1 70 116.1 70 111.8 Z"/><path d="M133 112.8 C133 117.1 133 117.1 137.3 119 C133 120.9 133 120.9 133 125.2 C133 120.9 133 120.9 128.7 119 C133 117.1 133 117.1 133 112.8 Z"/></g></svg>e<span class="site-name-l">l<svg class="site-name-flame" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 34" aria-hidden="true"><path d="M15 34 C9 30 7.5 23 10 17 C11.2 20.5 13.5 20.5 13.5 17 C15.5 20.5 19 23 16.5 28 C20 25.5 21 19.5 17.5 13.5 C22 17 23.5 24 20 30 C18 32.5 16 34 15 34 Z" fill="#d9662f"/><path d="M15 30 C12 28 11 24.5 12.4 21.5 C13 23.3 14.2 23.3 14.2 21.5 C15.2 23.3 17 24.5 15.6 27 C17.4 25.7 18 22.5 16.2 19.5 C18.5 21.3 19.2 25 17.4 28 C16.4 29.3 15.5 30 15 30 Z" fill="#f2a03d"/></svg><svg class="site-name-torch-base" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 12" aria-hidden="true"><path d="M3 0 L17 0 L14.5 6 L5.5 6 Z" fill="#2b2420"/><rect x="4.5" y="6" width="11" height="3.2" rx="1.6" fill="#2b2420"/></svg></span>pys</a>
+      <span class="beta-badge">Beta</span>
+      <a href="submit.html" class="header-submit-link">Submit an opportunity</a>
+      <a href="login.html" id="header-auth-link" class="header-auth-link">Log in</a>
+      <a href="signup.html" id="header-signup-link" class="header-signup-btn">Sign up</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="about-section">
+    <a href="index.html" class="back-link">← Back to all opportunities</a>
+    <h1>About Elpys</h1>
+    <p class="page-intro">A curated directory of verified volunteer opportunities for teens in the Bellevue area — with exact sign-up steps, no broken links, and nothing you have to figure out.</p>
+
+    <div class="about-body">
+      <div>
+        <h2>Why this exists</h2>
+        <p>This started with a King County Library System list of teen volunteer opportunities. It had 13 organizations on it — but the information was years out of date, and almost every link just went to an organization's homepage instead of an actual signup page. Age requirements were buried or missing entirely. Some of the programs on it had closed, or started charging a fee.</p>
+        <p>That's the whole reason Elpys exists: a directory where every listing has actually been checked, so you can go from "I want to volunteer" to "I signed up" in one visit — no dead ends, no digging through an organization's website trying to figure out if they even take teens.</p>
+      </div>
+
+      <div>
+        <h2>What "verified" actually means</h2>
+        <p>Every listing on Elpys is checked against that organization's own page before it goes live — not a search result, not an old list, their actual current signup process. Every listing has to clear the same bar:</p>
+        <ul>
+          <li>No adult has to be there with you (a waiver you sign at home is fine — a parent standing next to you the whole time is not)</li>
+          <li>The sign-up steps are clear enough that you can actually complete them</li>
+          <li>Roughly 20 minutes of Bellevue</li>
+          <li>Free — no program fees</li>
+        </ul>
+        <p>If an organization requires a long application and interview process, a background check with a long wait, or isn't really an opportunity you can sign up for (just a directory pointing elsewhere), it doesn't get listed.</p>
+      </div>
+
+      <div>
+        <h2>The name</h2>
+        <p>Elpys comes from <em>Elpis</em>, the Greek personification of hope — the one thing left in Pandora's box after everything else got out. "Sign Up. Show Up." is the idea behind it: hope is more useful when it comes with an actual next step.</p>
+      </div>
+
+      <div>
+        <h2>Who's behind it</h2>
+        <p>Elpys is built and maintained by one person — a student in Bellevue who got frustrated with that KCLS list and decided to fix it. It's still early: new listings get added regularly, and the goal is to keep expanding to nearby cities over time.</p>
+      </div>
+
+      <div>
+        <h2>Help make it better</h2>
+        <p>Know an organization that should be listed? Found something wrong with a listing — a broken link, an outdated detail? Both take less than a minute to send in, and both directly shape what's on the site.</p>
+        <div class="about-cta">
+          <a class="btn" href="submit.html">Submit an opportunity →</a>
+          <a class="btn btn-ghost" href="feedback.html">Report a problem →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <nav class="footer-links">
+        <a href="about.html">About</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms of Service</a>
+      </nav>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="supabase-auth.js"></script>
+<script src="beta-banner.js"></script>
+
+</body>
+</html>

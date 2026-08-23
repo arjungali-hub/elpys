@@ -623,6 +623,10 @@ footer {
   justify-content: space-between;
   align-items: center;
 }
+.footer-links {
+  display: flex;
+  gap: 1rem;
+}
 footer p {
   font-size: 0.8125rem;
   color: var(--muted);

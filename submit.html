@@ -103,6 +103,7 @@
     .avail-cell:hover { border-color: #D1D5DB; background: var(--surface); }
     .avail-cell.active { background: var(--body); border-color: var(--body); }
   </style>
+  <script src="analytics.js"></script>
 </head>
 <body>
 
@@ -292,6 +293,11 @@
     <div class="footer-inner">
       <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
       <a href="submit.html">Submit an opportunity</a>
+      <nav class="footer-links">
+        <a href="about.html">About</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms of Service</a>
+      </nav>
     </div>
   </div>
 </footer>
@@ -506,6 +512,7 @@
         throw new Error(parts.join(' — '));
       }
 
+      if (window.posthog) posthog.capture('submission_form_submitted');
       form.style.display = 'none';
       showStatus(
         "Thanks! We'll review your listing and it'll go live once approved. We'll reach out if we have questions.",
