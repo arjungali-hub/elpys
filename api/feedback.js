@@ -91,9 +91,11 @@ module.exports = async function handler(req, res) {
   });
 
   if (!r.ok) {
+    // The Supabase response body names the table and constraint that failed,
+    // so it goes to the logs rather than back to the visitor.
     const detail = await r.text().catch(() => '');
     console.error('Supabase feedback insert failed:', r.status, detail);
-    return res.status(500).json({ error: 'Supabase error ' + r.status + ': ' + detail });
+    return res.status(500).json({ error: 'Could not save your feedback. Please try again.' });
   }
 
   return res.status(200).json({ ok: true });

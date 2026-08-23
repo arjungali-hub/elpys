@@ -2,6 +2,9 @@
 // and on the main page. Requires supabase-client.js to already be loaded
 // (for fetchOpportunities(), makeMarkerIcon(), opportunitySlug()).
 
+// Fallback view for when there is nothing to fit bounds around.
+const BELLEVUE_CENTRE = [47.6101, -122.2015];
+
 function miniPinIcon(big) {
   return makeMarkerIcon(big ? 30 : 18, false);
 }
@@ -34,8 +37,9 @@ async function renderSingleMiniMap(containerId, slug, mapPageUrl) {
 
   const map = staticMiniMap(containerId);
   addMiniTiles(map);
-  map.setView([opp.lat, opp.lng], 13);
-  L.marker([opp.lat, opp.lng], { icon: miniPinIcon(true) }).addTo(map);
+  const located = isFinite(opp.lat) && isFinite(opp.lng);
+  map.setView(located ? [opp.lat, opp.lng] : BELLEVUE_CENTRE, located ? 13 : 11);
+  if (located) L.marker([opp.lat, opp.lng], { icon: miniPinIcon(true) }).addTo(map);
 
   const wrap = document.getElementById(containerId).closest('.mini-map-wrap');
   if (wrap) {
@@ -53,9 +57,16 @@ async function renderAllMiniMap(containerId) {
   const map = staticMiniMap(containerId);
   addMiniTiles(map);
 
-  const bounds = opportunities.map(o => [o.lat, o.lng]);
-  opportunities.forEach(opp => {
+  // Rows missing coordinates would place a marker at NaN and make fitBounds
+  // throw, taking the whole render down with it.
+  const located = opportunities.filter(o => isFinite(o.lat) && isFinite(o.lng));
+  located.forEach(opp => {
     L.marker([opp.lat, opp.lng], { icon: miniPinIcon(false) }).addTo(map);
   });
-  map.fitBounds(bounds, { padding: [16, 16] });
+
+  if (located.length) {
+    map.fitBounds(located.map(o => [o.lat, o.lng]), { padding: [16, 16] });
+  } else {
+    map.setView(BELLEVUE_CENTRE, 11);
+  }
 }

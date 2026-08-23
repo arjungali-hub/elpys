@@ -2,12 +2,23 @@
 // Triggered by Vercel cron (Authorization: Bearer $CRON_SECRET)
 // or manually from the admin panel (x-admin-password header).
 
+const crypto = require('crypto');
 const sendEmail = require('../lib/sendEmail');
+const { checkAdminPassword } = require('../lib/adminAuth');
 
-const SUPABASE_REST = process.env.SUPABASE_URL;          // https://xxx.supabase.co/rest/v1/
+// Matches api/submit.js and api/review.js: tolerates SUPABASE_URL given with or
+// without the /rest/v1/ suffix, which would otherwise 404 every query silently.
+function restBase(url) {
+  if (!url) return null;
+  let u = String(url).trim();
+  if (!u.endsWith('/')) u += '/';
+  if (!/\/rest\/v1\/$/.test(u)) u += 'rest/v1/';
+  return u;
+}
+
+const SUPABASE_REST = restBase(process.env.SUPABASE_URL); // https://xxx.supabase.co/rest/v1/
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CRON_SECRET   = process.env.CRON_SECRET;
-const ADMIN_PASS    = process.env.ADMIN_PASSWORD;
 
 function supaHeaders(extra) {
   return Object.assign({ apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }, extra || {});
@@ -52,13 +63,22 @@ function availabilityMatches(schedule, availability) {
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
 
-  // Allow Vercel cron secret OR admin password for manual testing
+  // Allow Vercel cron secret OR admin password for manual testing. The admin
+  // path goes through the shared constant-time, rate-limited check; the cron
+  // secret is compared the same way rather than with ===.
   const authHeader = req.headers.authorization;
   const adminPw    = req.headers['x-admin-password'];
-  const authorized =
-    (CRON_SECRET && authHeader === 'Bearer ' + CRON_SECRET) ||
-    (ADMIN_PASS  && adminPw   === ADMIN_PASS);
-  if (!authorized) return res.status(401).json({ error: 'Unauthorized' });
+
+  const cronOk = CRON_SECRET && typeof authHeader === 'string' &&
+    crypto.timingSafeEqual(
+      crypto.createHash('sha256').update(authHeader).digest(),
+      crypto.createHash('sha256').update('Bearer ' + CRON_SECRET).digest()
+    );
+
+  if (!cronOk) {
+    const denied = checkAdminPassword(req, adminPw);
+    if (denied) return res.status(denied.status).json(denied.body);
+  }
 
   const siteUrl = 'https://elpys.vercel.app';
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -91,6 +111,7 @@ module.exports = async function handler(req, res) {
 
   // 3. Send one digest per matching user
   let sent = 0, skipped = 0;
+  const failed = [];
 
   for (const profile of profiles) {
     const to = profile.email;
@@ -114,7 +135,7 @@ module.exports = async function handler(req, res) {
     const unsubUrl = siteUrl + '/api/unsubscribe?id=' + profile.id;
 
     const itemsHtml = matched.map(opp => {
-      const url = siteUrl + '/opportunities/detail.html?slug=' + encodeURIComponent(opp.slug || '');
+      const url = siteUrl + '/opportunities-detail.html?slug=' + encodeURIComponent(opp.slug || '');
       const dateLine = (opp.opportunity_type === 'one_time' && opp.event_date)
         ? '<p style="font-size:0.8125rem;font-weight:700;color:#111827;margin:0 0 0.4rem;">' + esc(formatDigestDate(opp.event_date)) + '</p>'
         : '';
@@ -148,7 +169,7 @@ module.exports = async function handler(req, res) {
     const text =
       'New volunteer opportunities on Elpys\n\n' +
       matched.map(opp => {
-        const url = siteUrl + '/opportunities/detail.html?slug=' + encodeURIComponent(opp.slug || '');
+        const url = siteUrl + '/opportunities-detail.html?slug=' + encodeURIComponent(opp.slug || '');
         const datePrefix = (opp.opportunity_type === 'one_time' && opp.event_date) ? formatDigestDate(opp.event_date) + '\n' : '';
         return opp.name + '\n' + datePrefix + (opp.description || '') + '\n' + url;
       }).join('\n\n') +
@@ -158,12 +179,29 @@ module.exports = async function handler(req, res) {
       await sendEmail({ to, subject: 'New volunteer opportunities this week — Elpys', html, text });
       sent++;
     } catch (err) {
-      console.error('Failed to send to', to, err.message);
-      return res.status(500).json({ error: 'Email send failed: ' + err.message });
+      // One undeliverable address must not end the run. This used to return
+      // straight out of the handler, so every remaining subscriber got nothing
+      // — and because the query keys off published_at within the last 7 days,
+      // next week's run would not have covered them either.
+      console.error('Failed to send to', to, err && err.message);
+      failed.push({ to: to, error: (err && err.message) || String(err) });
     }
   }
 
-  return res.status(200).json({ ok: true, sent, skipped, totalProfiles: profiles.length });
+  if (failed.length) {
+    console.error('Digest finished with ' + failed.length + ' failed send(s):', JSON.stringify(failed));
+  }
+
+  return res.status(200).json({
+    ok: true,
+    sent,
+    skipped,
+    failed: failed.length,
+    totalProfiles: profiles.length,
+    message: failed.length
+      ? 'Sent to ' + sent + ', skipped ' + skipped + ', ' + failed.length + ' failed to send (see logs).'
+      : undefined,
+  });
 };
 
 // This runs in a cron job rather than a viewer's browser, so it formats in UTC

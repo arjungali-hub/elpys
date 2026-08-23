@@ -29,9 +29,7 @@
     .age-confirm-label input { margin-top: 0.2rem; flex-shrink: 0; cursor: pointer; }
     .submit-btn { align-self: flex-start; font-family: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--white); background: var(--body); border: none; border-radius: var(--radius); padding: 0.65rem 1.5rem; cursor: pointer; }
     .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .form-status { font-size: 0.9375rem; padding: 1rem; border-radius: var(--radius); display: none; }
-    .form-status.success { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; }
-    .form-status.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+    /* .form-status and its .error/.success colours now live in styles.css. */
     .auth-switch { margin-top: 1.5rem; font-size: 0.9rem; color: var(--muted); }
     .auth-switch a { color: var(--body); text-decoration: underline; }
     .avail-grid { display: grid; grid-template-columns: 2.5rem 1fr 1fr 1fr; gap: 4px; margin-top: 0.5rem; }
@@ -122,7 +120,7 @@
 <footer>
   <div class="wrap">
     <div class="footer-inner">
-      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <p>Listings are checked regularly for accuracy, but links and details can change — always confirm with the org before your first visit. Something look wrong? <a href="feedback.html">Let us know</a>.</p>
       <a href="submit.html">Submit an opportunity</a>
       <nav class="footer-links">
         <a href="about.html">About</a>
@@ -133,7 +131,7 @@
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
 <script>
   var _supa = supabase.createClient(
     'https://ukrykzmehvghedrvmkjj.supabase.co',

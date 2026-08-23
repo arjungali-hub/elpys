@@ -102,15 +102,21 @@ async function geocodeAddress(address) {
   }
 }
 
+// Only http(s) and mailto links are accepted. Escaping stops an attribute
+// breakout wherever this is rendered, but `javascript:` needs no quotes at all,
+// and the admin panel shows this as a clickable link before approval.
+function isSafeLink(url) {
+  return /^(https?:\/\/|mailto:)/i.test(String(url || '').trim());
+}
+
 module.exports = async function handler(req, res) {
   try {
     return await handleSubmit(req, res);
   } catch (err) {
     console.error('/api/submit unhandled error:', err && err.stack ? err.stack : err);
-    return res.status(500).json({
-      error:   'Submission failed.',
-      message: err && err.message ? err.message : String(err),
-    });
+    // The reason goes to the Vercel logs, not to the submitter — internal
+    // error text tends to name tables, columns and configuration.
+    return res.status(500).json({ error: 'Submission failed. Please try again.' });
   }
 };
 
@@ -123,10 +129,7 @@ async function handleSubmit(req, res) {
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error('/api/submit misconfigured: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set');
-    return res.status(500).json({
-      error:   'Submission failed.',
-      message: 'Server is missing Supabase configuration (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).',
-    });
+    return res.status(500).json({ error: 'Submission failed. Please try again.' });
   }
 
   const body = req.body || {};
@@ -162,10 +165,7 @@ async function handleSubmit(req, res) {
       try { ts = JSON.parse(tsRaw); } catch (_) { /* non-JSON — kept in tsRaw */ }
     } catch (err) {
       console.error('Turnstile siteverify request failed:', err && err.stack ? err.stack : err);
-      return res.status(502).json({
-        error:   'Could not reach the CAPTCHA service. Please try again.',
-        message: err && err.message ? err.message : String(err),
-      });
+      return res.status(502).json({ error: 'Could not reach the CAPTCHA service. Please try again.' });
     }
 
     if (!ts || ts.success !== true) {
@@ -181,14 +181,19 @@ async function handleSubmit(req, res) {
         secretPrefix: TURNSTILE_SECRET.slice(0, 3),
       }));
 
+      // The diagnostic detail (error codes, hints, secret shape) stays in the
+      // log line above. Sending it to the browser told anyone who asked how the
+      // server's Turnstile secret is configured.
+      console.error('Turnstile hints:',
+        codes.map(c => TURNSTILE_CODE_HELP[c] || ('Unrecognized Cloudflare error code: ' + c)).join(' '));
+
+      // An expired or already-used token is worth naming: retrying works, but
+      // only after the widget issues a fresh one.
+      const stale = codes.indexOf('timeout-or-duplicate') !== -1;
       return res.status(400).json({
-        error:            'CAPTCHA verification failed. Please try again.',
-        turnstileCodes:   codes,
-        turnstileHints:   codes.map(c => TURNSTILE_CODE_HELP[c] || ('Unrecognized Cloudflare error code: ' + c)),
-        turnstileStatus:  tsRes ? tsRes.status : null,
-        turnstileRaw:     codes.length ? undefined : tsRaw.slice(0, 300),
-        secretConfigured: true,
-        secretLength:     TURNSTILE_SECRET.length,
+        error: stale
+          ? 'That CAPTCHA has expired. Please complete it again and resubmit.'
+          : 'CAPTCHA verification failed. Please try again.',
       });
     }
   }
@@ -215,6 +220,19 @@ async function handleSubmit(req, res) {
   }
   if (!['online','contact'].includes(body.section)) {
     return res.status(400).json({ error: 'Invalid section value.' });
+  }
+  if (!isSafeLink(body.signup_link)) {
+    return res.status(400).json({
+      error: 'The sign-up link must start with http://, https:// or mailto:.',
+    });
+  }
+  // Optional links get the same treatment — website is rendered as an <a> on
+  // the detail page, live_url in the map sidebar.
+  for (const field of ['website_url', 'live_url']) {
+    const v = body[field];
+    if (v && !isSafeLink(v) && !/^[\w.-]+\.[a-z]{2,}(\/|$)/i.test(String(v).trim())) {
+      return res.status(400).json({ error: 'Please give a valid web address for ' + field.replace('_url', '') + '.' });
+    }
   }
 
   // ── 5. Duplicate name check (case-insensitive, all statuses) ─────────────
@@ -379,20 +397,18 @@ async function handleSubmit(req, res) {
   }
 
   if (!result.ok) {
-    console.error('Supabase insert failed:', result.status, result.detail);
     const p = result.parsed;
+    // PostgREST's complaint (message/details/hint/code) is logged in full —
+    // it names tables, columns and constraints, so it does not go to the
+    // submitter. Check the Vercel function logs when diagnosing a failure.
+    console.error('Supabase insert failed:', result.status, JSON.stringify({
+      message: (p && p.message) || String(result.detail || '').slice(0, 500) || null,
+      details: (p && p.details) || null,
+      hint:    (p && p.hint)    || null,
+      code:    (p && p.code)    || null,
+    }));
 
-    // Surface PostgREST's actual complaint (message/details/hint/code) instead
-    // of a bare 500, so a column-type or constraint mismatch is diagnosable
-    // from the response rather than only from the Vercel logs.
-    return res.status(500).json({
-      error:          'Submission failed. Please try again.',
-      supabaseStatus: result.status,
-      message:        (p && p.message) || String(result.detail || '').slice(0, 500) || null,
-      details:        (p && p.details) || null,
-      hint:           (p && p.hint)    || null,
-      code:           (p && p.code)    || null,
-    });
+    return res.status(500).json({ error: 'Submission failed. Please try again.' });
   }
 
   return res.status(200).json({ ok: true });

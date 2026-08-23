@@ -22,12 +22,10 @@
     .field input:focus { outline: 2px solid var(--body); outline-offset: 1px; }
     .submit-btn { align-self: flex-start; font-family: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--white); background: var(--body); border: none; border-radius: var(--radius); padding: 0.65rem 1.5rem; cursor: pointer; }
     .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .form-status { font-size: 0.9375rem; padding: 1rem; border-radius: var(--radius); display: none; }
-    .form-status.error { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+    /* .form-status and its .error/.success colours now live in styles.css. */
     .auth-switch { margin-top: 1.5rem; font-size: 0.9rem; color: var(--muted); }
     .auth-switch a { color: var(--body); text-decoration: underline; }
   </style>
-  <script src="analytics.js"></script>
 </head>
 <body>
 
@@ -64,7 +62,7 @@
 <footer>
   <div class="wrap">
     <div class="footer-inner">
-      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <p>Listings are checked regularly for accuracy, but links and details can change — always confirm with the org before your first visit. Something look wrong? <a href="feedback.html">Let us know</a>.</p>
       <a href="submit.html">Submit an opportunity</a>
       <nav class="footer-links">
         <a href="about.html">About</a>

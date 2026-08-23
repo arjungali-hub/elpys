@@ -19,9 +19,10 @@ function restBase(url) {
   return u;
 }
 
+const { checkAdminPassword } = require('../lib/adminAuth');
+
 const SUPABASE_URL = restBase(process.env.SUPABASE_URL);
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const ADMIN_PASS   = process.env.ADMIN_PASSWORD;
 
 const RESOLVED_LIMIT = 20;
 const DECISIONS = ['change_needed', 'fine_as_is'];
@@ -93,10 +94,8 @@ async function handleReview(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-password');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  const provided = req.headers['x-admin-password'];
-  if (!provided || provided !== ADMIN_PASS) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  const denied = checkAdminPassword(req, req.headers['x-admin-password']);
+  if (denied) return res.status(denied.status).json(denied.body);
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error('/api/review misconfigured: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set');

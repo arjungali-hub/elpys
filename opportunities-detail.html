@@ -31,14 +31,14 @@
 <div class="wrap">
   <section class="detail-section" id="detail-section">
     <a href="index.html" class="back-link">← Back to all opportunities</a>
-    <p id="loading-msg" style="color:#666;margin-top:1rem;">Loading…</p>
+    <p id="loading-msg" class="detail-placeholder" style="margin-top:1rem;">Loading…</p>
   </section>
 </div>
 
 <footer>
   <div class="wrap">
     <div class="footer-inner">
-      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <p>Listings are checked regularly for accuracy, but links and details can change — always confirm with the org before your first visit. Something look wrong? <a href="feedback.html">Let us know</a>.</p>
       <nav class="footer-links">
         <a href="about.html">About</a>
         <a href="privacy.html">Privacy Policy</a>
@@ -52,12 +52,23 @@
 <script src="supabase-client.js"></script>
 <script src="mini-map.js"></script>
 <script>
+  // Terminal states share the bordered .detail-placeholder box so they read
+  // as an intentional message rather than a page that failed to finish.
+  function setPlaceholder(title, detail) {
+    var el = document.getElementById('loading-msg');
+    el.className = 'detail-placeholder';
+    el.innerHTML = '<strong class="detail-placeholder-title">' + esc(title) + '</strong>' +
+      '<span>' + esc(detail) + '</span>' +
+      '<a class="detail-placeholder-link" href="index.html">Browse all opportunities →</a>';
+  }
+
   (async () => {
     const slug = new URLSearchParams(window.location.search).get('slug');
     const section = document.getElementById('detail-section');
 
     if (!slug) {
-      document.getElementById('loading-msg').textContent = 'No opportunity specified.';
+      setPlaceholder('No opportunity specified',
+        'This link is missing the opportunity it should point to.');
       return;
     }
 
@@ -66,12 +77,14 @@
       const all = await fetchOpportunities();
       opp = all.find(o => o.slug === slug);
     } catch (e) {
-      document.getElementById('loading-msg').textContent = 'Could not load opportunity data.';
+      setPlaceholder('This opportunity could not be loaded',
+        'Something went wrong reaching our database. Please refresh in a moment.');
       return;
     }
 
     if (!opp) {
-      document.getElementById('loading-msg').textContent = 'Opportunity not found.';
+      setPlaceholder('Opportunity not found',
+        'It may have been removed, or the link may be out of date.');
       return;
     }
 
@@ -107,7 +120,7 @@
     if (opp._contactPhone)   contactLines.push('<span><strong>Phone:</strong> ' + esc(opp._contactPhone) + '</span>');
     const orgContactHtml = contactLines.length
       ? '<div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid #E5E7EB;">' +
-          '<p style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:0.6rem;">Contact</p>' +
+          '<p style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--subtle);margin-bottom:0.6rem;">Contact</p>' +
           '<div style="display:flex;flex-direction:column;gap:0.35rem;font-size:0.9375rem;">' +
             contactLines.join('') +
           '</div>' +
@@ -142,7 +155,7 @@
             '<div class="mini-map" id="mini-map"></div>' +
           '</div>' +
           '<p class="mini-map-label">View on full map →</p>' +
-          (!opp.approx && opp.liveUrl ? '<p style="font-size:0.8125rem;color:#888;margin-top:0.35rem;">The location marked is the nearest — <a href="' + esc(opp.liveUrl) + '" target="_blank" rel="noopener" style="color:#888;">view all locations →</a></p>' : '') +
+          (!opp.approx && opp.liveUrl ? '<p style="font-size:0.8125rem;color:var(--subtle);margin-top:0.35rem;">The location marked is the nearest — <a href="' + esc(opp.liveUrl) + '" target="_blank" rel="noopener" style="color:var(--subtle);">view all locations →</a></p>' : '') +
           '<div class="detail-box">' +
             '<p class="steps-label">How to sign up</p>' +
             stepsHtml +
@@ -169,7 +182,7 @@
       .replace(/"/g, '&quot;');
   }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
 <script src="supabase-auth.js"></script>
 <script src="beta-banner.js"></script>
 

@@ -1,0 +1,22 @@
+# Working notes and tooling that live in this folder but are not part of the
+# site. Without this file a `git add -A` swept an archive into a commit once,
+# and Vercel then served it publicly.
+elpys-project-context.md
+elpys-opportunity-scout.zip
+*.zip
+
+# Secrets — none of these should ever be committed. Real values live in the
+# Vercel project settings (SUPABASE_SERVICE_ROLE_KEY, ADMIN_PASSWORD,
+# TURNSTILE_SECRET_KEY, CRON_SECRET, GMAIL_APP_PASSWORD).
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+.vercel/
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+*.swp

@@ -54,7 +54,7 @@
 <footer>
   <div class="wrap">
     <div class="footer-inner">
-      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <p>Listings are checked regularly for accuracy, but links and details can change — always confirm with the org before your first visit. Something look wrong? <a href="feedback.html">Let us know</a>.</p>
       <nav class="footer-links">
         <a href="about.html">About</a>
         <a href="privacy.html">Privacy Policy</a>
@@ -86,15 +86,8 @@
   const routeOrigin = document.getElementById('route-origin');
   const routeStatus = document.getElementById('route-status');
 
-  function escHtml(value) {
-    return String(value || '').replace(/[&<>"']/g, ch => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    }[ch]));
-  }
+  // escHtml() and safeUrl() come from supabase-client.js, loaded above — this
+  // page used to carry its own copy, which drifted out of use.
 
   function formatDriveTime(seconds) {
     const mins = Math.max(1, Math.round(seconds / 60));
@@ -127,12 +120,11 @@
   }
 
   function selectOpportunity(opp, listItem) {
-    opp._allOpps.forEach(o => o.marker.setIcon(pinIcon(false)));
+    opp._allOpps.forEach(o => { if (o.marker) o.marker.setIcon(pinIcon(false)); });
     if (activeItem) activeItem.classList.remove('active');
 
     activeOpportunity = opp;
-    opp.marker.setIcon(pinIcon(true));
-    opp.marker.openPopup();
+    if (opp.marker) { opp.marker.setIcon(pinIcon(true)); opp.marker.openPopup(); }
 
     // With a route already drawn, switching opportunity redraws it to the new
     // one straight away rather than leaving a stale route on the map until
@@ -140,9 +132,11 @@
     // fits its own bounds, and the two animations would fight each other.
     if (routeLayer && routeOrigin.value.trim()) {
       showRouteFromInput();
-    } else {
+    } else if (opp.marker) {
       map.flyTo([opp.lat, opp.lng], Math.max(map.getZoom(), 13), { duration: 0.5 });
       setRouteStatus('Selected ' + opp.name + '. Enter a starting place and show the route.');
+    } else {
+      setRouteStatus(opp.name + ' has no mapped location yet.', 'error');
     }
 
     if (listItem) {
@@ -242,10 +236,29 @@
     showRouteFromInput();
   });
 
+  // The map is created without a view, so it stays a grey box until something
+  // sets one. Every exit path below has to leave it somewhere sensible.
+  const BELLEVUE_CENTRE = [47.6101, -122.2015];
+
   async function initMap() {
-    const opportunities = await fetchOpportunities();
     const sidebar = document.getElementById('map-sidebar');
     const bounds = [];
+
+    let opportunities;
+    try {
+      opportunities = await fetchOpportunities();
+    } catch (err) {
+      console.error('Could not load opportunities:', err);
+      map.setView(BELLEVUE_CENTRE, 11);
+      sidebar.innerHTML =
+        '<div class="load-error">' +
+          '<p class="load-error-title">Opportunities couldn\'t be loaded</p>' +
+          '<p>Something went wrong reaching our database. Please refresh in a moment — ' +
+          'if it keeps happening, <a href="feedback.html">let us know</a>.</p>' +
+        '</div>';
+      setRouteStatus('Opportunities could not be loaded, so routing is unavailable.', 'error');
+      return;
+    }
 
     opportunities.forEach(opp => {
       opp._allOpps = opportunities;
@@ -255,12 +268,12 @@
         ? '<span class="map-popup-tag">Approximate area — operates at multiple sites</span>'
         : (opp.liveUrl ? '<span class="map-popup-tag">Nearest location shown</span>' : '');
       const actionLink = (opp.approx && opp.liveUrl)
-        ? '<a href="' + opp.liveUrl + '" target="_blank" rel="noopener">Find exact locations on their website</a>'
-        : '<a href="' + directionsUrl + '" target="_blank" rel="noopener">Get directions</a>';
+        ? '<a href="' + safeUrl(opp.liveUrl) + '" target="_blank" rel="noopener">Find exact locations on their website</a>'
+        : '<a href="' + escHtml(directionsUrl) + '" target="_blank" rel="noopener">Get directions</a>';
       const popupHtml =
         '<div class="map-popup">' +
-          '<a class="map-popup-title" href="' + opp.link + '">' + opp.name + '</a>' +
-          '<span class="map-popup-tag">' + opp.tag + '</span>' +
+          '<a class="map-popup-title" href="' + safeUrl(opp.link) + '">' + escHtml(opp.name) + '</a>' +
+          '<span class="map-popup-tag">' + escHtml(opp.tag) + '</span>' +
           approxNote +
           actionLink +
         '</div>';
@@ -268,41 +281,67 @@
       // No "Select for route" button: the click that opens this popup already
       // selects the opportunity (see the marker click handler below), and with
       // a starting place entered that redraws the route on its own.
-      opp.marker = L.marker([opp.lat, opp.lng], { icon: pinIcon(false) }).addTo(map).bindPopup(popupHtml);
-      bounds.push([opp.lat, opp.lng]);
+      // A row without usable coordinates still gets a sidebar entry, but no
+      // pin — L.marker at NaN throws.
+      if (isFinite(opp.lat) && isFinite(opp.lng)) {
+        opp.marker = L.marker([opp.lat, opp.lng], { icon: pinIcon(false) }).addTo(map).bindPopup(popupHtml);
+        bounds.push([opp.lat, opp.lng]);
+      }
 
       const wrap = document.createElement('div');
       wrap.className = 'map-list-item-wrap';
 
+      // role="button" + tabindex rather than a real <button>: the item contains
+      // an <a> to the detail page, which can't be nested inside a button.
       const item = document.createElement('div');
       item.className = 'map-list-item';
+      item.setAttribute('role', 'button');
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('aria-label', 'Show ' + opp.name + ' on the map');
       item.innerHTML =
-        '<a class="map-list-name" href="' + opp.link + '">' + opp.name + '</a>' +
-        '<span class="map-list-desc">' + opp.desc + '</span>';
+        '<a class="map-list-name" href="' + safeUrl(opp.link) + '">' + escHtml(opp.name) + '</a>' +
+        '<span class="map-list-desc">' + escHtml(opp.desc) + '</span>';
       item.addEventListener('click', e => {
         if (!e.target.closest('a')) selectOpportunity(opp, item);
+      });
+      item.addEventListener('keydown', e => {
+        // Enter/Space select, matching the click. The inner link keeps its own
+        // Enter behaviour — when it has focus, it is the event's target.
+        if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('a')) {
+          e.preventDefault();
+          selectOpportunity(opp, item);
+        }
       });
       wrap.appendChild(item);
 
       if (opp.approx && opp.liveUrl) {
         const note = document.createElement('div');
         note.className = 'map-list-live-note';
-        note.innerHTML = 'Operates at multiple locations — <a href="' + opp.liveUrl + '" target="_blank" rel="noopener">view their live event page →</a>';
+        note.innerHTML = 'Operates at multiple locations — <a href="' + safeUrl(opp.liveUrl) + '" target="_blank" rel="noopener">view their live event page →</a>';
         wrap.appendChild(note);
       } else if (!opp.approx && opp.liveUrl) {
         const note = document.createElement('div');
         note.className = 'map-list-live-note';
-        note.innerHTML = 'Nearest location shown — <a href="' + opp.liveUrl + '" target="_blank" rel="noopener">view all locations →</a>';
+        note.innerHTML = 'Nearest location shown — <a href="' + safeUrl(opp.liveUrl) + '" target="_blank" rel="noopener">view all locations →</a>';
         wrap.appendChild(note);
       }
 
       sidebar.appendChild(wrap);
       opp.listItem = item;
 
-      opp.marker.on('click', () => selectOpportunity(opp, item));
+      if (opp.marker) opp.marker.on('click', () => selectOpportunity(opp, item));
     });
 
-    map.fitBounds(bounds, { padding: [30, 30] });
+    // fitBounds throws on an empty array, which would abort the rest of init
+    // and leave the map with no view at all.
+    if (bounds.length) {
+      map.fitBounds(bounds, { padding: [30, 30] });
+    } else {
+      map.setView(BELLEVUE_CENTRE, 11);
+      sidebar.innerHTML = '<div class="load-error"><p class="load-error-title">No opportunities to show yet</p>' +
+        '<p>Nothing is published right now. Check back soon.</p></div>';
+      setRouteStatus('No opportunities are published right now.');
+    }
 
     const selectedSlug = new URLSearchParams(window.location.search).get('select');
     if (selectedSlug) {
@@ -311,9 +350,12 @@
     }
   }
 
-  initMap();
+  initMap().catch(err => {
+    console.error('Map initialisation failed:', err);
+    map.setView(BELLEVUE_CENTRE, 11);
+  });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
 <script src="supabase-auth.js"></script>
 <script src="beta-banner.js"></script>
 

@@ -36,7 +36,7 @@
       <div class="hero-text-col">
         <p class="hero-label">Bellevue, WA</p>
         <h1>Find a place to volunteer.<br>Show up and help.</h1>
-        <p>Every listing here has been verified. You'll see exactly what to do<br class="hero-break">to sign up — no dead links, no guessing, no adult required on-site.</p>
+        <p>Every listing here has been verified. You'll see exactly what to do <br class="hero-break">to sign up — no dead links, no guessing, no adult required on-site.</p>
       </div>
       <div class="hero-map-launcher">
         <div class="mini-map-wrap" id="hero-map-launcher">
@@ -160,7 +160,7 @@
 <footer>
   <div class="wrap">
     <div class="footer-inner">
-      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <p>Listings are checked regularly for accuracy, but links and details can change — always confirm with the org before your first visit. Something look wrong? <a href="feedback.html">Let us know</a>.</p>
       <nav class="footer-links">
         <a href="about.html">About</a>
         <a href="privacy.html">Privacy Policy</a>
@@ -322,45 +322,53 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="supabase-client.js"></script>
 <script src="mini-map.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
 <script src="supabase-auth.js"></script>
 <script src="beta-banner.js"></script>
 <script>
   // ── Card renderer ─────────────────────────────────────────────────────────
 
+  // Every interpolated value is escaped (escHtml/safeUrl come from
+  // supabase-client.js). The one deliberate exception is _ageHtml, which
+  // supabase-client.js builds with a <span class="age-cond-phrase"> wrapper for
+  // the yellow age-condition highlight — its inputs are escaped there instead.
   function buildCardHtml(opp) {
-    const condAttr   = opp._ageCondition ? ' data-age-condition="' + opp._ageCondition + '"' : '';
+    const condAttr   = opp._ageCondition ? ' data-age-condition="' + escHtml(opp._ageCondition) + '"' : '';
     const isOneTime  = opp._opportunityType === 'one_time';
     const schedDays  = opp._schedule ? opp._schedule.days.join(' ')  : '';
     const schedTimes = opp._schedule ? opp._schedule.times.join(' ') : '';
     const stepsHtml = opp._steps.map((step, i) =>
-      '<li><span class="n">' + (i + 1) + '</span><span>' + step + '</span></li>'
+      '<li><span class="n">' + (i + 1) + '</span><span>' + escHtml(step) + '</span></li>'
     ).join('');
-    const dateBadge = isOneTime && opp._eventDate ? '<p class="card-event-date">' + formatEventDate(opp._eventDate) + '</p>' : '';
-    const noteHtml = opp._note ? '<p class="card-note">' + opp._note + '</p>' : '';
-    const isMailto = opp._signupLink.startsWith('mailto:');
+    const dateBadge = isOneTime && opp._eventDate ? '<p class="card-event-date">' + escHtml(formatEventDate(opp._eventDate)) + '</p>' : '';
+    const noteHtml = opp._note ? '<p class="card-note">' + escHtml(opp._note) + '</p>' : '';
+    const isMailto = String(opp._signupLink || '').startsWith('mailto:');
     const btnAttrs = isMailto ? '' : ' target="_blank" rel="noopener"';
 
-    return '<div class="card" data-tags="' + opp._tags + '" data-age="' + opp._dataAge + '"' + condAttr +
+    return '<div class="card" data-tags="' + escHtml(opp._tags) + '" data-age="' + escHtml(opp._dataAge) + '"' + condAttr +
            (isOneTime ? ' data-onetime="true"' : '') +
-           ' data-sched-days="' + schedDays + '" data-sched-times="' + schedTimes + '">' +
+           ' data-sched-days="' + escHtml(schedDays) + '" data-sched-times="' + escHtml(schedTimes) + '">' +
       '<div class="card-top">' +
-        '<a class="card-name" href="' + opp.link + '">' + opp.name + '</a>' +
-        '<span class="card-tag">' + opp.tag + '</span>' +
+        '<a class="card-name" href="' + safeUrl(opp.link) + '">' + escHtml(opp.name) + '</a>' +
+        '<span class="card-tag">' + escHtml(opp.tag) + '</span>' +
       '</div>' +
       dateBadge +
       '<div class="card-meta">' +
         '<span><strong>Age</strong> <span>' + opp._ageHtml + '</span></span>' +
-        '<span><strong>When</strong> <span>' + opp._when + '</span></span>' +
-        '<span><strong>Where</strong> <span>' + opp._where + '</span></span>' +
+        '<span><strong>When</strong> <span>' + escHtml(opp._when) + '</span></span>' +
+        '<span><strong>Where</strong> <span>' + escHtml(opp._where) + '</span></span>' +
       '</div>' +
-      '<p class="card-desc">' + opp.desc + '</p>' +
-      '<p class="steps-label">How to sign up</p>' +
-      '<ol class="steps">' + stepsHtml + '</ol>' +
-      noteHtml +
+      '<p class="card-desc">' + escHtml(opp.desc) + '</p>' +
+      '<details class="card-steps">' +
+        '<summary class="steps-label">How to sign up' +
+          (opp._steps.length ? ' <span class="steps-count">' + opp._steps.length + ' step' + (opp._steps.length === 1 ? '' : 's') + '</span>' : '') +
+        '</summary>' +
+        '<ol class="steps">' + stepsHtml + '</ol>' +
+        noteHtml +
+      '</details>' +
       '<div class="card-actions">' +
-        '<a class="btn" href="' + opp._signupLink + '"' + btnAttrs + '>' + opp._signupLabel + '</a>' +
-        '<a class="btn btn-ghost" href="' + opp.link + '">More info</a>' +
+        '<a class="btn" href="' + safeUrl(opp._signupLink) + '"' + btnAttrs + '>' + escHtml(opp._signupLabel) + '</a>' +
+        '<a class="btn btn-ghost" href="' + safeUrl(opp.link) + '">More info</a>' +
       '</div>' +
     '</div>';
   }
@@ -375,7 +383,23 @@
     contactGrid.innerHTML = '';
     onetimeGrid.innerHTML = '';
 
-    const opportunities = await fetchOpportunities();
+    // A paused or unreachable Supabase project used to leave the page sitting
+    // on "Loading opportunities…" indefinitely, with the real reason only in
+    // the console. Say something instead.
+    let opportunities;
+    try {
+      opportunities = await fetchOpportunities();
+    } catch (err) {
+      console.error('Could not load opportunities:', err);
+      onlineGrid.innerHTML =
+        '<div class="load-error">' +
+          '<p class="load-error-title">Opportunities couldn\'t be loaded</p>' +
+          '<p>Something went wrong reaching our database. Please refresh in a moment — ' +
+          'if it keeps happening, <a href="feedback.html">let us know</a>.</p>' +
+        '</div>';
+      if (onetimeWrap) onetimeWrap.style.display = 'none';
+      return;
+    }
 
     // Build category filter buttons dynamically from live data
     const filtersEl = document.getElementById('filters');
@@ -427,8 +451,15 @@
   // ── Hero mini-map + card render ───────────────────────────────────────────
 
   document.addEventListener('DOMContentLoaded', () => {
-    renderAllMiniMap('hero-mini-map');
-    renderCards();
+    // Both are async and were previously called bare, so any failure surfaced
+    // only as an unhandled rejection. renderCards() reports its own failure in
+    // the page; the hero map just stays quietly empty rather than breaking.
+    renderAllMiniMap('hero-mini-map').catch(err => {
+      console.error('Hero mini-map could not be rendered:', err);
+    });
+    renderCards().catch(err => {
+      console.error('Card rendering failed:', err);
+    });
 
     document.getElementById('hero-map-launcher').addEventListener('click', () => {
       window.location.href = 'map.html';

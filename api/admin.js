@@ -5,9 +5,10 @@
 //   SUPABASE_SERVICE_ROLE_KEY  the service_role secret from Supabase → Settings → API
 //   ADMIN_PASSWORD             any secret string you choose
 
+const { checkAdminPassword } = require('../lib/adminAuth');
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const ADMIN_PASS   = process.env.ADMIN_PASSWORD;
 
 function supabaseHeaders(extra) {
   return Object.assign({
@@ -22,10 +23,8 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-password');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  const provided = req.headers['x-admin-password'];
-  if (!provided || provided !== ADMIN_PASS) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  const denied = checkAdminPassword(req, req.headers['x-admin-password']);
+  if (denied) return res.status(denied.status).json(denied.body);
 
   // ── GET — return pending + published ────────────────────────────────────────
   if (req.method === 'GET') {
@@ -34,10 +33,41 @@ module.exports = async function handler(req, res) {
       fetch(SUPABASE_URL + 'Opportunities?status=eq.published&select=*&order=name.asc', { headers: supabaseHeaders() }),
       fetch(SUPABASE_URL + 'Feedback?select=*&order=created_at.desc&limit=200', { headers: supabaseHeaders() }),
     ]);
-    const pending   = await pendingRes.json();
-    const published = await publishedRes.json();
-    const feedback  = await feedbackRes.json();
-    return res.status(200).json({ pending, published, feedback: Array.isArray(feedback) ? feedback : [] });
+    // A failed query answers with a PostgREST error object, not an array. That
+    // used to be handed straight to the panel, which then threw on .forEach and
+    // rendered nothing, with no indication of why.
+    async function rows(response, label) {
+      const text = await response.text().catch(() => '');
+      let parsed = null;
+      try { parsed = JSON.parse(text); } catch (_) { /* keep raw */ }
+      if (!response.ok || !Array.isArray(parsed)) {
+        console.error('Admin GET failed for', label + ':', response.status, text.slice(0, 500));
+        return { ok: false, status: response.status, message: (parsed && parsed.message) || null };
+      }
+      return { ok: true, rows: parsed };
+    }
+
+    const [pending, published, feedback] = await Promise.all([
+      rows(pendingRes,   'pending'),
+      rows(publishedRes, 'published'),
+      rows(feedbackRes,  'feedback'),
+    ]);
+
+    // Feedback is a side panel — losing it should not blank the queue the
+    // admin actually came for. The two opportunity lists are the page.
+    if (!pending.ok || !published.ok) {
+      const bad = !pending.ok ? pending : published;
+      return res.status(502).json({
+        error:   'Could not load opportunities from the database.',
+        message: bad.message || ('Supabase answered HTTP ' + bad.status + '.'),
+      });
+    }
+
+    return res.status(200).json({
+      pending:   pending.rows,
+      published: published.rows,
+      feedback:  feedback.ok ? feedback.rows : [],
+    });
   }
 
   // ── POST — act on a row ─────────────────────────────────────────────────────

@@ -20,8 +20,16 @@
 
     .submit-form { max-width: 600px; display: flex; flex-direction: column; gap: 1.25rem; }
 
+    /* Grouped controls (category, opportunity type, sign-up method) are
+       <fieldset class="field"> so assistive tech announces the group name.
+       Resetting the browser's default border/padding keeps them looking
+       identical to the plain .field divs around them. */
     .field { display: flex; flex-direction: column; gap: 0.35rem; }
     .field label { font-size: 0.8125rem; font-weight: 600; }
+    /* A <legend> does not participate in its fieldset's flex layout, so these
+       stay plain blocks and reproduce the column gap with a margin instead. */
+    fieldset.field { display: block; border: none; padding: 0; margin: 0; min-width: 0; }
+    fieldset.field > legend { font-size: 0.8125rem; font-weight: 600; padding: 0; margin-bottom: 0.35rem; }
     .field .hint { font-size: 0.75rem; color: var(--muted); }
     .field input[type="radio"], .field input[type="checkbox"] { all: revert; }
     .field input:not([type="radio"]):not([type="checkbox"]), .field select, .field textarea {
@@ -91,7 +99,25 @@
       color: var(--muted);
       margin-bottom: 0.3rem;
     }
-    .form-status.error { font-weight: 600; }
+    /* Error and success used to be the same near-black text on the same grey,
+       separated only by font-weight. Colours come from the shared .alert-*
+       classes in styles.css; the layout above (padding, border-left accent,
+       .status-label) is unchanged. */
+    .form-status.error {
+      font-weight: 600;
+      background: #FEF2F2;
+      border-color: #FCA5A5;
+      border-left-color: #991B1B;
+      color: #991B1B;
+    }
+    .form-status.error .status-label { color: #B91C1C; }
+    .form-status.success {
+      background: #ECFDF5;
+      border-color: #6EE7B7;
+      border-left-color: #065F46;
+      color: #065F46;
+    }
+    .form-status.success .status-label { color: #047857; }
 
     .optional-label { font-weight: 400; color: var(--muted); }
     .field-group-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 0.25rem; }
@@ -153,8 +179,8 @@
         <textarea id="f-long-description" name="long_description" required placeholder="e.g. At the Bellevue Farmers Market you'll help set up and break down vendor tents, staff the info booth, and keep the market running smoothly on Saturday mornings from May through October. Shifts are about 3 hours and the atmosphere is relaxed and community-focused."></textarea>
       </div>
 
-      <div class="field">
-        <label>Category <span aria-hidden="true">*</span></label>
+      <fieldset class="field">
+        <legend>Category <span aria-hidden="true">*</span></legend>
         <div class="checkbox-group" id="f-category">
           <label class="checkbox-label"><input type="checkbox" name="category" value="Animals" /> Animals</label>
           <label class="checkbox-label"><input type="checkbox" name="category" value="Community" /> Community</label>
@@ -162,17 +188,17 @@
           <label class="checkbox-label"><input type="checkbox" name="category" value="Food" /> Food</label>
           <label class="checkbox-label"><input type="checkbox" name="category" id="cat-other-check" value="__other__" /> Other: <input type="text" id="cat-other-text" placeholder="e.g. Education" style="margin-left:0.35rem;font-family:inherit;font-size:0.9375rem;border:1px solid var(--border);border-radius:var(--radius);padding:0.2rem 0.5rem;width:160px;display:none;" /></label>
         </div>
-      </div>
+      </fieldset>
 
       <p class="field-group-label">Age &amp; schedule</p>
 
-      <div class="field">
-        <label>Opportunity type <span aria-hidden="true">*</span></label>
+      <fieldset class="field">
+        <legend>Opportunity type <span aria-hidden="true">*</span></legend>
         <div class="section-radios">
           <label><input type="radio" name="opportunity_type" value="recurring" checked /> Recurring (happens on an ongoing schedule)</label>
           <label><input type="radio" name="opportunity_type" value="one_time" /> One-time (happens once, on a specific date)</label>
         </div>
-      </div>
+      </fieldset>
 
       <div class="field">
         <label for="f-age-display">Age requirements <span aria-hidden="true">*</span></label>
@@ -221,13 +247,13 @@
 
       <p class="field-group-label">Sign-up process</p>
 
-      <div class="field">
-        <label>How do volunteers sign up? <span aria-hidden="true">*</span></label>
+      <fieldset class="field">
+        <legend>How do volunteers sign up? <span aria-hidden="true">*</span></legend>
         <div class="section-radios">
           <label><input type="radio" name="section" value="online" required /> Online (no phone/email needed)</label>
           <label><input type="radio" name="section" value="contact" /> Contact us first (email or phone)</label>
         </div>
-      </div>
+      </fieldset>
 
       <div class="field">
         <label for="f-signup-link">Sign-up link or email <span aria-hidden="true">*</span></label>
@@ -291,7 +317,7 @@
 <footer>
   <div class="wrap">
     <div class="footer-inner">
-      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <p>Listings are checked regularly for accuracy, but links and details can change — always confirm with the org before your first visit. Something look wrong? <a href="feedback.html">Let us know</a>.</p>
       <a href="submit.html">Submit an opportunity</a>
       <nav class="footer-links">
         <a href="about.html">About</a>
@@ -321,13 +347,20 @@
       SCHED_SLOT_LABELS.map(l => '<div class="avail-col-header">' + l + '</div>').join('');
     SCHED_DAYS.forEach((day, i) => {
       html += '<div class="avail-day-label">' + SCHED_DAY_ABBR[i] + '</div>' +
+        // The cells are empty squares, so aria-label is the only name a screen
+        // reader has for them, and aria-pressed the only way to hear which are
+        // selected. Matches the grid on signup.html.
         SCHED_SLOTS.map(slot =>
-          '<button type="button" class="avail-cell" data-day="' + day + '" data-slot="' + slot + '"></button>'
+          '<button type="button" class="avail-cell" data-day="' + day + '" data-slot="' + slot + '"' +
+          ' aria-pressed="false" aria-label="' + SCHED_DAY_ABBR[i] + ' ' + slot + '"></button>'
         ).join('');
     });
     grid.innerHTML = html;
     grid.querySelectorAll('.avail-cell').forEach(cell => {
-      cell.addEventListener('click', () => cell.classList.toggle('active'));
+      cell.addEventListener('click', () => {
+        const on = cell.classList.toggle('active');
+        cell.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
     });
   })();
 
@@ -390,7 +423,11 @@
     return text.replace(/[.\s]+$/, '') + '. Please try again.';
   }
 
-  function showStatus(msg, type) {
+  // `focusEl` is the field the message is about. When there is one, the
+  // viewport goes to it rather than to the banner: the banner sits above every
+  // field, so scrolling there used to win the race against el.focus() and left
+  // keyboard focus on a field the user could no longer see.
+  function showStatus(msg, type, focusEl) {
     status.textContent = '';
     const label = document.createElement('span');
     label.className   = 'status-label';
@@ -399,7 +436,13 @@
     status.appendChild(document.createTextNode(msg));
     status.className   = 'form-status ' + type;
     status.style.display = 'block';
-    status.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    if (focusEl) {
+      focusEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      focusEl.focus({ preventScroll: true });
+    } else {
+      status.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }
 
   form.addEventListener('submit', async e => {
@@ -411,31 +454,34 @@
     for (const el of required) {
       if (el.type === 'radio') continue;
       if (!el.value.trim()) {
-        el.focus();
-        showStatus('Please fill in all required fields.', 'error');
+        // Name the field rather than saying "all required fields" — the
+        // viewport is about to land on this one specifically.
+        const fieldName = (form.querySelector('label[for="' + el.id + '"]') || {}).textContent;
+        const label = fieldName ? fieldName.replace('*', '').trim() : 'a required field';
+        showStatus('Please fill in ' + label + '.', 'error', el);
         return;
       }
     }
     const checkedCategories = Array.from(form.querySelectorAll('input[name="category"]:checked'));
     if (checkedCategories.length === 0) {
-      showStatus('Please select at least one category.', 'error');
+      showStatus('Please select at least one category.', 'error',
+        form.querySelector('input[name="category"]'));
       return;
     }
     const otherCheck = document.getElementById('cat-other-check');
     const otherText  = document.getElementById('cat-other-text').value.trim();
     if (otherCheck.checked && !otherText) {
-      document.getElementById('cat-other-text').focus();
-      showStatus('Please fill in the "Other" category name.', 'error');
+      showStatus('Please fill in the "Other" category name.', 'error', document.getElementById('cat-other-text'));
       return;
     }
     const section = form.querySelector('input[name="section"]:checked');
     if (!section) {
-      showStatus('Please select how volunteers sign up.', 'error');
+      showStatus('Please select how volunteers sign up.', 'error',
+        form.querySelector('input[name="section"]'));
       return;
     }
     if (currentOppType() === 'one_time' && !eventDateInput.value) {
-      eventDateInput.focus();
-      showStatus('Please pick the event date.', 'error');
+      showStatus('Please pick the event date.', 'error', eventDateInput);
       return;
     }
 
@@ -529,7 +575,7 @@
     }
   });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
 <script src="supabase-auth.js"></script>
 <script src="beta-banner.js"></script>
 

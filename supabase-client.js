@@ -2,6 +2,31 @@
 const SUPABASE_URL     = 'https://ukrykzmehvghedrvmkjj.supabase.co/rest/v1/';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrcnlrem1laHZnaGVkcnZta2pqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzODc4NzgsImV4cCI6MjA5ODk2Mzg3OH0.J1J4p3lTbQKMc3GvWVlBxAZZV1jGYPIU4Jj_ePLndgM';
 
+// ── Shared helpers ───────────────────────────────────────────────────────────
+
+// Every page builds its cards by string-concatenating database values into
+// HTML, so anything that reaches a template has to come through here first.
+// Listings are admin-approved, but "approved" means a human read the text and
+// thought it looked fine — not that they checked it for quote characters.
+// Escaping the single quote too keeps it safe inside single-quoted attributes.
+function escHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[ch]));
+}
+
+// URLs get a second check: escaping stops an attribute breakout, but
+// `javascript:` needs no quotes to be dangerous. Anything that isn't a plain
+// web or mail link becomes '#'.
+function safeUrl(value) {
+  const url = String(value == null ? '' : value).trim();
+  return /^(https?:\/\/|mailto:|\/|[\w.-]+\.html)/i.test(url) ? escHtml(url) : '#';
+}
+
 // ── Fetch + cache ────────────────────────────────────────────────────────────
 
 let _oppCache = null;
@@ -77,7 +102,10 @@ function _transformRow(row) {
 
   // Wrap the parenthetical part of age_display in the highlight span when a
   // condition range is set, so the yellow-highlight feature keeps working.
-  let ageHtml = row.age_display || 'All ages';
+  // _ageHtml is the one field rendered without escaping at the call site,
+  // precisely because it carries this span — so the escaping happens here,
+  // before the markup is added.
+  let ageHtml = escHtml(row.age_display || 'All ages');
   if (row.age_condition) {
     ageHtml = ageHtml.replace(/\(([^)]+)\)/, '(<span class="age-cond-phrase">$1</span>)');
   }

@@ -18,7 +18,17 @@ function showModal(opts) {
       '</div>' +
     '</div>';
 
-  function close() { overlay.remove(); }
+  // Escape closes the dialog, and focus returns to whatever opened it.
+  // The keydown listener is on document, so close() has to remove it —
+  // otherwise every modal ever opened keeps listening for keys.
+  var prevFocus = document.activeElement;
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  function close() {
+    document.removeEventListener('keydown', onKey);
+    overlay.remove();
+    if (prevFocus && prevFocus.focus) prevFocus.focus();
+  }
+  document.addEventListener('keydown', onKey);
   overlay.querySelector('.modal-close').addEventListener('click', close);
   overlay.querySelector('.modal-btn-cancel').addEventListener('click', close);
   overlay.querySelector('.modal-btn-action').addEventListener('click', function () {
@@ -26,7 +36,14 @@ function showModal(opts) {
     opts.onConfirm();
   });
   overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+
   document.body.appendChild(overlay);
+  var box = overlay.querySelector('.modal-box');
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  // Focus moves into the dialog so a keyboard user is not left tabbing the
+  // page behind the overlay.
+  (overlay.querySelector('.modal-btn-action') || box).focus();
 }
 
 (function () {

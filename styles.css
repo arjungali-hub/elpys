@@ -5,7 +5,13 @@
   --surface:    #F3F4F6;
   --border:     #E5E7EB;
   --muted:      #6B7280;
-  --subtle:     #9CA3AF;
+  /* Text tier. Was #9CA3AF, which measures 2.54:1 on white — below the 4.5:1
+     WCAG AA needs for body text, and it was carrying the AGE/WHEN/WHERE labels
+     on every card. #767D89 measures ~4.6:1 and still reads lighter than
+     --muted. Non-text uses (scrollbar, borders) take --subtle-ui instead so
+     they keep the old lightness. */
+  --subtle:     #767D89;
+  --subtle-ui:  #9CA3AF;
   --body:       #111827;
   --accent:     #111827;
   --radius:     6px;
@@ -151,6 +157,77 @@ header {
    the row's gap sat between it and the button and pushed the button 12px in,
    out of line with the row above. */
 .header-digest-msg:empty { display: none; }
+
+/* ── Mobile header ──
+   .header-inner is a single non-wrapping flex row. On a 375px phone the
+   wordmark, badge and three nav items add up to roughly 494px, so the row
+   either clipped or forced the whole page to scroll sideways. Below 640px the
+   nav wraps onto its own line under the wordmark and the longest link
+   ("Submit an opportunity") gives way to the page's own CTA. */
+@media (max-width: 640px) {
+  header { padding: 1rem 0 0.85rem; }
+  .header-inner {
+    flex-wrap: wrap;
+    row-gap: 0.6rem;
+    column-gap: 0.6rem;
+  }
+  .site-name { font-size: 1.375rem; }
+  /* margin-right:auto on the badge is what breaks the row: everything after
+     it lands on the second line, right-aligned as a group. */
+  .header-submit-link { display: none; }
+  .header-auth-link,
+  .header-signup-btn,
+  .header-admin-link,
+  .header-logout-btn {
+    font-size: 0.75rem;
+    padding: 0.28rem 0.6rem;
+  }
+  .header-admin-sub { flex-wrap: wrap; row-gap: 0.5rem; }
+}
+
+/* ── Alerts ──
+   One canonical error/success treatment. login/signup/account/admin-login each
+   carried their own copy of these colours; submit.html and map.html had none,
+   and rendered failure and success in the same near-black. */
+.alert-error,
+.form-status.error {
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  color: #991B1B;
+}
+.alert-success,
+.form-status.success {
+  background: #ECFDF5;
+  border: 1px solid #6EE7B7;
+  color: #065F46;
+}
+/* Shared base for the status banners the auth pages share. Pages that need a
+   different size or spacing (submit.html, account.html) override it locally. */
+.form-status {
+  font-size: 0.9375rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  display: none;
+}
+
+/* ── Load failure / empty state ──
+   Shown when the database can't be reached, in place of a grid that would
+   otherwise sit on "Loading…" forever. */
+.load-error {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 60ch;
+}
+.load-error-title {
+  font-weight: 700;
+  color: var(--body);
+  margin-bottom: 0.35rem;
+}
+.load-error a { color: var(--body); }
 
 /* ── Modal ── */
 .modal-overlay {
@@ -515,7 +592,48 @@ header {
   margin-bottom: 1.125rem;
 }
 
-/* Steps */
+/* Steps — collapsed by default on cards.
+   With the listing count growing, a homepage that printed every step of every
+   opportunity meant scrolling past all of them to compare two. <details> gives
+   this keyboard and screen-reader behaviour with no JavaScript. Detail pages
+   still show the steps expanded, since that page is about one opportunity. */
+.card-steps { margin-bottom: 1.125rem; }
+.card-steps > summary {
+  cursor: pointer;
+  margin-bottom: 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0;
+}
+.card-steps > summary::-webkit-details-marker { display: none; }
+/* Disclosure triangle, drawn rather than inherited so it can sit after the
+   label and rotate on open. */
+.card-steps > summary::after {
+  content: '';
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition: transform 0.15s ease;
+}
+.card-steps[open] > summary::after { transform: rotate(-135deg) translate(-1px, -1px); }
+.card-steps > summary:hover { color: var(--body); }
+.card-steps > summary:focus-visible {
+  outline: 2px solid var(--body);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.steps-count {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--subtle);
+}
+.card-steps > .steps { margin-top: 0.5rem; margin-bottom: 0; }
+.card-steps > .card-note { margin-top: 0.75rem; margin-bottom: 0; }
+
 .steps-label {
   font-size: 0.6875rem;
   font-weight: 700;
@@ -700,6 +818,7 @@ footer a {
   margin-bottom: 1.5rem;
   display: block;
 }
+/* Loading, not-found and load-failure states on the detail page. */
 .detail-placeholder {
   font-size: 0.9375rem;
   color: var(--muted);
@@ -708,6 +827,21 @@ footer a {
   border-radius: var(--radius);
   padding: 1.25rem;
   max-width: 60ch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: flex-start;
+}
+.detail-placeholder-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--body);
+}
+.detail-placeholder-link {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--body);
 }
 .detail-desc {
   font-size: 0.9375rem;
@@ -830,15 +964,18 @@ footer a {
   padding-left: 0.7rem;
   border-left: 2px solid transparent;
 }
+/* Success and failure used to differ only by a border-left colour against the
+   same near-black text, which was easy to miss. These take the shared alert
+   palette; the border-left accent and padding stay so the layout is unchanged. */
 .route-status.success {
-  color: var(--body);
+  color: #065F46;
   font-weight: 600;
-  border-left-color: var(--body);
+  border-left-color: #6EE7B7;
 }
 .route-status.error {
-  color: var(--body);
+  color: #991B1B;
   font-weight: 600;
-  border-left-color: var(--subtle);
+  border-left-color: #FCA5A5;
 }
 .map-layout {
   display: flex;
@@ -855,7 +992,7 @@ footer a {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   scrollbar-width: thin;
-  scrollbar-color: var(--subtle) transparent;
+  scrollbar-color: var(--subtle-ui) transparent;
 }
 .map-sidebar::-webkit-scrollbar {
   width: 8px;
@@ -868,7 +1005,7 @@ footer a {
   border-radius: 999px;
 }
 .map-sidebar::-webkit-scrollbar-thumb:hover {
-  background: var(--subtle);
+  background: var(--subtle-ui);
 }
 .map-list-item-wrap {
   border-bottom: 1px solid var(--border);

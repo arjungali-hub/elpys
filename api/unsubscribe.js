@@ -3,9 +3,12 @@ const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 module.exports = async function handler(req, res) {
   const { id } = req.query;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
 
-  if (!id) {
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  // Profile ids are UUIDs. Checking the shape here keeps malformed input from
+  // reaching PostgREST as a query it will only reject anyway.
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!id || !UUID.test(String(id))) {
     return res.status(400).send(page('Invalid link', 'This unsubscribe link is not valid.'));
   }
 
@@ -17,16 +20,26 @@ module.exports = async function handler(req, res) {
         apikey:        SUPABASE_KEY,
         Authorization: 'Bearer ' + SUPABASE_KEY,
         'Content-Type': 'application/json',
-        Prefer:        'return=minimal',
+        // return=minimal answers 204 whether or not the id matched anything,
+        // so an unknown id used to show the success page.
+        Prefer:        'return=representation',
       },
       body: JSON.stringify({ unsubscribed: true }),
     }
   );
 
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-
   if (!r.ok) {
+    console.error('Unsubscribe PATCH failed:', r.status, await r.text().catch(() => ''));
     return res.status(500).send(page('Something went wrong', 'Could not process your request. Please try again.'));
+  }
+
+  const updated = await r.json().catch(() => null);
+  if (!Array.isArray(updated) || updated.length === 0) {
+    return res.status(404).send(page(
+      'We couldn\'t find that account',
+      'This unsubscribe link doesn\'t match an Elpys account. It may have been deleted already. ' +
+      'If you\'re still receiving emails, <a href="/feedback.html">let us know</a>.'
+    ));
   }
 
   return res.status(200).send(page(

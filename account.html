@@ -21,9 +21,8 @@
     .interest-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer; }
     .submit-btn { font-family: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--white); background: var(--body); border: none; border-radius: var(--radius); padding: 0.65rem 1.5rem; cursor: pointer; }
     .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .form-status { font-size: 0.875rem; padding: 0.75rem 1rem; border-radius: var(--radius); display: none; margin-bottom: 1rem; }
-    .form-status.success { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; }
-    .form-status.error   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+    /* Colours come from styles.css; this page only adjusts size and spacing. */
+    .form-status { font-size: 0.875rem; padding: 0.75rem 1rem; margin-bottom: 1rem; }
     .signout-btn { font-family: inherit; font-size: 0.875rem; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.5rem 1rem; cursor: pointer; }
     .signout-btn:hover { color: var(--body); border-color: #aaa; }
     .delete-btn { font-family: inherit; font-size: 0.875rem; color: #991B1B; background: none; border: 1px solid #FCA5A5; border-radius: var(--radius); padding: 0.5rem 1rem; cursor: pointer; margin-left: 0.75rem; }
@@ -60,7 +59,7 @@
 <footer>
   <div class="wrap">
     <div class="footer-inner">
-      <p>All listings verified June 2026. Links and details may change — always confirm with the org before your first visit.</p>
+      <p>Listings are checked regularly for accuracy, but links and details can change — always confirm with the org before your first visit. Something look wrong? <a href="feedback.html">Let us know</a>.</p>
       <nav class="footer-links">
         <a href="about.html">About</a>
         <a href="privacy.html">Privacy Policy</a>
@@ -70,7 +69,7 @@
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
 <script>
   function showModal(opts) {
     var overlay = document.createElement('div');
@@ -86,7 +85,17 @@
           '<button class="modal-btn-action' + (opts.danger ? ' danger' : '') + '">' + (opts.confirmText || 'OK') + '</button>' +
         '</div>' +
       '</div>';
-    function close() { overlay.remove(); }
+    // Escape closes the dialog, and focus returns to whatever opened it.
+    // The keydown listener is on document, so close() has to remove it —
+    // otherwise every modal ever opened keeps listening for keys.
+    var prevFocus = document.activeElement;
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    function close() {
+      document.removeEventListener('keydown', onKey);
+      overlay.remove();
+      if (prevFocus && prevFocus.focus) prevFocus.focus();
+    }
+    document.addEventListener('keydown', onKey);
     overlay.querySelector('.modal-close').addEventListener('click', close);
     var cancelBtn = overlay.querySelector('.modal-btn-cancel');
     if (cancelBtn) cancelBtn.addEventListener('click', close);
@@ -95,7 +104,14 @@
       if (opts.onConfirm) opts.onConfirm();
     });
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+
     document.body.appendChild(overlay);
+    var box = overlay.querySelector('.modal-box');
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    // Focus moves into the dialog so a keyboard user is not left tabbing the
+    // page behind the overlay.
+    (overlay.querySelector('.modal-btn-action') || box).focus();
   }
 
   // Replaces alert(), which the browser renders as an unstyled bar at the top
@@ -160,9 +176,15 @@
     var rows = DAYS.map(function(day, di) {
       var daySlots = (avail && Array.isArray(avail[day])) ? avail[day] : [];
       return '<div class="avail-day-label">' + DAY_ABBR[di] + '</div>' +
+        // The cells are empty squares, so aria-label is the only name a screen
+        // reader has for them, and aria-pressed the only way to hear which are
+        // selected. Matches the grid on signup.html. type="button" keeps a
+        // toggle from submitting the surrounding form.
         SLOTS.map(function(slot) {
-          var cls = daySlots.indexOf(slot) !== -1 ? ' active' : '';
-          return '<button class="avail-cell' + cls + '" data-day="' + day + '" data-slot="' + slot + '"></button>';
+          var on  = daySlots.indexOf(slot) !== -1;
+          var cls = on ? ' active' : '';
+          return '<button type="button" class="avail-cell' + cls + '" data-day="' + day + '" data-slot="' + slot + '"' +
+            ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + DAY_ABBR[di] + ' ' + slot + '"></button>';
         }).join('');
     }).join('');
     return '<div class="avail-grid">' + header + rows + '</div>';
@@ -306,7 +328,10 @@
     });
 
     document.querySelectorAll('.avail-cell').forEach(function(cell) {
-      cell.addEventListener('click', function() { this.classList.toggle('active'); });
+      cell.addEventListener('click', function() {
+        var on = this.classList.toggle('active');
+        this.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
     });
 
     document.getElementById('avail-save-btn').addEventListener('click', async function() {
