@@ -110,6 +110,9 @@
 
     // Build when/where/age row if any fields are populated
     const metaItems = [];
+    if (opp._opportunityType === 'one_time' && opp._eventDate) {
+      metaItems.push('<span><strong>Date:</strong> ' + esc(formatEventDate(opp._eventDate)) + '</span>');
+    }
     if (opp._ageHtml)  metaItems.push('<span><strong>Age:</strong> ' + opp._ageHtml + '</span>');
     if (opp._when)     metaItems.push('<span><strong>When:</strong> ' + esc(opp._when) + '</span>');
     if (opp._where)    metaItems.push('<span><strong>Where:</strong> ' + esc(opp._where) + '</span>');

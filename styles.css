@@ -468,6 +468,20 @@ header {
   padding-top: 0.2rem;
 }
 
+/* Date badge on a one-time opportunity's card */
+.card-event-date {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--body);
+  background: var(--off);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.2rem 0.6rem;
+  margin: 0.5rem 0 0.65rem;
+}
+
 .card-meta {
   display: flex;
   flex-direction: column;

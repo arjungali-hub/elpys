@@ -166,6 +166,14 @@
       <p class="field-group-label">Age &amp; schedule</p>
 
       <div class="field">
+        <label>Opportunity type <span aria-hidden="true">*</span></label>
+        <div class="section-radios">
+          <label><input type="radio" name="opportunity_type" value="recurring" checked /> Recurring (happens on an ongoing schedule)</label>
+          <label><input type="radio" name="opportunity_type" value="one_time" /> One-time (happens once, on a specific date)</label>
+        </div>
+      </div>
+
+      <div class="field">
         <label for="f-age-display">Age requirements <span aria-hidden="true">*</span></label>
         <span class="hint">Display text shown on the card, e.g. "14+" or "16+ solo (13 and under w/ adult)".</span>
         <input id="f-age-display" name="age_display" type="text" required placeholder="e.g. 13+" />
@@ -184,7 +192,13 @@
         </div>
       </div>
 
-      <div class="field">
+      <div class="field" id="f-event-date-field" style="display:none;">
+        <label for="f-event-date">Event date <span aria-hidden="true">*</span></label>
+        <span class="hint">The listing automatically stops showing once this date has passed.</span>
+        <input id="f-event-date" name="event_date" type="date" />
+      </div>
+
+      <div class="field" id="f-weekly-schedule-field">
         <label>Weekly schedule <span class="optional-label">(optional)</span></label>
         <span class="hint">Select the days and times this typically runs — helps volunteers filter by their availability and get matched in the weekly digest.</span>
         <div class="avail-grid" id="f-schedule-grid"></div>
@@ -322,6 +336,29 @@
     return anySelected ? schedule : null;
   }
 
+  // ── Opportunity type ───────────────────────────────────────────────────────
+  // A one-time event has a date instead of a weekly pattern, so the two fields
+  // swap places rather than both being on screen at once.
+  const oppTypeRadios       = document.querySelectorAll('input[name="opportunity_type"]');
+  const eventDateField      = document.getElementById('f-event-date-field');
+  const eventDateInput      = document.getElementById('f-event-date');
+  const weeklyScheduleField = document.getElementById('f-weekly-schedule-field');
+
+  function currentOppType() {
+    const checked = document.querySelector('input[name="opportunity_type"]:checked');
+    return checked ? checked.value : 'recurring';
+  }
+
+  function syncOppTypeFields() {
+    const isOneTime = currentOppType() === 'one_time';
+    eventDateField.style.display      = isOneTime ? '' : 'none';
+    eventDateInput.required           = isOneTime;
+    weeklyScheduleField.style.display = isOneTime ? 'none' : '';
+    if (!isOneTime) eventDateInput.value = '';
+  }
+  oppTypeRadios.forEach(r => r.addEventListener('change', syncOppTypeFields));
+  syncOppTypeFields();
+
   const form   = document.getElementById('submit-form');
   const btn    = document.getElementById('submit-btn');
   const status = document.getElementById('form-status');
@@ -390,6 +427,11 @@
       showStatus('Please select how volunteers sign up.', 'error');
       return;
     }
+    if (currentOppType() === 'one_time' && !eventDateInput.value) {
+      eventDateInput.focus();
+      showStatus('Please pick the event date.', 'error');
+      return;
+    }
 
     btn.disabled = true;
     btn.textContent = 'Submitting…';
@@ -417,7 +459,9 @@
       age_display:         form.elements.age_display.value.trim(),
       age_min:             form.elements.age_min.value ? parseInt(form.elements.age_min.value, 10) : null,
       'when':              form.elements.when.value.trim(),
-      schedule:            collectSchedule(),
+      opportunity_type:    currentOppType(),
+      event_date:          currentOppType() === 'one_time' ? eventDateInput.value : null,
+      schedule:            currentOppType() === 'one_time' ? null : collectSchedule(),
       'where':             form.elements.where.value.trim(),
       address:             form.elements.address.value.trim(),
       signup_link:         form.elements.signup_link.value.trim(),

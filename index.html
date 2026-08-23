@@ -105,6 +105,23 @@
 </div>
 
 <!-- ══════════════════════════════════════════
+     SECTION 0 — UPCOMING ONE-TIME OPPORTUNITIES
+════════════════════════════════════════════ -->
+<div class="wrap" id="onetime-section-wrap" style="display:none;">
+  <div class="section" id="onetime-section">
+    <div class="section-header">
+      <h2>Upcoming one-time events</h2>
+      <span class="section-desc">These happen once, on a specific date — soonest first</span>
+      <span class="section-count"></span>
+    </div>
+
+    <div class="cards" id="onetime-cards">
+      <!-- cards injected by renderCards() -->
+    </div><!-- /onetime-cards -->
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
      SECTION 1 — SIGN UP ONLINE
 ════════════════════════════════════════════ -->
 <div class="wrap">
@@ -239,8 +256,11 @@
       const tags = card.dataset.tags || '';
       const tagShow  = currentTag === 'all' || tags.includes(currentTag);
       const ageShow  = ageMatches(card, age);
-      const dayShow  = currentDayFilter  === 'all' || (card.dataset.schedDays  || '').includes(currentDayFilter);
-      const timeShow = currentTimeFilter === 'all' || (card.dataset.schedTimes || '').includes(currentTimeFilter);
+      // A one-time event has no weekly pattern, so the Days / Time-of-day
+      // filters don't apply to it. Category and Age still do.
+      const isOneTime = card.dataset.onetime === 'true';
+      const dayShow  = isOneTime || currentDayFilter  === 'all' || (card.dataset.schedDays  || '').includes(currentDayFilter);
+      const timeShow = isOneTime || currentTimeFilter === 'all' || (card.dataset.schedTimes || '').includes(currentTimeFilter);
       const show = tagShow && ageShow && dayShow && timeShow;
       card.style.display = show ? '' : 'none';
 
@@ -304,21 +324,25 @@
 
   function buildCardHtml(opp) {
     const condAttr   = opp._ageCondition ? ' data-age-condition="' + opp._ageCondition + '"' : '';
+    const isOneTime  = opp._opportunityType === 'one_time';
     const schedDays  = opp._schedule ? opp._schedule.days.join(' ')  : '';
     const schedTimes = opp._schedule ? opp._schedule.times.join(' ') : '';
     const stepsHtml = opp._steps.map((step, i) =>
       '<li><span class="n">' + (i + 1) + '</span><span>' + step + '</span></li>'
     ).join('');
+    const dateBadge = isOneTime && opp._eventDate ? '<p class="card-event-date">' + formatEventDate(opp._eventDate) + '</p>' : '';
     const noteHtml = opp._note ? '<p class="card-note">' + opp._note + '</p>' : '';
     const isMailto = opp._signupLink.startsWith('mailto:');
     const btnAttrs = isMailto ? '' : ' target="_blank" rel="noopener"';
 
     return '<div class="card" data-tags="' + opp._tags + '" data-age="' + opp._dataAge + '"' + condAttr +
+           (isOneTime ? ' data-onetime="true"' : '') +
            ' data-sched-days="' + schedDays + '" data-sched-times="' + schedTimes + '">' +
       '<div class="card-top">' +
         '<a class="card-name" href="' + opp.link + '">' + opp.name + '</a>' +
         '<span class="card-tag">' + opp.tag + '</span>' +
       '</div>' +
+      dateBadge +
       '<div class="card-meta">' +
         '<span><strong>Age</strong> <span>' + opp._ageHtml + '</span></span>' +
         '<span><strong>When</strong> <span>' + opp._when + '</span></span>' +
@@ -338,9 +362,12 @@
   async function renderCards() {
     const onlineGrid  = document.getElementById('online-cards');
     const contactGrid = document.getElementById('contact-cards');
+    const onetimeGrid = document.getElementById('onetime-cards');
+    const onetimeWrap = document.getElementById('onetime-section-wrap');
 
     onlineGrid.innerHTML  = '<p class="card-loading">Loading opportunities…</p>';
     contactGrid.innerHTML = '';
+    onetimeGrid.innerHTML = '';
 
     const opportunities = await fetchOpportunities();
 
@@ -369,8 +396,19 @@
 
     onlineGrid.innerHTML  = '';
     contactGrid.innerHTML = '';
+    onetimeGrid.innerHTML = '';
 
-    opportunities.forEach(opp => {
+    // One-time events get their own section, ordered by date rather than name,
+    // and it stays hidden entirely when there are none.
+    const oneTimeOpps = opportunities
+      .filter(opp => opp._opportunityType === 'one_time')
+      .sort((a, b) => (a._eventDate || '').localeCompare(b._eventDate || ''));
+    const recurringOpps = opportunities.filter(opp => opp._opportunityType !== 'one_time');
+
+    onetimeWrap.style.display = oneTimeOpps.length ? '' : 'none';
+    oneTimeOpps.forEach(opp => onetimeGrid.insertAdjacentHTML('beforeend', buildCardHtml(opp)));
+
+    recurringOpps.forEach(opp => {
       const html = buildCardHtml(opp);
       const target = opp._section === 'contact' ? contactGrid : onlineGrid;
       target.insertAdjacentHTML('beforeend', html);

@@ -9,8 +9,13 @@ let _oppCache = null;
 async function fetchOpportunities() {
   if (_oppCache) return _oppCache;
 
+  // "recurring rows, OR one-time rows whose date hasn't passed" — a published
+  // one-time row with a past date is expected to stay in the database and
+  // simply stop being served here.
+  const todayIso = _todayIso();
   const res = await fetch(
-    SUPABASE_URL + 'Opportunities?status=eq.published&select=*&order=name.asc',
+    SUPABASE_URL + 'Opportunities?status=eq.published&select=*&order=name.asc' +
+    '&or=(opportunity_type.eq.recurring,event_date.gte.' + todayIso + ')',
     {
       headers: {
         apikey:        SUPABASE_ANON_KEY,
@@ -24,6 +29,15 @@ async function fetchOpportunities() {
   const rows = await res.json();
   _oppCache = rows.map(_transformRow);
   return _oppCache;
+}
+
+// Local (not UTC) today as YYYY-MM-DD, so the auto-hide cutoff matches the
+// viewer's own calendar day rather than UTC's.
+function _todayIso() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + m + '-' + day;
 }
 
 // Maps a Supabase row to the shape expected by map.html, mini-map.js,
@@ -88,6 +102,8 @@ function _transformRow(row) {
     _ageCondition: row.age_condition  || null,
     _ageHtml:      ageHtml,
     _when:         row.when           || '',
+    _opportunityType: row.opportunity_type || 'recurring',
+    _eventDate:       row.event_date       || null,
     _schedule:     row.schedule ? _scheduleFromStructured(row.schedule) : _parseSchedule(row.when),
     _where:        row.where          || '',
     _signupLink:   row.signup_link    || '#',
@@ -165,6 +181,18 @@ function _scheduleFromStructured(schedule) {
   });
 
   return { days: days, times: Array.from(timesSet) };
+}
+
+// Formats a "YYYY-MM-DD" event_date for display, e.g. "Sat, Sep 20, 2026".
+// Parses the pieces manually rather than `new Date(iso)` — the latter treats
+// a bare date string as UTC midnight, which can print as the previous day in
+// timezones behind UTC (all of the continental US).
+function formatEventDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function _nameToSlug(name) {

@@ -61,12 +61,13 @@ module.exports = async function handler(req, res) {
   if (!authorized) return res.status(401).json({ error: 'Unauthorized' });
 
   const siteUrl = 'https://elpys.vercel.app';
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   // 1. New published opportunities in the last 7 days
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const oppRes = await fetch(
     SUPABASE_REST + 'Opportunities?status=eq.published&published_at=gte.' + since +
-    '&select=id,name,description,slug,category,when',
+    '&select=id,name,description,slug,category,when,opportunity_type,event_date',
     { headers: supaHeaders() }
   );
   if (!oppRes.ok) return res.status(500).json({ error: 'Failed to fetch opportunities' });
@@ -100,6 +101,11 @@ module.exports = async function handler(req, res) {
       if (!opp.category) return false;
       const cats = opp.category.split(/[,·]/).map(c => c.trim().toLowerCase()).filter(Boolean);
       if (!interests.some(i => cats.includes(i))) return false;
+      if (opp.opportunity_type === 'one_time') {
+        // No weekly pattern to match against availability — every interested,
+        // subscribed user hears about it. Defensively skip one already past.
+        return !opp.event_date || opp.event_date >= todayIso;
+      }
       return availabilityMatches(_parseSchedule(opp.when), profile.availability);
     });
 
@@ -109,9 +115,13 @@ module.exports = async function handler(req, res) {
 
     const itemsHtml = matched.map(opp => {
       const url = siteUrl + '/opportunities/detail.html?slug=' + encodeURIComponent(opp.slug || '');
+      const dateLine = (opp.opportunity_type === 'one_time' && opp.event_date)
+        ? '<p style="font-size:0.8125rem;font-weight:700;color:#111827;margin:0 0 0.4rem;">' + esc(formatDigestDate(opp.event_date)) + '</p>'
+        : '';
       return (
         '<div style="border:1px solid #E5E7EB;border-radius:8px;padding:1rem 1.25rem;margin-bottom:0.75rem;">' +
           '<p style="font-size:1rem;font-weight:700;margin:0 0 0.3rem;color:#1A1A1A;">' + esc(opp.name) + '</p>' +
+          dateLine +
           '<p style="font-size:0.875rem;color:#555;line-height:1.5;margin:0 0 0.6rem;">' + esc(opp.description || '') + '</p>' +
           '<a href="' + url + '" style="font-size:0.875rem;font-weight:600;color:#1A1A1A;text-decoration:none;">View opportunity →</a>' +
         '</div>'
@@ -139,7 +149,8 @@ module.exports = async function handler(req, res) {
       'New volunteer opportunities on Elpys\n\n' +
       matched.map(opp => {
         const url = siteUrl + '/opportunities/detail.html?slug=' + encodeURIComponent(opp.slug || '');
-        return opp.name + '\n' + (opp.description || '') + '\n' + url;
+        const datePrefix = (opp.opportunity_type === 'one_time' && opp.event_date) ? formatDigestDate(opp.event_date) + '\n' : '';
+        return opp.name + '\n' + datePrefix + (opp.description || '') + '\n' + url;
       }).join('\n\n') +
       '\n\n---\nUnsubscribe: ' + unsubUrl;
 
@@ -154,6 +165,17 @@ module.exports = async function handler(req, res) {
 
   return res.status(200).json({ ok: true, sent, skipped, totalProfiles: profiles.length });
 };
+
+// This runs in a cron job rather than a viewer's browser, so it formats in UTC
+// explicitly instead of borrowing whatever timezone the server happens to be in.
+// Separate from supabase-client.js's copy — different process, no shared module.
+function formatDigestDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = String(iso).split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
 
 function esc(str) {
   return String(str || '')

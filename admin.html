@@ -466,6 +466,7 @@
       '</div>';
 
     wireScheduleCells(card);
+    wireTypeToggle(card, row.id);
     card.querySelector('.btn-edit').addEventListener('click',    () => toggleEdit(row.id));
     card.querySelector('.btn-save').addEventListener('click',    () => handleSave(row.id));
     card.querySelector('.btn-cancel').addEventListener('click',  () => toggleEdit(row.id, false));
@@ -555,6 +556,7 @@
       '</div>';
 
     wireScheduleCells(card);
+    wireTypeToggle(card, row.id);
     card.querySelector('.btn-edit').addEventListener('click',      () => toggleEdit(row.id));
     card.querySelector('.btn-save').addEventListener('click',      () => handleSave(row.id));
     card.querySelector('.btn-cancel').addEventListener('click',    () => toggleEdit(row.id, false));
@@ -597,6 +599,8 @@
         ef('Name',          'text',   'e-name-'    + row.id, esc(row.name || '')) +
         ef('Age display',   'text',   'e-age-'     + row.id, esc(row.age_display || '')) +
         ef('Age min',       'number', 'e-agemin-'  + row.id, esc(row.age_min != null ? row.age_min : '')) +
+        efTypeSelect('e-type-' + row.id, row.opportunity_type || 'recurring') +
+        ef('Event date',    'date',   'e-eventdate-' + row.id, esc(row.event_date || '')) +
         ef('When',          'text',   'e-when-'    + row.id, esc(row['when'] || '')) +
         ef('Where',         'text',   'e-where-'   + row.id, esc(row['where'] || '')) +
         ef('Address',       'text',   'e-addr-'    + row.id, esc(row.address || '')) +
@@ -721,6 +725,27 @@
     return '<div class="edit-field"><label for="' + id + '">' + label + '</label>' +
            '<select id="' + id + '">' + opts + '</select></div>';
   }
+  function efTypeSelect(id, value) {
+    const opts = [['recurring', 'Recurring'], ['one_time', 'One-time']].map(([v, label]) =>
+      '<option value="' + v + '"' + (v === value ? ' selected' : '') + '>' + label + '</option>'
+    ).join('');
+    return '<div class="edit-field"><label for="' + id + '">Opportunity type</label>' +
+           '<select id="' + id + '">' + opts + '</select></div>';
+  }
+
+  // The event date only applies to one-time rows, so it follows the type select
+  // rather than sitting there empty and confusing on a recurring listing.
+  function wireTypeToggle(card, id) {
+    // Query within the card: it is still detached from the document when the
+    // builder wires it up, so getElementById would find nothing here.
+    const typeSel  = card.querySelector('#e-type-' + id);
+    const dateEl   = card.querySelector('#e-eventdate-' + id);
+    const dateWrap = dateEl ? dateEl.closest('.edit-field') : null;
+    if (!typeSel || !dateWrap) return;
+    function sync() { dateWrap.style.display = typeSel.value === 'one_time' ? '' : 'none'; }
+    typeSel.addEventListener('change', sync);
+    sync();
+  }
 
   function toggleEdit(id, forceOpen) {
     const form    = document.getElementById('edit-' + id);
@@ -747,6 +772,14 @@
     set('long_description', orNull('e-detaildesc-' + id));
     set('age_display',      text('e-age-' + id));
     set('when',             text('e-when-' + id));
+    set('opportunity_type', g('e-type-' + id));
+    const eventDateVal = text('e-eventdate-' + id);
+    if (eventDateVal !== null) {
+      // A recurring row must have event_date null (DB CHECK). The input keeps
+      // its value while hidden, so switching type back has to clear it here or
+      // every such save would fail on a stale date.
+      payload.event_date = g('e-type-' + id) === 'one_time' ? (eventDateVal || null) : null;
+    }
     set('where',            text('e-where-' + id));
     set('address',          text('e-addr-' + id));
     set('signup_link',      text('e-link-' + id));
@@ -902,8 +935,16 @@
 
   // The summary line under a card's name. Shared so it can be regenerated after
   // an edit is saved, instead of the card showing stale values until a reload.
+  function typeMetaLabel(row) {
+    if (row.opportunity_type === 'one_time') {
+      return 'One-time' + (row.event_date ? ' — ' + esc(row.event_date) : '');
+    }
+    return 'Recurring';
+  }
+
   function metaHtml(row, kind) {
     const cells = [
+      '<span>' + typeMetaLabel(row) + '</span>',
       '<span>' + esc(row.category || '—') + '</span>',
       '<span>Age: ' + esc(row.age_display || '—') + '</span>',
       '<span>When: ' + esc(row['when'] || '—') + '</span>',

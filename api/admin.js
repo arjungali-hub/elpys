@@ -105,7 +105,7 @@ module.exports = async function handler(req, res) {
       const EDITABLE = ['name','description','long_description','category','age_display','age_min',
                         'when','schedule','where','address','lat','lng','signup_link','signup_steps','section',
                         'card_note','signup_label','slug','admin_notes',
-                        'website','contact_email','contact_phone'];
+                        'website','contact_email','contact_phone','opportunity_type','event_date'];
       const updates = {};
       for (const key of EDITABLE) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];

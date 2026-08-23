@@ -224,6 +224,25 @@ async function handleSubmit(req, res) {
     return res.status(400).json({ error: 'Missing required field: category' });
   }
 
+  // ── 5b. Opportunity type + event date ─────────────────────────────────────
+  const VALID_TYPES = ['recurring', 'one_time'];
+  const opportunityType = VALID_TYPES.includes(body.opportunity_type) ? body.opportunity_type : 'recurring';
+
+  let eventDate = null;
+  if (opportunityType === 'one_time') {
+    const raw = String(body.event_date || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw) || isNaN(new Date(raw + 'T00:00:00Z').getTime())) {
+      return res.status(400).json({ error: 'Please provide a valid event date.' });
+    }
+    // Plain string comparison (both YYYY-MM-DD) so the server's own timezone
+    // can't shift what "today" means — reject a date that's already past.
+    const todayIso = new Date().toISOString().slice(0, 10);
+    if (raw < todayIso) {
+      return res.status(400).json({ error: 'Event date must be today or in the future.' });
+    }
+    eventDate = raw;
+  }
+
   const SCHEDULE_DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
   const SCHEDULE_SLOTS = ['morning','afternoon','evening'];
   let schedule = null;
@@ -248,7 +267,11 @@ async function handleSubmit(req, res) {
     age_display:        String(body.age_display).trim().slice(0, 100),
     age_min:            body.age_min ? (parseInt(body.age_min, 10) || null) : null,
     when:               String(body.when).trim().slice(0, 200),
-    schedule:           schedule,
+    opportunity_type:   opportunityType,
+    event_date:         eventDate,
+    // Defense in depth: force schedule null for one-time rows even if the
+    // client somehow sent one (matches the DB's event_date/type CHECK intent).
+    schedule:           opportunityType === 'one_time' ? null : schedule,
     where:              String(body.where).trim().slice(0, 200),
     address:            String(body.address).trim().slice(0, 300),
     signup_link:        String(body.signup_link).trim().slice(0, 500),
