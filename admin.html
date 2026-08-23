@@ -437,13 +437,7 @@
 
     card.innerHTML =
       '<div class="sub-name">' + esc(row.name) + '</div>' +
-      '<div class="sub-meta">' +
-        '<span>' + esc(row.category || '—') + '</span>' +
-        '<span>Age: ' + esc(row.age_display || '—') + '</span>' +
-        '<span>When: ' + esc(row['when'] || '—') + '</span>' +
-        '<span>Where: ' + esc(row['where'] || '—') + '</span>' +
-        '<span>Section: ' + esc(row.section || '—') + '</span>' +
-      '</div>' +
+      '<div class="sub-meta">' + metaHtml(row, 'pending') + '</div>' +
       '<p class="sub-desc">' + esc(row.description || '') + '</p>' +
       (row.long_description ? '<p style="font-size:0.8125rem;font-weight:600;margin:0.5rem 0 0.2rem;">Full description</p><p class="sub-desc" style="color:var(--text-muted);">' + esc(row.long_description) + '</p>' : '') +
       '<p style="font-size:0.8125rem;font-weight:600;margin-bottom:0.3rem;">Sign-up steps</p>' +
@@ -475,12 +469,13 @@
     card.querySelector('.btn-edit').addEventListener('click',    () => toggleEdit(row.id));
     card.querySelector('.btn-save').addEventListener('click',    () => handleSave(row.id));
     card.querySelector('.btn-cancel').addEventListener('click',  () => toggleEdit(row.id, false));
-    card.querySelector('.btn-approve').addEventListener('click', () => handleApprove(row.id));
+    card.querySelector('.btn-approve').addEventListener('click', () => handleApprove(row));
     card.querySelector('.btn-reject').addEventListener('click',  () => handleReject(row.id));
     return card;
   }
 
-  async function handleApprove(id) {
+  async function handleApprove(row) {
+    const id = row.id;
     const slug = document.getElementById('slug-' + id).value.trim();
     const lat  = document.getElementById('lat-'  + id).value.trim();
     const lng  = document.getElementById('lng-'  + id).value.trim();
@@ -493,6 +488,17 @@
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'HTTP ' + res.status); }
       fadeRemove('card-' + id, checkPendingEmpty);
       adjustBadge('count-badge', -1);
+
+      // Mirror of unpublish: the listing has moved sections, so show it under
+      // Published straight away rather than leaving a gap until a reload.
+      const publishedList = document.getElementById('published-list');
+      const emptyState = publishedList.querySelector('.empty-state');
+      if (emptyState) emptyState.remove();
+      const publishedRow = Object.assign({}, row, {
+        status: 'published', slug: slug, lat: parseFloat(lat), lng: parseFloat(lng),
+      });
+      publishedList.insertBefore(buildPublishedCard(publishedRow), publishedList.firstChild);
+      adjustBadge('published-count-badge', 1);
     } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
   }
 
@@ -516,7 +522,7 @@
     const list = document.getElementById('submissions-list');
     if (list.querySelectorAll('.submission-card').length === 0) {
       list.innerHTML = '<p class="empty-state">No pending submissions right now.</p>';
-      document.getElementById('count-badge').textContent = '0';
+      setBadge('count-badge', 0);
     }
   }
 
@@ -537,15 +543,7 @@
 
     card.innerHTML =
       '<div class="sub-name">' + esc(row.name) + '</div>' +
-      '<div class="sub-meta">' +
-        '<span>' + esc(row.category || '—') + '</span>' +
-        '<span>Age: ' + esc(row.age_display || '—') + '</span>' +
-        '<span>When: ' + esc(row['when'] || '—') + '</span>' +
-        '<span>Where: ' + esc(row['where'] || '—') + '</span>' +
-        '<span>Slug: ' + esc(row.slug || '—') + '</span>' +
-        '<span>Lat: ' + esc(row.lat != null ? row.lat : '—') + '</span>' +
-        '<span>Lng: ' + esc(row.lng != null ? row.lng : '—') + '</span>' +
-      '</div>' +
+      '<div class="sub-meta">' + metaHtml(row, 'published') + '</div>' +
 
       editFormHtml(row, { withPlacement: true, withMsg: true }) +
 
@@ -803,7 +801,13 @@
       setCardMsg(id, '✓ Saved.', '#111827');
       // Update the visible name and meta in the card header
       const card = document.getElementById('card-' + id);
-      card.querySelector('.sub-name').textContent = payload.name;
+      if (payload.name) card.querySelector('.sub-name').textContent = payload.name;
+      // The summary line was only ever refreshed for the name, so an edited
+      // category, age, when, where or slug stayed stale until a reload.
+      const metaEl = card.querySelector('.sub-meta');
+      if (metaEl) {
+        metaEl.innerHTML = metaHtml(payload, card.closest('#published-list') ? 'published' : 'pending');
+      }
       setTimeout(() => setCardMsg(id, '', '#666'), 3000);
     } catch (err) {
       setCardMsg(id, 'Error: ' + err.message, '#111827');
@@ -855,7 +859,7 @@
     const list = document.getElementById('published-list');
     if (list.querySelectorAll('.submission-card').length === 0) {
       list.innerHTML = '<p class="empty-state">No published listings yet.</p>';
-      document.getElementById('published-count-badge').textContent = '0';
+      setBadge('published-count-badge', 0);
     }
   }
 
@@ -876,9 +880,43 @@
     setTimeout(() => { card.remove(); if (callback) callback(); }, 300);
   }
 
+  // The tab bar repeats the section counts, so both have to move together —
+  // otherwise "Pending (3)" stays stale until the page is reloaded.
+  const NAV_BADGE_FOR = {
+    'count-badge':           'nav-pending-badge',
+    'published-count-badge': 'nav-published-badge',
+    'feedback-count-badge':  'nav-feedback-badge',
+  };
+
+  function setBadge(badgeId, value) {
+    const badge = document.getElementById(badgeId);
+    if (badge) badge.textContent = value;
+    const nav = document.getElementById(NAV_BADGE_FOR[badgeId]);
+    if (nav) nav.textContent = '(' + value + ')';
+  }
+
   function adjustBadge(badgeId, delta) {
     const badge = document.getElementById(badgeId);
-    badge.textContent = Math.max(0, parseInt(badge.textContent, 10) + delta);
+    setBadge(badgeId, Math.max(0, parseInt(badge.textContent, 10) + delta));
+  }
+
+  // The summary line under a card's name. Shared so it can be regenerated after
+  // an edit is saved, instead of the card showing stale values until a reload.
+  function metaHtml(row, kind) {
+    const cells = [
+      '<span>' + esc(row.category || '—') + '</span>',
+      '<span>Age: ' + esc(row.age_display || '—') + '</span>',
+      '<span>When: ' + esc(row['when'] || '—') + '</span>',
+      '<span>Where: ' + esc(row['where'] || '—') + '</span>',
+    ];
+    if (kind === 'published') {
+      cells.push('<span>Slug: ' + esc(row.slug || '—') + '</span>');
+      cells.push('<span>Lat: ' + esc(row.lat != null ? row.lat : '—') + '</span>');
+      cells.push('<span>Lng: ' + esc(row.lng != null ? row.lng : '—') + '</span>');
+    } else {
+      cells.push('<span>Section: ' + esc(row.section || '—') + '</span>');
+    }
+    return cells.join('');
   }
 
   function setCardBtns(id, disabled) {
@@ -963,7 +1001,7 @@
         const list = document.getElementById('feedback-list');
         if (list.querySelectorAll('.feedback-card').length === 0) {
           list.innerHTML = '<p class="empty-state">No feedback yet.</p>';
-          document.getElementById('feedback-count-badge').textContent = '0';
+          setBadge('feedback-count-badge', 0);
         }
       });
     } catch (err) {
