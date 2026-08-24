@@ -1,0 +1,34 @@
+# Line endings.
+#
+# Git for Windows ships core.autocrlf=true in its system config, which converts
+# LF to CRLF on checkout. Every file here is already stored as LF, so that
+# conversion produced "LF will be replaced by CRLF" warnings on almost every
+# `git add` and left the working tree disagreeing with the repository.
+#
+# This file settles it for the repo rather than per machine: checked in, so a
+# clone on any OS behaves the same regardless of the local autocrlf setting.
+#
+# text=auto  — Git decides what is text, and normalizes it to LF on commit.
+# eol=lf     — and checks it back out as LF, including on Windows.
+#
+# LF everywhere is the right call for this project: it is a static site of
+# HTML/CSS/JS/JSON deployed to Vercel (Linux), every editor involved handles LF,
+# and keeping the working tree byte-identical to the index means no conversion,
+# no warnings, and no whitespace-only diffs when a file is touched on a
+# different machine.
+* text=auto eol=lf
+
+# Binary files must never be touched. Listed explicitly rather than relying on
+# Git's content heuristic, which can misread a small binary as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
+*.zip binary
