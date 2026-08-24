@@ -79,7 +79,12 @@
     }
     .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    /* The banner sits outside .submit-form, so it does not inherit the form's
+       width and used to run the full page. Same max-width, and the same gap
+       the form puts between its own fields. */
     .form-status {
+      max-width: 600px;
+      margin-bottom: 1.25rem;
       font-size: 0.9375rem;
       line-height: 1.55;
       padding: 1rem 1.15rem;
