@@ -6,6 +6,7 @@
 //   ADMIN_PASSWORD             any secret string you choose
 
 const { checkAdminPassword } = require('../lib/adminAuth');
+const { geocodeAddress }     = require('../lib/geocode');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -143,9 +144,37 @@ module.exports = async function handler(req, res) {
       if (Object.keys(updates).length === 0) {
         return res.status(400).json({ error: 'No fields to update' });
       }
+
+      // An edited address needs new coordinates, or the map pin keeps pointing
+      // at the old place. The panel sets regeocode only when the address field
+      // actually changed AND the admin did not hand-edit lat/lng in the same
+      // save — a blind re-geocode would silently undo a corrected pin.
+      let geocoded = null;
+      if (req.body.regeocode && updates.address) {
+        geocoded = await geocodeAddress(updates.address);
+        if (geocoded.error) {
+          // Refuse rather than save the old coordinates against a new address:
+          // that combination looks correct in the panel and is wrong on the map.
+          console.warn('Re-geocode failed for', JSON.stringify(updates.address), '-', geocoded.error);
+          return res.status(422).json({
+            error: 'Saved nothing — could not locate that address.',
+            geocodeError: geocoded.error,
+            address: updates.address,
+          });
+        }
+        updates.lat = geocoded.lat;
+        updates.lng = geocoded.lng;
+      }
+
       const out = await patchRow(updates);
       if (!out.ok) return res.status(out.status).json(out.payload);
-      return res.status(200).json({ ok: true, saved: Object.keys(updates) });
+      return res.status(200).json({
+        ok: true,
+        saved: Object.keys(updates),
+        // Returned so the panel can show the new pin and fill the coordinate
+        // boxes without a reload.
+        geocoded: geocoded ? { lat: geocoded.lat, lng: geocoded.lng } : null,
+      });
     }
 
     if (action === 'unpublish') {

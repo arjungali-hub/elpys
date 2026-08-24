@@ -860,22 +860,64 @@
     const lngVal = g('e-lng-' + id);
     if (lngVal !== null) payload.lng = parseFloat(lngVal) || null;
 
+    // A changed address needs new coordinates, or the pin keeps pointing at the
+    // old place. defaultValue is what the field was rendered with, so this
+    // compares against the stored row without tracking state separately.
+    //
+    // Hand-edited coordinates win: if the admin corrected lat/lng in the same
+    // save, they looked the location up themselves and a re-geocode would throw
+    // that away. Pending cards have no lat/lng in this form — they live in the
+    // approve panel — so those are checked too.
+    const addrEl = document.getElementById('e-addr-' + id);
+    const changed = el => el && el.value.trim() !== el.defaultValue.trim();
+    const coordsTouched =
+      changed(document.getElementById('e-lat-' + id)) ||
+      changed(document.getElementById('e-lng-' + id)) ||
+      changed(document.getElementById('lat-' + id))   ||
+      changed(document.getElementById('lng-' + id));
+
+    const willGeocode = changed(addrEl) && !coordsTouched;
+    if (willGeocode) payload.regeocode = true;
+
     const saveBtn = document.getElementById('edit-' + id).querySelector('.btn-save');
     saveBtn.disabled = true;
-    setCardMsg(id, 'Saving…', '#6B7280');
+    setCardMsg(id, willGeocode ? 'Looking up the new address…' : 'Saving…', '#6B7280');
 
     try {
       const res = await postAction(payload);
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         console.error('Save failed — full response:', e);
+        // A failed lookup saves nothing rather than leaving the old coordinates
+        // attached to a new address, so say what to do about it.
+        if (res.status === 422 && e.geocodeError) {
+          throw new Error(e.geocodeError +
+            ' Nothing was saved. Check the address, or type the coordinates in yourself — ' +
+            'entering lat/lng by hand skips the lookup.');
+        }
         const parts = [e.error || 'HTTP ' + res.status];
         if (e.message) parts.push(e.message);
         if (e.details) parts.push(e.details);
         if (e.hint)    parts.push('Hint: ' + e.hint);
         throw new Error(parts.join(' — '));
       }
-      setCardMsg(id, '✓ Saved.', '#111827');
+
+      const saved = await res.json().catch(() => ({}));
+      if (saved.geocoded) {
+        payload.lat = saved.geocoded.lat;
+        payload.lng = saved.geocoded.lng;
+        applyNewCoords(id, saved.geocoded.lat, saved.geocoded.lng);
+      }
+      setCardMsg(id, saved.geocoded
+        ? '✓ Saved — pin moved to the new address.'
+        : '✓ Saved.', '#111827', 3000);
+
+      // Re-baseline the fields so a second save doesn't re-detect the same
+      // edit as a change and geocode again.
+      ['e-addr-', 'e-lat-', 'e-lng-', 'lat-', 'lng-'].forEach(function (prefix) {
+        const el = document.getElementById(prefix + id);
+        if (el) el.defaultValue = el.value;
+      });
       // Update the visible name and meta in the card header
       const card = document.getElementById('card-' + id);
       if (payload.name) card.querySelector('.sub-name').textContent = payload.name;
@@ -885,7 +927,7 @@
       if (metaEl) {
         metaEl.innerHTML = metaHtml(payload, card.closest('#published-list') ? 'published' : 'pending');
       }
-      setTimeout(() => setCardMsg(id, '', '#666'), 3000);
+      // (the 3s self-clear is set by setCardMsg above)
     } catch (err) {
       setCardMsg(id, 'Error: ' + err.message, '#111827');
     } finally {
@@ -1024,7 +1066,28 @@
 
     // The card is inserted then measured; nudge Leaflet once layout settles.
     setTimeout(function () { map.invalidateSize(); }, 60);
-    _approveMaps[row.id] = map;
+    // The marker is kept alongside the map so a re-geocode after an address
+    // edit can move the pin without rebuilding the whole thing.
+    _approveMaps[row.id] = { map: map, marker: marker };
+  }
+
+  // Called after the server re-geocodes an edited address: fills whichever
+  // coordinate inputs this card has and moves the pin if a map is showing.
+  function applyNewCoords(id, lat, lng) {
+    ['e-lat-', 'lat-'].forEach(function (p) {
+      const el = document.getElementById(p + id);
+      if (el) el.value = lat.toFixed(6);
+    });
+    ['e-lng-', 'lng-'].forEach(function (p) {
+      const el = document.getElementById(p + id);
+      if (el) el.value = lng.toFixed(6);
+    });
+
+    const entry = _approveMaps[id];
+    if (entry) {
+      entry.marker.setLatLng([lat, lng]);
+      entry.map.setView([lat, lng], Math.max(entry.map.getZoom(), 15));
+    }
   }
 
   function makeApproveIcon() {
@@ -1040,7 +1103,7 @@
   }
 
   function destroyApproveMap(id) {
-    if (_approveMaps[id]) { _approveMaps[id].remove(); delete _approveMaps[id]; }
+    if (_approveMaps[id]) { _approveMaps[id].map.remove(); delete _approveMaps[id]; }
   }
 
   function typeMetaLabel(row) {
@@ -1077,11 +1140,24 @@
   }
 
   // msg inside the edit form
-  function setCardMsg(id, msg, color) {
+  // "✓ Saved" clears itself after 3s. That timer used to be able to fire over
+  // a message set afterwards — save, then save again and fail inside 3
+  // seconds, and the error was wiped a moment after appearing. Setting a
+  // message now cancels any pending clear for that card.
+  const _msgTimers = {};
+  function setCardMsg(id, msg, color, clearAfterMs) {
     const el = document.getElementById('msg-' + id);
     if (!el) return;
+    if (_msgTimers[id]) { clearTimeout(_msgTimers[id]); delete _msgTimers[id]; }
     el.textContent = msg;
     el.style.color = color;
+    if (clearAfterMs) {
+      _msgTimers[id] = setTimeout(function () {
+        delete _msgTimers[id];
+        const cur = document.getElementById('msg-' + id);
+        if (cur) { cur.textContent = ''; cur.style.color = '#666'; }
+      }, clearAfterMs);
+    }
   }
 
   // msg in the main action row (unpublish/delete)
