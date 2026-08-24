@@ -375,8 +375,26 @@
 
     try {
       const res = await fetch(API, { headers: { 'x-admin-password': _password } });
-      if (res.status === 401) { showLoginMsg('Incorrect password.', 'error'); return; }
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      if (res.status === 401) {
+        sessionStorage.removeItem('elpys_admin_pw');
+        _password = '';
+        showLoginMsg('Incorrect password.', 'error');
+        return;
+      }
+      if (res.status === 429) {
+        // The shared admin limiter refused this attempt — retyping the password
+        // won't help until the window passes, so say that rather than
+        // "HTTP 429".
+        const e = await res.json().catch(() => ({}));
+        showLoginMsg(e.error || 'Too many incorrect attempts. Please wait and try again.', 'error');
+        return;
+      }
+      if (!res.ok) {
+        // The endpoint returns a reason for 502 (Supabase unreachable) and for
+        // its other failures; a bare "HTTP 502" threw all of it away.
+        const e = await res.json().catch(() => ({}));
+        throw new Error([e.error || 'HTTP ' + res.status, e.message].filter(Boolean).join(' — '));
+      }
 
       const { pending, published, feedback } = await res.json();
       document.getElementById('login-panel').style.display = 'none';

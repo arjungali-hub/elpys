@@ -126,19 +126,26 @@
     activeOpportunity = opp;
     if (opp.marker) { opp.marker.setIcon(pinIcon(true)); opp.marker.openPopup(); }
 
-    // With a route already drawn, switching opportunity redraws it to the new
-    // one straight away rather than leaving a stale route on the map until
-    // "Show route" is pressed again. Skip the flyTo in that case — the route
-    // fits its own bounds, and the two animations would fight each other.
-    if (routeLayer && routeOrigin.value.trim()) {
+    if (!opp.marker) {
+      // No usable coordinates: nothing to fly to and nothing to route to. This
+      // is checked before the routing branch — otherwise picking one of these
+      // while a route was drawn sent NaN coordinates to OSRM, cleared the
+      // existing route, and reported "could not load driving directions"
+      // instead of the real reason.
+      setRouteStatus(opp.name + ' has no mapped location yet, so no route can be shown.', 'error');
+    } else if (routeLayer && routeOrigin.value.trim()) {
+      // With a route already drawn, switching opportunity redraws it to the new
+      // one straight away rather than leaving a stale route on the map until
+      // "Show route" is pressed again. Skip the flyTo in that case — the route
+      // fits its own bounds, and the two animations would fight each other.
       showRouteFromInput();
-    } else if (opp.marker) {
+    } else {
       map.flyTo([opp.lat, opp.lng], Math.max(map.getZoom(), 13), { duration: 0.5 });
       setRouteStatus('Selected ' + opp.name + '. Enter a starting place and show the route.');
-    } else {
-      setRouteStatus(opp.name + ' has no mapped location yet.', 'error');
     }
 
+    // Runs for every selection, including the unmapped case above, so the
+    // sidebar still shows which one is picked.
     if (listItem) {
       const wrap = listItem.closest('.map-list-item-wrap') || listItem;
       wrap.classList.add('active');

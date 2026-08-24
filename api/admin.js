@@ -29,11 +29,23 @@ module.exports = async function handler(req, res) {
 
   // ── GET — return pending + published ────────────────────────────────────────
   if (req.method === 'GET') {
-    const [pendingRes, publishedRes, feedbackRes] = await Promise.all([
-      fetch(SUPABASE_URL + 'Opportunities?status=eq.pending&select=*&order=created_at.asc',  { headers: supabaseHeaders() }),
-      fetch(SUPABASE_URL + 'Opportunities?status=eq.published&select=*&order=name.asc', { headers: supabaseHeaders() }),
-      fetch(SUPABASE_URL + 'Feedback?select=*&order=created_at.desc&limit=200', { headers: supabaseHeaders() }),
-    ]);
+    // A paused or unreachable Supabase project makes fetch reject outright,
+    // which is the case this whole path exists for — unhandled, it produced a
+    // bodyless 500 and the panel had nothing to show.
+    let pendingRes, publishedRes, feedbackRes;
+    try {
+      [pendingRes, publishedRes, feedbackRes] = await Promise.all([
+        fetch(SUPABASE_URL + 'Opportunities?status=eq.pending&select=*&order=created_at.asc',  { headers: supabaseHeaders() }),
+        fetch(SUPABASE_URL + 'Opportunities?status=eq.published&select=*&order=name.asc', { headers: supabaseHeaders() }),
+        fetch(SUPABASE_URL + 'Feedback?select=*&order=created_at.desc&limit=200', { headers: supabaseHeaders() }),
+      ]);
+    } catch (err) {
+      console.error('Admin GET could not reach Supabase:', err && err.stack ? err.stack : err);
+      return res.status(502).json({
+        error:   'Could not reach the database.',
+        message: 'The Supabase project may be paused. Check the project status and try again.',
+      });
+    }
     // A failed query answers with a PostgREST error object, not an array. That
     // used to be handed straight to the panel, which then threw on .forEach and
     // rendered nothing, with no indication of why.
@@ -150,7 +162,24 @@ module.exports = async function handler(req, res) {
       // actually changed AND the admin did not hand-edit lat/lng in the same
       // save — a blind re-geocode would silently undo a corrected pin.
       let geocoded = null;
-      if (req.body.regeocode && updates.address) {
+      if (req.body.regeocode) {
+        // `updates.address !== undefined` rather than a truthiness check: the
+        // panel asks for a re-geocode whenever the address field changed, and
+        // clearing it to blank is a change. A truthy guard skipped the lookup
+        // and saved the empty address beside the old coordinates, reporting a
+        // plain success — the exact wrong-pin-on-the-map case this exists to
+        // prevent.
+        if (updates.address === undefined) {
+          return res.status(400).json({ error: 'Cannot re-geocode without an address.' });
+        }
+        if (!String(updates.address).trim()) {
+          return res.status(422).json({
+            error: 'Saved nothing — an address is required to place the pin.',
+            geocodeError: 'No address provided.',
+            address: updates.address,
+          });
+        }
+
         geocoded = await geocodeAddress(updates.address);
         if (geocoded.error) {
           // Refuse rather than save the old coordinates against a new address:

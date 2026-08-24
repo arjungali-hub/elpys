@@ -66,6 +66,20 @@ function isSafeLink(url) {
   return /^(https?:\/\/|mailto:)/i.test(String(url || '').trim());
 }
 
+// The form's "Contact us first (email or phone)" option invites an email
+// address in the sign-up field, and a bare address is neither http(s) nor
+// mailto: — so the scheme check rejected exactly what the form asked for.
+// Add the scheme rather than refuse the submission.
+function normalizeLink(url) {
+  const v = String(url || '').trim();
+  if (!v || isSafeLink(v)) return v;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'mailto:' + v;
+  // A bare domain or path ("bellevue.org/volunteer") is a web address with the
+  // scheme left off, which is how people usually write them.
+  if (/^[\w.-]+\.[a-z]{2,}(\/|$)/i.test(v)) return 'https://' + v;
+  return v;
+}
+
 module.exports = async function handler(req, res) {
   try {
     return await handleSubmit(req, res);
@@ -178,18 +192,25 @@ async function handleSubmit(req, res) {
   if (!['online','contact'].includes(body.section)) {
     return res.status(400).json({ error: 'Invalid section value.' });
   }
-  if (!isSafeLink(body.signup_link)) {
+  // A bare email or a scheme-less domain is what people actually type, so
+  // those are completed rather than rejected. Anything still without a safe
+  // scheme afterwards is refused — this is the value that ends up in an href.
+  const signupLink = normalizeLink(body.signup_link);
+  if (!isSafeLink(signupLink)) {
     return res.status(400).json({
-      error: 'The sign-up link must start with http://, https:// or mailto:.',
+      error: 'The sign-up link must be a web address (https://…) or an email address.',
     });
   }
   // Optional links get the same treatment — website is rendered as an <a> on
   // the detail page, live_url in the map sidebar.
+  const normalizedOptional = {};
   for (const field of ['website_url', 'live_url']) {
-    const v = body[field];
-    if (v && !isSafeLink(v) && !/^[\w.-]+\.[a-z]{2,}(\/|$)/i.test(String(v).trim())) {
+    if (!body[field]) continue;
+    const v = normalizeLink(body[field]);
+    if (!isSafeLink(v)) {
       return res.status(400).json({ error: 'Please give a valid web address for ' + field.replace('_url', '') + '.' });
     }
+    normalizedOptional[field] = v;
   }
 
   // ── 5. Duplicate name check (case-insensitive, all statuses) ─────────────
@@ -308,11 +329,11 @@ async function handleSubmit(req, res) {
     // entry. Either way the admin confirms them before the listing publishes.
     lat:                geocoded.lat,
     lng:                geocoded.lng,
-    signup_link:        String(body.signup_link).trim().slice(0, 500),
+    signup_link:        signupLink.slice(0, 500),
     signup_label:       body.signup_label ? String(body.signup_label).trim().slice(0, 50) : 'Sign up →',
     signup_steps:       signupSteps,
     section:            body.section,
-    website:            body.website_url   ? String(body.website_url).trim().slice(0, 300)   : null,
+    website:            normalizedOptional.website_url ? normalizedOptional.website_url.slice(0, 300) : null,
     contact_email:      body.contact_email ? String(body.contact_email).trim().slice(0, 200) : null,
     contact_phone:      body.contact_phone ? String(body.contact_phone).trim().slice(0, 50)  : null,
     card_note:          body.card_note   ? String(body.card_note).trim().slice(0, 500)  : null,

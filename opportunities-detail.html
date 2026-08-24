@@ -111,11 +111,19 @@
       : '';
 
     // Build org contact section (website / email / phone)
-    const websiteUrl = opp._website
-      ? (/^https?:\/\//i.test(opp._website) ? opp._website : 'https://' + opp._website)
-      : null;
+    // Only a scheme-less domain gets https:// added. The old version prepended
+    // it to whatever was there, so a stored "javascript:…" became
+    // "https://javascript:…" — mangled, and it slipped past safeUrl by then
+    // starting with https://.
+    const websiteUrl = (function () {
+      const v = String(opp._website || '').trim();
+      if (!v) return null;
+      if (/^https?:\/\//i.test(v)) return v;
+      if (/^[\w.-]+\.[a-z]{2,}(\/|$)/i.test(v)) return 'https://' + v;
+      return v;   // left as-is for safeUrl to reject
+    }());
     const contactLines = [];
-    if (websiteUrl)          contactLines.push('<span><strong>Website:</strong> <a href="' + esc(websiteUrl) + '" target="_blank" rel="noopener">' + esc(opp._website) + '</a></span>');
+    if (websiteUrl)          contactLines.push('<span><strong>Website:</strong> <a href="' + safeUrl(websiteUrl) + '" target="_blank" rel="noopener">' + esc(opp._website) + '</a></span>');
     if (opp._contactEmail)   contactLines.push('<span><strong>Email:</strong> <a href="mailto:' + esc(opp._contactEmail) + '">' + esc(opp._contactEmail) + '</a></span>');
     if (opp._contactPhone)   contactLines.push('<span><strong>Phone:</strong> ' + esc(opp._contactPhone) + '</span>');
     const orgContactHtml = contactLines.length
@@ -155,13 +163,13 @@
             '<div class="mini-map" id="mini-map"></div>' +
           '</div>' +
           '<p class="mini-map-label">View on full map →</p>' +
-          (!opp.approx && opp.liveUrl ? '<p style="font-size:0.8125rem;color:var(--subtle);margin-top:0.35rem;">The location marked is the nearest — <a href="' + esc(opp.liveUrl) + '" target="_blank" rel="noopener" style="color:var(--subtle);">view all locations →</a></p>' : '') +
+          (!opp.approx && opp.liveUrl ? '<p style="font-size:0.8125rem;color:var(--subtle);margin-top:0.35rem;">The location marked is the nearest — <a href="' + safeUrl(opp.liveUrl) + '" target="_blank" rel="noopener" style="color:var(--subtle);">view all locations →</a></p>' : '') +
           '<div class="detail-box">' +
             '<p class="steps-label">How to sign up</p>' +
             stepsHtml +
             noteHtml +
             '<div class="card-actions" style="margin-top:1rem;">' +
-              '<a class="btn" href="' + esc(opp._signupLink) + '" target="_blank" rel="noopener">' + esc(opp._signupLabel) + '</a>' +
+              '<a class="btn" href="' + safeUrl(opp._signupLink) + '" target="_blank" rel="noopener">' + esc(opp._signupLabel) + '</a>' +
             '</div>' +
           '</div>' +
         '</div>' +

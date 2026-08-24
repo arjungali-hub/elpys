@@ -22,9 +22,13 @@ function escHtml(value) {
 // URLs get a second check: escaping stops an attribute breakout, but
 // `javascript:` needs no quotes to be dangerous. Anything that isn't a plain
 // web or mail link becomes '#'.
+//
+// The leading-slash case is deliberately `/` NOT followed by another `/`:
+// `//evil.example` is a protocol-relative URL that loads from another origin
+// entirely, and a bare `^\/` would have waved it through as a same-site path.
 function safeUrl(value) {
   const url = String(value == null ? '' : value).trim();
-  return /^(https?:\/\/|mailto:|\/|[\w.-]+\.html)/i.test(url) ? escHtml(url) : '#';
+  return /^(https?:\/\/|mailto:|\/(?!\/)|[\w.-]+\.html)/i.test(url) ? escHtml(url) : '#';
 }
 
 // ── Fetch + cache ────────────────────────────────────────────────────────────
