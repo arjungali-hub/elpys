@@ -136,12 +136,20 @@
   </div>
   <p class="subtitle">Flags raised by the weekly automated accuracy check. Your decision is recorded here; the next scheduled run applies the fix and resolves the flag.</p>
 
+  <!-- Hidden from the start when a password is already stored: the load begins
+       immediately in that case, and showing a password box you never have to
+       touch — with a "Loading…" button beside it — reads as being asked to log
+       in again. It is revealed if the stored password turns out to be wrong. -->
   <div id="login-panel">
     <div class="login-row">
       <input type="password" id="password-input" placeholder="Admin password" autocomplete="current-password" />
       <button class="btn-primary" id="login-btn">Load</button>
     </div>
     <div class="msg" id="login-msg"></div>
+  </div>
+
+  <div id="loading-panel" style="display:none;">
+    <div class="empty-state">Loading the review queue…</div>
   </div>
 
   <div id="content" style="display:none;">
@@ -193,9 +201,24 @@
 
   // ── Auth ───────────────────────────────────────────────────────────────────
   // Shares the session key with admin.html, so logging in on either carries over.
+  const loginPanel   = () => document.getElementById('login-panel');
+  const loadingPanel = () => document.getElementById('loading-panel');
+
+  // Signed in already: go straight to a loading state, no password prompt.
+  function showAutoLoading() {
+    loginPanel().style.display   = 'none';
+    loadingPanel().style.display = 'block';
+  }
+
+  // Whatever we had didn't work — put the prompt back so it can be retyped.
+  function revealLogin() {
+    loadingPanel().style.display = 'none';
+    loginPanel().style.display   = 'block';
+  }
+
   (function () {
     const stored = sessionStorage.getItem('elpys_admin_pw');
-    if (stored) { _password = stored; loadAll(); }
+    if (stored) { _password = stored; showAutoLoading(); loadAll(); }
   }());
 
   document.getElementById('login-btn').addEventListener('click', () => loadAll());
@@ -213,7 +236,20 @@
 
     try {
       const res = await fetch(API, { headers: { 'x-admin-password': _password } });
-      if (res.status === 401) { _password = ''; sessionStorage.removeItem('elpys_admin_pw'); showLoginMsg('Incorrect password.', 'error'); return; }
+      if (res.status === 401) {
+        _password = '';
+        sessionStorage.removeItem('elpys_admin_pw');
+        revealLogin();
+        showLoginMsg('Incorrect password.', 'error');
+        return;
+      }
+      if (res.status === 429) {
+        // The shared admin rate limiter kicked in — a retype won't help yet.
+        revealLogin();
+        const e = await res.json().catch(() => ({}));
+        showLoginMsg(e.error || 'Too many attempts. Please wait and try again.', 'error');
+        return;
+      }
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         console.error('Load failed — full response:', e);
@@ -222,7 +258,8 @@
 
       const { pending, resolved, supabase } = await res.json();
       sessionStorage.setItem('elpys_admin_pw', _password);
-      document.getElementById('login-panel').style.display = 'none';
+      loginPanel().style.display   = 'none';
+      loadingPanel().style.display = 'none';
       document.getElementById('content').style.display = 'block';
       renderSupabaseStatus(supabase);
       if (supabase && supabase.state !== 'active') {
@@ -238,6 +275,9 @@
       renderPending(pending || []);
       renderResolved(resolved || []);
     } catch (err) {
+      // The message lives in the login panel, so that panel has to be back on
+      // screen for the error to be visible at all.
+      revealLogin();
       showLoginMsg('Error: ' + err.message, 'error');
     } finally {
       btn.disabled = false;
