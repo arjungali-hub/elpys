@@ -46,10 +46,14 @@
     .supa-status { font-size: 0.75rem; color: var(--text-muted); display: inline-flex; align-items: center;
       gap: 0.35rem; border: 1px solid var(--border); background: var(--bg-primary);
       border-radius: 999px; padding: 0.1rem 0.55rem; white-space: nowrap; }
-    .supa-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-subtle); flex-shrink: 0; }
-    .supa-status.is-active .supa-dot { background: var(--text-main); }
-    .supa-status.is-paused { color: var(--text-main); border-color: var(--text-main); }
-    .supa-status.is-paused .supa-dot { background: var(--bg-primary); border: 1.5px solid var(--text-main); }
+    /* Same traffic light as the Data review dot in the admin header: green is
+       healthy, yellow is paused. This pill used to render "Active" in the same
+       near-black as everything else, which said nothing at a glance.
+       Unknown/error keeps the neutral grey — not green, since we don't know. */
+    .supa-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--subtle-ui); flex-shrink: 0; }
+    .supa-status.is-active .supa-dot { background: var(--dot-green); }
+    .supa-status.is-paused { color: var(--text-main); border-color: var(--dot-yellow); }
+    .supa-status.is-paused .supa-dot { background: var(--dot-yellow); }
 
     /* Login */
     #login-panel { max-width: 340px; }

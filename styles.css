@@ -14,6 +14,11 @@
   --subtle-ui:  #9CA3AF;
   --body:       #111827;
   --accent:     #111827;
+  /* Status traffic light, shared by the Data review header dot and the
+     Supabase pill on review.html so the same fact is never two colours. */
+  --dot-green:  #15803D;
+  --dot-yellow: #CA8A04;
+  --dot-red:    #DC2626;
   --radius:     6px;
   --radius-lg:  12px;
   --max:        1080px;
@@ -168,9 +173,9 @@ header {
   vertical-align: 0.05em;
   flex-shrink: 0;
 }
-.status-dot.is-green   { background: #15803D; }
-.status-dot.is-yellow  { background: #CA8A04; }
-.status-dot.is-red     { background: #DC2626; }
+.status-dot.is-green   { background: var(--dot-green); }
+.status-dot.is-yellow  { background: var(--dot-yellow); }
+.status-dot.is-red     { background: var(--dot-red); }
 .status-dot.is-unknown { background: transparent; border: 1px solid var(--subtle-ui); }
 
 .header-digest-msg { font-size: 0.8125rem; }
