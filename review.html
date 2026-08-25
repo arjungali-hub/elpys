@@ -156,7 +156,8 @@
   </div>
 
   <div id="loading-panel" style="display:none;">
-    <div class="empty-state">Loading the review queue…</div>
+    <div class="skel-table skel-wave" id="loading-skeleton" aria-busy="true"
+         style="--cols: 1.1fr 2fr 1.4fr 80px"></div>
   </div>
 
   <div id="content" style="display:none;">
@@ -176,6 +177,7 @@
 
 </div>
 
+<script src="loading.js"></script>
 <script>
   const API = '/api/review';
   let _password = '';
@@ -222,6 +224,16 @@
   function showAutoLoading() {
     loginPanel().style.display   = 'none';
     loadingPanel().style.display = 'block';
+    // The queue is a table, so the placeholder is one too — same
+    // column widths as the real rows, so nothing shifts when they land.
+    var skel = document.getElementById('loading-skeleton');
+    if (skel && window.Loading) {
+      skel.innerHTML = Loading.table({
+        cols: '1.1fr 2fr 1.4fr 80px', rows: 5, pillAt: 0,
+        headWidths: ['56%', '34%', '42%', '70%'],
+        label: 'Loading data checks',
+      });
+    }
   }
 
   // Whatever we had didn't work — put the prompt back so it can be retyped.

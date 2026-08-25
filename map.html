@@ -65,6 +65,7 @@
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="loading.js"></script>
 <script src="supabase-client.js"></script>
 <script>
   const map = L.map('map', { worldCopyJump: true });
@@ -251,11 +252,15 @@
     const sidebar = document.getElementById('map-sidebar');
     const bounds = [];
 
+    // The sidebar was simply blank until the fetch resolved.
+    Loading.show(sidebar, Loading.rows(5));
+
     let opportunities;
     try {
       opportunities = await fetchOpportunities();
     } catch (err) {
       console.error('Could not load opportunities:', err);
+      Loading.clear(sidebar);
       map.setView(BELLEVUE_CENTRE, 11);
       sidebar.innerHTML =
         '<div class="load-error">' +
@@ -266,6 +271,10 @@
       setRouteStatus('Opportunities could not be loaded, so routing is unavailable.', 'error');
       return;
     }
+
+    // Real rows replace the skeletons from here on.
+    Loading.clear(sidebar);
+    sidebar.innerHTML = '';
 
     opportunities.forEach(opp => {
       opp._allOpps = opportunities;

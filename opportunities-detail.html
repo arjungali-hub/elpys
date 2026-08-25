@@ -31,7 +31,10 @@
 <div class="wrap">
   <section class="detail-section" id="detail-section">
     <a href="index.html" class="back-link">← Back to all opportunities</a>
-    <p id="loading-msg" class="detail-placeholder" style="margin-top:1rem;">Loading…</p>
+    <!-- Replaced on load: a skeleton of the detail layout while the row
+         fetches, or setPlaceholder() turns it into a bordered message
+         box for the not-found / could-not-load cases. -->
+    <div id="loading-msg" class="skel-detail skel-wave" aria-busy="true" style="margin-top:1rem;"></div>
   </section>
 </div>
 
@@ -49,6 +52,7 @@
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="loading.js"></script>
 <script src="supabase-client.js"></script>
 <script src="mini-map.js"></script>
 <script>
@@ -56,11 +60,20 @@
   // as an intentional message rather than a page that failed to finish.
   function setPlaceholder(title, detail) {
     var el = document.getElementById('loading-msg');
+    // Replaces the skeleton classes wholesale; aria-busy has to go separately
+    // or the element keeps announcing itself as still loading.
     el.className = 'detail-placeholder';
+    el.removeAttribute('aria-busy');
     el.innerHTML = '<strong class="detail-placeholder-title">' + esc(title) + '</strong>' +
       '<span>' + esc(detail) + '</span>' +
       '<a class="detail-placeholder-link" href="index.html">Browse all opportunities →</a>';
   }
+
+  // Skeleton first, so the page has its shape before the row arrives.
+  (function () {
+    var host = document.getElementById('loading-msg');
+    if (host && window.Loading) host.innerHTML = Loading.detail();
+  }());
 
   (async () => {
     const slug = new URLSearchParams(window.location.search).get('slug');

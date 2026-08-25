@@ -131,6 +131,7 @@
   </div>
 </footer>
 
+<script src="loading.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
 <script>
   var _supa = supabase.createClient(
@@ -205,8 +206,7 @@
     var interests    = Array.from(form.querySelectorAll('input[name="interest"]:checked')).map(function (c) { return c.value; });
     var availability = collectAvailability();
 
-    btn.disabled    = true;
-    btn.textContent = 'Creating account…';
+    Loading.setBusy(btn, 'Creating account');
 
     try {
       var result = await _supa.auth.signUp({
@@ -219,8 +219,7 @@
 
       if (result.error) {
         showStatus(result.error.message || result.error.error_description || 'Sign-up failed (code ' + result.error.status + '). Check that email sign-ins are enabled in your Supabase project.', 'error');
-        btn.disabled    = false;
-        btn.textContent = 'Create account →';
+        Loading.clearBusy(btn);
         return;
       }
 
@@ -229,8 +228,7 @@
       document.getElementById('check-email-state').style.display = 'block';
     } catch (err) {
       showStatus(err.message || 'Something went wrong. Please try again.', 'error');
-      btn.disabled    = false;
-      btn.textContent = 'Create account →';
+      Loading.clearBusy(btn);
     }
   });
 </script>

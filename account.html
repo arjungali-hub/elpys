@@ -33,7 +33,9 @@
     .avail-cell { height: 32px; background: var(--off); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: background 0.1s, border-color 0.1s; }
     .avail-cell:hover { border-color: #aaa; background: #ebebeb; }
     .avail-cell.active { background: var(--body); border-color: var(--body); }
-    #loading-msg { color: var(--muted); font-size: 0.9375rem; padding: 3rem 0; }
+    /* Was a "Loading…" line; now the shape of the profile form that
+       replaces it, so nothing jumps when the fetch resolves. */
+    #loading-msg { padding: 3rem 0; max-width: 480px; }
   </style>
   <script src="analytics.js"></script>
 </head>
@@ -52,7 +54,7 @@
 
 <div class="wrap">
   <a href="index.html" class="back-link" style="display:block;margin-top:2rem;">← Back to opportunities</a>
-  <p id="loading-msg">Loading…</p>
+  <div id="loading-msg" class="skel-form skel-wave" aria-busy="true"></div>
   <section class="account-section" id="account-section" style="display:none;"></section>
 </div>
 
@@ -69,8 +71,15 @@
   </div>
 </footer>
 
+<script src="loading.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
 <script>
+  // Profile skeleton, shown until the session and profile resolve.
+  (function () {
+    var host = document.getElementById('loading-msg');
+    if (host && window.Loading) host.innerHTML = Loading.form();
+  }());
+
   function showModal(opts) {
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';

@@ -760,16 +760,21 @@ footer {
   padding: 2rem 0;
   margin-top: 2rem;
 }
+/* The note and the links are two different things — one is advice about the
+   listings, the other is site navigation — but they sat as one block of grey
+   text. Stacking them with a rule between separates them.
+   The wrap gap stays for narrow screens, where the row breaks anyway. */
 .footer-inner {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 2rem;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.9rem;
 }
 .footer-links {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
 }
 footer p {
   font-size: 0.8125rem;
@@ -1228,4 +1233,162 @@ footer a {
   color: var(--body);
   min-width: 5.5rem;
   flex-shrink: 0;
+}
+
+/* ============================================================
+   LOADING STATES
+   Skeletons and the inline button spinner. Authored as
+   loading animations/elpys-skeleton.css and folded in here so
+   every page picks them up from the stylesheet it already loads,
+   rather than adding a second request to fourteen pages.
+   Depends only on tokens defined above.
+   ============================================================ */
+
+/* Elpys — skeleton loading state
+   Drop-in. Depends only on existing tokens in styles.css:
+   --off, --border, --surface, --muted, --subtle
+   No JS, no libraries. Reduced motion holds a flat static frame. */
+
+.skel {
+  --skel-band: color-mix(in oklab, var(--border) 62%, var(--off));
+  border-radius: 2px;
+  background: linear-gradient(100deg, var(--off) 20%, var(--skel-band) 50%, var(--off) 80%);
+  background-size: 240% 100%;
+  animation: skel-sweep 2.1s linear infinite;
+  /* browsers without color-mix fall back to the plain --off block below */
+}
+@supports not (background: color-mix(in oklab, red, blue)) {
+  .skel { background: var(--off); animation-name: skel-fade; }
+}
+
+@keyframes skel-sweep { from { background-position: 180% 0 } to { background-position: -80% 0 } }
+@keyframes skel-fade  { 0%,100% { opacity: .5 } 50% { opacity: .9 } }
+
+/* Wave stagger — put on the container of a group of .skel blocks */
+.skel-wave > *:nth-child(2) .skel, .skel-wave > .skel:nth-child(2) { animation-delay: .09s }
+.skel-wave > *:nth-child(3) .skel, .skel-wave > .skel:nth-child(3) { animation-delay: .18s }
+.skel-wave > *:nth-child(4) .skel, .skel-wave > .skel:nth-child(4) { animation-delay: .27s }
+.skel-wave > *:nth-child(5) .skel, .skel-wave > .skel:nth-child(5) { animation-delay: .36s }
+.skel-wave > *:nth-child(n+6) .skel, .skel-wave > .skel:nth-child(n+6) { animation-delay: .45s }
+
+/* Sizes */
+.skel-line   { height: 9px }
+.skel-title  { height: 15px }
+.skel-h1     { height: 24px }
+.skel-meta   { height: 8px }
+.skel-chip   { height: 19px; border-radius: 10px }
+.skel-button { height: 36px; border-radius: 4px }
+
+/* Shells */
+.skel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.skel-card hr, .skel-rule { border: 0; height: 1px; background: var(--border); margin: 4px 0 }
+.skel-chips { display: flex; gap: 6px }
+.skel-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border);
+}
+.skel-detail { display: flex; flex-direction: column; gap: 13px }
+
+/* Screen-reader announcement — pair with aria-busy on the container */
+.skel-sr {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel { animation: none !important; background: var(--off); opacity: .55 }
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   EXTENSION 1 — Table / list rows
+   For: admin.html (pending/approved queue), review.html (data_review_flags)
+   Utilitarian sibling of .skel-card: no card shell, tighter rhythm,
+   column widths driven by grid-template-columns so it lines up with
+   the real <table>/list below it.
+   ───────────────────────────────────────────────────────────── */
+
+.skel-table {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.skel-thead,
+.skel-trow {
+  display: grid;
+  gap: 16px;
+  align-items: center;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  /* override per view, e.g. style="--cols: 2.4fr 1fr 1fr 90px" */
+  grid-template-columns: var(--cols, 2.4fr 1fr 1fr 90px);
+}
+.skel-trow:last-child { border-bottom: 0 }
+.skel-thead { background: var(--off) }
+.skel-thead .skel { animation-name: none; background: var(--border); opacity: .5 }
+.skel-cell { height: 10px }
+.skel-cell-strong { height: 12px }
+.skel-pill { height: 18px; border-radius: 9px }
+
+/* ─────────────────────────────────────────────────────────────
+   EXTENSION 2 — Profile form
+   For: account.html (interests / unsubscribed / availability)
+   Fluid: every block is a % of the form column, no fixed px widths.
+   ───────────────────────────────────────────────────────────── */
+
+.skel-form { display: flex; flex-direction: column; gap: 26px; width: 100% }
+.skel-field { display: flex; flex-direction: column; gap: 9px }
+.skel-label { height: 9px; width: 28% }
+.skel-input { height: 40px; border-radius: 4px; width: 100% }
+.skel-checks { display: flex; flex-wrap: wrap; gap: 10px 14px }
+.skel-check { display: flex; align-items: center; gap: 8px }
+.skel-box { height: 15px; width: 15px; border-radius: 3px; flex: none }
+.skel-checktext { height: 9px }
+
+/* ─────────────────────────────────────────────────────────────
+   EXTENSION 3 — Inline button spinner
+   For: login.html, signup.html, admin-login.html, submit.html, feedback.html
+   Inherits the button's text color; ems so it scales with the button.
+   ───────────────────────────────────────────────────────────── */
+
+.btn-spin {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+  display: inline-block;
+  vertical-align: -.16em;
+  color: currentColor;
+}
+.btn-spin > svg { display: block; width: 100%; height: 100% }
+.btn-spin circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  transform-origin: 20px 20px;
+  animation: btn-spin 1.15s linear infinite;
+}
+.btn-spin .btn-spin-track { opacity: .28; animation: none; stroke-dasharray: none }
+.btn-spin .btn-spin-arc { stroke-dasharray: 36 110 }
+@keyframes btn-spin { to { transform: rotate(360deg) } }
+
+/* Optional: button with spinner + label, keeps width stable */
+.btn-loading { display: inline-flex; align-items: center; justify-content: center; gap: .5em }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-spin circle { animation: none !important }
+  .btn-spin .btn-spin-arc { stroke-dasharray: none; opacity: .75 }
+  .skel-thead .skel { opacity: .5 }
 }

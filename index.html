@@ -320,6 +320,7 @@
 </script>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="loading.js"></script>
 <script src="supabase-client.js"></script>
 <script src="mini-map.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
@@ -379,7 +380,10 @@
     const onetimeGrid = document.getElementById('onetime-cards');
     const onetimeWrap = document.getElementById('onetime-section-wrap');
 
-    onlineGrid.innerHTML  = '<p class="card-loading">Loading opportunities…</p>';
+    // Six skeleton cards in the grid the real ones land in, so the page has
+    // its eventual shape immediately instead of a line of text that then
+    // shoves everything down.
+    Loading.show(onlineGrid, Loading.cards(6));
     contactGrid.innerHTML = '';
     onetimeGrid.innerHTML = '';
 
@@ -391,6 +395,7 @@
       opportunities = await fetchOpportunities();
     } catch (err) {
       console.error('Could not load opportunities:', err);
+      Loading.clear(onlineGrid);
       onlineGrid.innerHTML =
         '<div class="load-error">' +
           '<p class="load-error-title">Opportunities couldn\'t be loaded</p>' +
@@ -424,6 +429,8 @@
         filtersEl.appendChild(btn);
       });
 
+    // Drops the skeletons and the aria-busy that went with them.
+    Loading.clear(onlineGrid);
     onlineGrid.innerHTML  = '';
     contactGrid.innerHTML = '';
     onetimeGrid.innerHTML = '';

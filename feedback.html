@@ -137,6 +137,7 @@
   </div>
 </footer>
 
+<script src="loading.js"></script>
 <script>
   // Pre-fill page field from ?from= param (set by beta banner link)
   const fromParam = new URLSearchParams(location.search).get('from');
@@ -169,8 +170,7 @@
       return;
     }
 
-    btn.disabled = true;
-    btn.textContent = 'Sending…';
+    Loading.setBusy(btn, 'Sending');
 
     try {
       const turnstileToken = (form.querySelector('[name="cf-turnstile-response"]') || {}).value || '';
@@ -194,8 +194,7 @@
       showStatus('Thanks — we got your feedback!', 'success');
     } catch (err) {
       showStatus(err.message || 'Something went wrong. Please try again.', 'error');
-      btn.disabled = false;
-      btn.textContent = 'Send feedback →';
+      Loading.clearBusy(btn);
     }
   });
 </script>

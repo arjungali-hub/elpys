@@ -249,6 +249,7 @@
 
 </div><!-- /wrap -->
 
+<script src="loading.js"></script>
 <script>
   const API = '/api/admin';
   let _password = '';
@@ -370,8 +371,13 @@
     if (!_password) { showLoginMsg('Enter a password.', 'error'); return; }
 
     const btn = document.getElementById('login-btn');
-    btn.disabled = true;
-    btn.textContent = 'Loading…';
+    Loading.setBusy(btn, 'Loading');
+    // Queue skeletons while the fetch runs, so the panel has its shape
+    // rather than three empty headings.
+    ['submissions-list', 'published-list'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) Loading.show(el, Loading.table({ rows: 4, label: 'Loading the queue' }), 'skel-table');
+    });
 
     try {
       const res = await fetch(API, { headers: { 'x-admin-password': _password } });
@@ -422,8 +428,7 @@
     } catch (err) {
       showLoginMsg('Error: ' + err.message, 'error');
     } finally {
-      btn.disabled = false;
-      btn.textContent = 'Load';
+      Loading.clearBusy(btn);
     }
   }
 
@@ -458,6 +463,7 @@
   function renderPending(rows) {
     document.getElementById('count-badge').textContent = rows.length;
     const list = document.getElementById('submissions-list');
+    Loading.clear(list, 'skel-table');
     if (rows.length === 0) { list.innerHTML = '<p class="empty-state">No pending submissions right now.</p>'; return; }
     list.innerHTML = '';
     rows.forEach(row => list.appendChild(buildPendingCard(row)));
@@ -594,6 +600,7 @@
   function renderPublished(rows) {
     document.getElementById('published-count-badge').textContent = rows.length;
     const list = document.getElementById('published-list');
+    Loading.clear(list, 'skel-table');
     if (rows.length === 0) { list.innerHTML = '<p class="empty-state">No published listings yet.</p>'; return; }
     list.innerHTML = '';
     rows.forEach(row => list.appendChild(buildPublishedCard(row)));

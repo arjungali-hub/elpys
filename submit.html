@@ -341,6 +341,7 @@
   </div>
 </footer>
 
+<script src="loading.js"></script>
 <script>
   document.getElementById('cat-other-check').addEventListener('change', function() {
     const txt = document.getElementById('cat-other-text');
@@ -498,8 +499,7 @@
       return;
     }
 
-    btn.disabled = true;
-    btn.textContent = 'Submitting…';
+    Loading.setBusy(btn, 'Submitting');
 
     // Read Turnstile token (empty string if widget not yet completed — server will reject)
     const turnstileToken = (form.querySelector('[name="cf-turnstile-response"]') || {}).value || '';
@@ -579,8 +579,7 @@
       );
     } catch (err) {
       showStatus('Something went wrong: ' + withRetryHint(err.message), 'error');
-      btn.disabled = false;
-      btn.textContent = 'Submit for review →';
+      Loading.clearBusy(btn);
       // Turnstile tokens are single-use. The one in the hidden input was just
       // spent on the attempt that failed, so without this reset every retry
       // re-sends a consumed token and fails with timeout-or-duplicate.

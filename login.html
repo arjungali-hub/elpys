@@ -84,6 +84,7 @@
   </div>
 </footer>
 
+<script src="loading.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
 <script>
   var _supa = supabase.createClient(
@@ -116,15 +117,13 @@
 
     if (!email || !password) return showError('Please enter your email and password.');
 
-    btn.disabled    = true;
-    btn.textContent = 'Logging in…';
+    Loading.setBusy(btn, 'Logging in');
 
     var result = await _supa.auth.signInWithPassword({ email: email, password: password });
 
     if (result.error) {
       showError(result.error.message);
-      btn.disabled    = false;
-      btn.textContent = 'Log in →';
+      Loading.clearBusy(btn);
       return;
     }
 
