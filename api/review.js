@@ -27,6 +27,13 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RESOLVED_LIMIT = 20;
 const DECISIONS = ['change_needed', 'fine_as_is'];
 
+// Supabase pauses a free project after this long without activity.
+const PAUSE_AFTER_DAYS = 7;
+// How little margin is left before the header dot turns red. At 5 days idle
+// there are 2 days to act, which is what "about to pause" is worth warning
+// about — raise or lower this one number to change how early the warning fires.
+const PAUSE_WARN_AT_IDLE_DAYS = 5;
+
 function supabaseHeaders(extra) {
   return Object.assign({
     apikey:        SUPABASE_KEY,
@@ -76,6 +83,76 @@ async function probeSupabase() {
   }
 }
 
+// Newest write we can see across the app's own tables.
+//
+// This is a PROXY for Supabase's pause clock, not the clock itself: Supabase
+// counts any API request as activity, including plain page views, which leave
+// no trace in the data. So this can only say "nothing has been written here
+// for a while" — a good signal that the project is idle, but it will read
+// stale on a site that is being read and not written to. Erring toward warning
+// early is the right side to be wrong on; the cost of a false warning is a
+// glance at the dashboard, the cost of a missed one is a paused site.
+async function newestActivity() {
+  const probes = [
+    'Opportunities?select=created_at&order=created_at.desc.nullslast&limit=1',
+    'Opportunities?select=published_at&order=published_at.desc.nullslast&limit=1',
+    'Feedback?select=created_at&order=created_at.desc.nullslast&limit=1',
+    'data_review_flags?select=last_flagged_at&order=last_flagged_at.desc.nullslast&limit=1',
+  ];
+
+  let newest = null;
+  await Promise.all(probes.map(async (path) => {
+    try {
+      const r = await fetch(SUPABASE_URL + path, { headers: supabaseHeaders() });
+      if (!r.ok) return;
+      const rows = await r.json();
+      if (!Array.isArray(rows) || !rows.length) return;
+      const value = Object.values(rows[0])[0];
+      if (!value) return;
+      const t = new Date(value).getTime();
+      if (isFinite(t) && (newest === null || t > newest)) newest = t;
+    } catch (_) { /* one missing table must not sink the whole probe */ }
+  }));
+
+  if (newest === null) return { lastActivityAt: null, idleDays: null };
+  return {
+    lastActivityAt: new Date(newest).toISOString(),
+    idleDays: Math.floor((Date.now() - newest) / 86400000),
+  };
+}
+
+// The single traffic light the admin header shows. Most urgent wins:
+//   red    — the project looks about to pause; act now or the site goes down
+//   yellow — flags are waiting on a human, or the project is already paused
+//   green  — nothing waiting and nothing to worry about
+function computeStatus(supabase, awaitingHuman, activity) {
+  if (supabase.state === 'active' && activity.idleDays !== null &&
+      activity.idleDays >= PAUSE_WARN_AT_IDLE_DAYS) {
+    return {
+      dot: 'red',
+      label: 'Supabase may pause soon',
+      detail: 'No database writes for ' + activity.idleDays + ' days. Free projects pause after ' +
+              PAUSE_AFTER_DAYS + ' days idle. Note this only counts writes — page views keep the ' +
+              'project awake without showing up here.',
+    };
+  }
+  if (supabase.state !== 'active') {
+    return {
+      dot: 'yellow',
+      label: supabase.state === 'paused' ? 'Supabase is paused' : 'Supabase is unreachable',
+      detail: supabase.detail || 'The review queue cannot load until the project is running again.',
+    };
+  }
+  if (awaitingHuman > 0) {
+    return {
+      dot: 'yellow',
+      label: awaitingHuman + (awaitingHuman === 1 ? ' flag needs review' : ' flags need review'),
+      detail: 'The weekly accuracy check raised these and is waiting on your decision.',
+    };
+  }
+  return { dot: 'green', label: 'All clear', detail: 'Nothing waiting on you, and the database is healthy.' };
+}
+
 module.exports = async function handler(req, res) {
   try {
     return await handleReview(req, res);
@@ -111,8 +188,42 @@ async function handleReview(req, res) {
     // every REST call. Probe a known table first so the page can report "paused"
     // rather than dying on the flag queries with a generic error.
     const supabase = await probeSupabase();
+
+    // ?summary=1 — just the traffic light for the admin header. Loading the
+    // whole queue on every admin page to colour one dot would be wasteful.
+    const summaryOnly = req.query && (req.query.summary === '1' || req.query.summary === 'true');
+
     if (supabase.state !== 'active') {
-      return res.status(200).json({ supabase, pending: [], resolved: [] });
+      const status = computeStatus(supabase, 0, { lastActivityAt: null, idleDays: null });
+      return res.status(200).json(summaryOnly
+        ? { supabase, status, awaitingHuman: 0, awaitingRun: 0 }
+        : { supabase, status, pending: [], decided: [], resolved: [] });
+    }
+
+    if (summaryOnly) {
+      // Counts come back in the Content-Range header, so no rows cross the wire.
+      async function countOf(filter) {
+        const r = await fetch(SUPABASE_URL + 'data_review_flags?' + filter + '&select=id&limit=1',
+          { headers: supabaseHeaders({ Prefer: 'count=exact' }) });
+        if (!r.ok) return 0;
+        const range = r.headers.get('content-range') || '';
+        const total = parseInt(String(range).split('/')[1], 10);
+        return isFinite(total) ? total : 0;
+      }
+
+      const [awaitingHuman, awaitingRun, activity] = await Promise.all([
+        countOf('status=eq.pending&human_decision=is.null'),
+        countOf('status=eq.pending&human_decision=not.is.null'),
+        newestActivity(),
+      ]);
+
+      return res.status(200).json({
+        supabase,
+        awaitingHuman,
+        awaitingRun,
+        activity,
+        status: computeStatus(supabase, awaitingHuman, activity),
+      });
     }
 
     const [pendingRes, resolvedRes] = await Promise.all([
@@ -159,9 +270,20 @@ async function handleReview(req, res) {
       opportunity: names[f.opportunity_id] || null,
     });
 
+    // A flag stays 'pending' after a human decides it — the scheduled check is
+    // what applies the fix and resolves it. Those two states used to share one
+    // list, so a decided flag sat among the ones still needing attention.
+    const awaitingHuman = pending.filter(f => !f.human_decision);
+    const awaitingRun   = pending.filter(f => !!f.human_decision);
+
+    const activity = await newestActivity();
+
     return res.status(200).json({
+      status: computeStatus(supabase, awaitingHuman.length, activity),
+      activity,
+      decided: awaitingRun.map(attach),
       supabase,
-      pending:  pending.map(attach),
+      pending:  awaitingHuman.map(attach),
       resolved: resolved.map(attach),
     });
   }

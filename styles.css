@@ -152,6 +152,27 @@ header {
   padding-top: 0.75rem;
   margin-top: 0.5rem;
 }
+/* Traffic light on the Data review link.
+   red    — the database looks about to pause; act now
+   yellow — flags waiting on a human, or the project is already paused
+   green  — nothing waiting, nothing wrong
+   grey   — the status couldn't be fetched; deliberately not green.
+   Each colour also carries a title and aria-label, since colour alone is not
+   a signal everyone can read. */
+.header-admin-link .status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-left: 0.4rem;
+  vertical-align: 0.05em;
+  flex-shrink: 0;
+}
+.status-dot.is-green   { background: #15803D; }
+.status-dot.is-yellow  { background: #CA8A04; }
+.status-dot.is-red     { background: #DC2626; }
+.status-dot.is-unknown { background: transparent; border: 1px solid var(--subtle-ui); }
+
 .header-digest-msg { font-size: 0.8125rem; }
 /* Empty until a digest is sent. Left in the flow it is still a flex item, so
    the row's gap sat between it and the button and pushed the button 12px in,

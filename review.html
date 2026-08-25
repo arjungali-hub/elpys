@@ -74,6 +74,9 @@
     .section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
       color: var(--text-muted); margin: 2rem 0 0.75rem; display: flex; align-items: baseline; gap: 0.5rem; }
     .count { color: var(--text-subtle); font-weight: 600; }
+    .section-note { font-size: 0.8125rem; color: var(--text-muted); margin: -0.5rem 0 0.75rem; max-width: 62ch; }
+    /* Links inside flag text — the URL to open in order to check the claim. */
+    .flag-body a, .flag-summary a, .flag-suggested a, .decided-banner a { color: var(--text-main); }
     .empty-state { font-size: 0.875rem; color: var(--text-muted); background: var(--bg-primary);
       border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 1.25rem; }
 
@@ -155,6 +158,13 @@
   <div id="content" style="display:none;">
     <div class="section-title">Needs review <span class="count" id="pending-count"></span></div>
     <div id="pending-list"></div>
+
+    <!-- Decided by a human, but the flag stays open until the scheduled check
+         applies the fix. These used to sit in "Needs review" wearing a banner,
+         which made the queue look longer than the work actually left. -->
+    <div class="section-title">Waiting on the automated run <span class="count" id="decided-count"></span></div>
+    <p class="section-note">You've decided these. The weekly check applies the change and closes them on its next run — nothing more to do here, but you can change a decision until then.</p>
+    <div id="decided-list"></div>
 
     <div class="section-title">Recently resolved <span class="count" id="resolved-count"></span></div>
     <div id="resolved-list"></div>
@@ -256,7 +266,7 @@
         throw new Error([e.error || 'HTTP ' + res.status, e.message, e.details].filter(Boolean).join(' — '));
       }
 
-      const { pending, resolved, supabase } = await res.json();
+      const { pending, decided, resolved, supabase } = await res.json();
       sessionStorage.setItem('elpys_admin_pw', _password);
       loginPanel().style.display   = 'none';
       loadingPanel().style.display = 'none';
@@ -269,10 +279,12 @@
           '<div class="empty-state">Could not reach Supabase (' + esc(supabase.state) + ')' +
           (supabase.detail ? ': ' + esc(supabase.detail) : '') +
           '. The queue cannot load until the project is running again.</div>';
+        document.getElementById('decided-list').innerHTML = '';
         document.getElementById('resolved-list').innerHTML = '';
         return;
       }
       renderPending(pending || []);
+      renderDecided(decided || []);
       renderResolved(resolved || []);
     } catch (err) {
       // The message lives in the login panel, so that panel has to be back on
@@ -287,11 +299,26 @@
 
   // ── Pending queue ──────────────────────────────────────────────────────────
   function renderPending(rows) {
-    const list = document.getElementById('pending-list');
-    document.getElementById('pending-count').textContent = rows.length ? '(' + rows.length + ')' : '';
+    renderFlagList('pending', rows,
+      'Nothing flagged. The weekly check has not raised any open issues.');
+  }
+
+  // Same card, different bucket: these already carry a decision and are only
+  // here until the scheduled check picks them up.
+  function renderDecided(rows) {
+    renderFlagList('decided', rows,
+      'Nothing waiting. Decisions you record will appear here until the next automated run.');
+    // The explanatory line only makes sense when there is something to explain.
+    const note = document.querySelector('.section-note');
+    if (note) note.style.display = rows.length ? '' : 'none';
+  }
+
+  function renderFlagList(key, rows, emptyText) {
+    const list = document.getElementById(key + '-list');
+    document.getElementById(key + '-count').textContent = rows.length ? '(' + rows.length + ')' : '';
     list.innerHTML = '';
     if (!rows.length) {
-      list.innerHTML = '<div class="empty-state">Nothing flagged. The weekly check has not raised any open issues.</div>';
+      list.innerHTML = '<div class="empty-state">' + esc(emptyText) + '</div>';
       return;
     }
     rows.forEach(row => list.appendChild(buildFlagCard(row)));
@@ -305,10 +332,39 @@
            esc(opp.name || opp.slug) + '</a>';
   }
 
+  // The flag text names the page to check ("Open https://wta.org/… and search
+  // for age"), and those used to be plain text you had to select and copy.
+  //
+  // Escaping happens FIRST and the matching runs over the escaped string, so
+  // no raw database text can reach the markup — these rows are written by an
+  // automated checker, and a URL is exactly where something hostile would hide.
+  // Entities are safe inside an href: &amp; decodes back to & in the value.
+  function linkify(value) {
+    const safe = esc(value);
+
+    // Full URLs, then bare domains that were written without a scheme (the
+    // evidence field tends to use "wta.org/get-involved/..."). Stops at
+    // whitespace or the start of an entity so an escaped quote can't be
+    // swallowed into the href.
+    const URLS = /\b(https?:\/\/[^\s<&]+(?:&(?!quot;|#39;|lt;|gt;)[^\s<&]*)*|(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+\/[^\s<&]*)/gi;
+
+    return safe.replace(URLS, function (match) {
+      // Sentence punctuation sits outside the link — "…/volunteer." should not
+      // fetch a URL ending in a full stop.
+      const trimmed = match.replace(/[.,;:!?)\]]+$/, '');
+      const tail    = match.slice(trimmed.length);
+      const href    = /^https?:\/\//i.test(trimmed) ? trimmed : 'https://' + trimmed;
+
+      // Belt and braces: only http(s) becomes a link, anything else stays text.
+      if (!/^https?:\/\//i.test(href)) return match;
+      return '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + trimmed + '</a>' + tail;
+    });
+  }
+
   function block(label, value) {
     if (!value) return '';
     return '<div class="flag-block"><div class="flag-label">' + label + '</div>' +
-           '<div class="flag-body">' + esc(value) + '</div></div>';
+           '<div class="flag-body">' + linkify(value) + '</div></div>';
   }
 
   function buildFlagCard(flag) {
@@ -327,7 +383,7 @@
       ? '<div class="decided-banner">Recorded: <strong>' +
           (flag.human_decision === 'change_needed' ? 'Change needed' : 'Fine as is') + '</strong>' +
           (flag.decided_at ? ' on ' + esc(fmtDate(flag.decided_at)) : '') +
-          (flag.human_note ? '<br>' + esc(flag.human_note) : '') +
+          (flag.human_note ? '<br>' + linkify(flag.human_note) : '') +
           '<br><span class="note-hint">Waiting for the next automated run to apply it.</span></div>'
       : '';
 
@@ -337,12 +393,12 @@
         '<span class="flag-field">' + esc(flag.field || 'unknown field') + '</span>' +
       '</div>' +
       (meta.length ? '<div class="flag-meta">' + esc(meta.join(' · ')) + '</div>' : '') +
-      '<div class="flag-summary">' + esc(flag.issue_summary || '') + '</div>' +
+      '<div class="flag-summary">' + linkify(flag.issue_summary || '') + '</div>' +
       block('Evidence', flag.evidence) +
       block('How to verify', flag.verification_steps) +
       (flag.suggested_value
         ? '<div class="flag-block"><div class="flag-label">Suggested value</div>' +
-          '<div class="flag-suggested">' + esc(flag.suggested_value) + '</div></div>'
+          '<div class="flag-suggested">' + linkify(flag.suggested_value) + '</div></div>'
         : '') +
       decidedBanner +
       '<div class="flag-actions">' +
@@ -414,12 +470,52 @@
         throw new Error([e.error || 'HTTP ' + res.status, e.message, e.details, e.hint].filter(Boolean).join(' — '));
       }
       const { flag: saved } = await res.json();
-      // Re-render in place so the recorded decision, note and timestamp show
-      // exactly what the server stored.
-      card.replaceWith(buildFlagCard(Object.assign({}, flag, saved)));
+      // Rebuilt from what the server stored, not from what was typed, so the
+      // recorded decision, note and timestamp are the real ones. `flag` is
+      // merged under it to keep the resolved opportunity name, which the
+      // PATCH response doesn't carry.
+      const rebuilt = buildFlagCard(Object.assign({}, flag, saved));
+
+      // A decided flag belongs in "Waiting on the automated run". Replacing it
+      // in place left it sitting in "Needs review" with a banner, which is the
+      // pile-up the second section exists to prevent. Re-deciding a card
+      // already in that section just refreshes it where it is.
+      const decidedList = document.getElementById('decided-list');
+      if (card.parentElement === decidedList) {
+        card.replaceWith(rebuilt);
+      } else {
+        card.remove();
+        const empty = decidedList.querySelector('.empty-state');
+        if (empty) empty.remove();
+        decidedList.prepend(rebuilt);
+      }
+      refreshSectionCounts();
     } catch (err) {
       setMsg(flag.id, 'Error: ' + err.message);
       buttons.forEach(b => { b.disabled = false; });
+    }
+  }
+
+  // Counts, empty states and the explanatory note are derived from what is
+  // actually on screen, so moving a card between sections keeps all three
+  // honest without a reload.
+  function refreshSectionCounts() {
+    [['pending', 'Nothing flagged. The weekly check has not raised any open issues.'],
+     ['decided', 'Nothing waiting. Decisions you record will appear here until the next automated run.']
+    ].forEach(function (pair) {
+      const key = pair[0], emptyText = pair[1];
+      const list = document.getElementById(key + '-list');
+      if (!list) return;
+      const n = list.querySelectorAll('.flag-card').length;
+      document.getElementById(key + '-count').textContent = n ? '(' + n + ')' : '';
+      if (!n && !list.querySelector('.empty-state')) {
+        list.innerHTML = '<div class="empty-state">' + esc(emptyText) + '</div>';
+      }
+    });
+    const note = document.querySelector('.section-note');
+    if (note) {
+      note.style.display =
+        document.querySelectorAll('#decided-list .flag-card').length ? '' : 'none';
     }
   }
 

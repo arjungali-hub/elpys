@@ -87,7 +87,34 @@ function showModal(opts) {
 
       adminGroup.appendChild(makeAdminLink('Feedback',              'admin.html?view=feedback'));
       adminGroup.appendChild(makeAdminLink('Approve opportunities', 'admin.html?view=confirm'));
-      adminGroup.appendChild(makeAdminLink('Data review',           'review.html'));
+
+      // Data review carries a traffic light so the queue and the database's
+      // health are visible without opening the page. Colour comes from the
+      // server (/api/review?summary=1), which is the only thing that can see
+      // the flag counts and reach Supabase.
+      var reviewLink = makeAdminLink('Data review', 'review.html');
+      var reviewDot  = document.createElement('span');
+      reviewDot.className = 'status-dot is-unknown';
+      reviewDot.setAttribute('aria-hidden', 'true');
+      reviewLink.appendChild(reviewDot);
+      adminGroup.appendChild(reviewLink);
+
+      // Failures leave the dot in its neutral "unknown" state rather than
+      // guessing green — a dot that lies about health is worse than no dot.
+      fetch('/api/review?summary=1', { headers: { 'x-admin-password': adminPw } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.status) return;
+          reviewDot.className = 'status-dot is-' + d.status.dot;
+          var text = d.status.label + (d.status.detail ? ' — ' + d.status.detail : '');
+          reviewLink.title = text;
+          // Colour alone is not a signal for everyone, so the state is also
+          // readable text for a screen reader.
+          reviewDot.removeAttribute('aria-hidden');
+          reviewDot.setAttribute('role', 'img');
+          reviewDot.setAttribute('aria-label', 'Data review status: ' + text);
+        })
+        .catch(function () { /* dot stays neutral */ });
 
       var adminLogoutBtn = document.createElement('button');
       adminLogoutBtn.textContent = 'Log out';
