@@ -80,11 +80,12 @@
     .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* The banner sits outside .submit-form, so it does not inherit the form's
-       width and used to run the full page. Same max-width, and the same gap
-       the form puts between its own fields. */
+       width and would otherwise run the full page. Same max-width, and the
+       same gap the form puts between its own fields — above it now, since the
+       banner follows the form rather than preceding it. */
     .form-status {
       max-width: 600px;
-      margin-bottom: 1.25rem;
+      margin-top: 1.25rem;
       font-size: 0.9375rem;
       line-height: 1.55;
       padding: 1rem 1.15rem;
@@ -155,7 +156,6 @@
     <h1>Submit a volunteer opportunity</h1>
     <p class="page-intro">Is your organization a good fit for teen volunteers? Fill out this form and we'll review it. Once approved, it'll appear on the site with a map pin and full detail page. We'll reach out if we have questions.</p>
 
-    <div class="form-status" id="form-status"></div>
 
     <form class="submit-form" id="submit-form" novalidate>
 
@@ -316,6 +316,14 @@
       <button type="submit" class="submit-btn" id="submit-btn">Submit for review →</button>
 
     </form>
+
+    <!-- Below the form, next to the Submit button that triggers it. This used
+         to sit above the whole form, so a failure on a long form appeared off
+         screen and the page looked like it had simply done nothing.
+         Deliberately OUTSIDE the form: the success path hides the form, and a
+         banner inside it would be hidden along with it.
+         role="status" announces it to a screen reader without stealing focus. -->
+    <div class="form-status" id="form-status" role="status" aria-live="polite"></div>
   </section>
 </div>
 
