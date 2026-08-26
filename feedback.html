@@ -66,6 +66,8 @@
 
     /* Honeypot — off-screen, never visible to real users */
     .hp-field { position: absolute; left: -9999px; top: -9999px; }
+    .consent-note { font-size: 0.8125rem; line-height: 1.55; color: var(--muted); margin: 0.25rem 0 0; }
+    .consent-note a { color: var(--body); text-decoration: underline; }
   </style>
   <script src="analytics.js"></script>
 </head>
@@ -117,6 +119,8 @@
       </div>
 
       <div class="cf-turnstile" data-sitekey="0x4AAAAAADxuIIEw7hNrIcR3" data-theme="light"></div>
+
+      <p class="consent-note">By sending feedback you agree to the <a href="/terms">Terms of Service</a> and the <a href="/privacy">Privacy Policy</a>.</p>
 
       <button type="submit" class="submit-btn" id="submit-btn">Send feedback →</button>
 

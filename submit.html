@@ -134,6 +134,8 @@
     .avail-cell { height: 32px; background: var(--off); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: background 0.1s, border-color 0.1s; }
     .avail-cell:hover { border-color: #D1D5DB; background: var(--surface); }
     .avail-cell.active { background: var(--body); border-color: var(--body); }
+    .consent-note { font-size: 0.8125rem; line-height: 1.55; color: var(--muted); margin: 0.25rem 0 0; }
+    .consent-note a { color: var(--body); text-decoration: underline; }
   </style>
   <script src="analytics.js"></script>
 </head>
@@ -301,7 +303,7 @@
 
       <div class="field">
         <label for="f-admin-notes">Notes for the reviewer <span class="optional-label">(optional)</span></label>
-        <span class="hint">Anything you want the reviewer to know that won't appear on the site — context, questions, links, etc.</span>
+        <span class="hint">Anything you want the reviewer to know — context, questions, links. It isn't displayed anywhere on the site, but it is stored on the listing record, so please don't put confidential or personal information here.</span>
         <textarea id="f-admin-notes" name="admin_notes" placeholder="e.g. We're a new org and happy to answer any questions — reach us at contact@ourorg.org"></textarea>
       </div>
 
@@ -312,6 +314,8 @@
            slowly-filled form would otherwise post a stale one -->
       <div class="cf-turnstile" data-sitekey="0x4AAAAAADxuIIEw7hNrIcR3" data-theme="light"
            data-refresh-expired="auto" data-retry="auto"></div>
+
+      <p class="consent-note">By submitting, you agree to the <a href="/terms">Terms of Service</a> and the <a href="/privacy">Privacy Policy</a>, and you confirm the information is accurate as far as you know.</p>
 
       <button type="submit" class="submit-btn" id="submit-btn">Submit for review →</button>
 

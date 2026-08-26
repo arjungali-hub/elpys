@@ -24,6 +24,10 @@
     .legal-body ul { margin: 0.4rem 0 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.4rem; }
     .legal-body li { font-size: 0.9375rem; line-height: 1.55; color: var(--body); }
     .legal-body a { color: var(--body); }
+    .legal-body > div[id] { scroll-margin-top: 5rem; }
+    .legal-summary { background: var(--off); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem 1.35rem; }
+    .legal-summary h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.6rem; }
+    .legal-summary ul { margin-top: 0; }
   </style>
   <script src="analytics.js"></script>
 </head>
@@ -45,70 +49,154 @@
   <section class="legal-section">
     <a href="/" class="back-link">← Back to all opportunities</a>
     <h1>Terms of Service</h1>
-    <p class="legal-updated">Last updated August 23, 2026</p>
+    <p class="legal-updated">Last updated August 26, 2026</p>
 
     <div class="legal-body">
       <div>
-        <p>These terms cover your use of elpys.vercel.app (Elpys). By using the site, you agree to them. If you don't agree, please don't use Elpys.</p>
+        <p>These terms are the agreement between you and Elpys (elpys.vercel.app). By using the site — browsing it, creating an account, submitting an opportunity, or sending feedback — you agree to them. If you don't agree, please don't use Elpys.</p>
+        <p>Two sections deserve a careful read because they affect your legal rights: <a href="#safety">section 3, on safety</a>, and <a href="#liability">section 13, on limitation of liability</a>.</p>
+      </div>
+
+      <div class="legal-summary">
+        <h2>The short version</h2>
+        <ul>
+          <li>Elpys is a directory. We list opportunities; we don't run them, and we're not part of what happens once you sign up.</li>
+          <li>We check every listing before it goes live, but organizations change things without telling us — always confirm before your first visit.</li>
+          <li>If you're under 18, go through these terms with a parent or guardian.</li>
+          <li>Nothing here takes away a right you can't legally give up.</li>
+        </ul>
       </div>
 
       <div>
         <h2>1. Who can use Elpys</h2>
-        <p>Browsing Elpys is open to anyone — you don't need an account to search or view opportunities. Accounts are intended for teens age 13 and older, and by creating one you're confirming you meet that age requirement.</p>
+        <p>Anyone can browse Elpys — you don't need an account to search or view opportunities.</p>
+        <p><strong>Accounts are for people 13 and older.</strong> When you create one, you're confirming you meet that age requirement.</p>
+        <p><strong>If you're under 18</strong> — which is most of the people Elpys is built for — please read these terms together with a parent or guardian before you create an account or submit anything, and have them agree to them with you. By using Elpys while under 18, you're telling us that a parent or guardian has reviewed these terms and agrees to them on your behalf. We know that's a formality most sites skip; we're stating it because Elpys sends teens to real places in the physical world, and a parent or guardian should know that's happening.</p>
+        <p><strong>If you're under 13</strong>, please don't create an account, submit an opportunity, or send us feedback. You're welcome to read the listings. See section 11 of our <a href="/privacy">Privacy Policy</a>.</p>
       </div>
 
       <div>
-        <h2>2. What Elpys is</h2>
-        <p>Elpys is a curated directory: we research and verify volunteer opportunities and list the ones that meet our criteria (no adult required on-site, a clear sign-up process, free, roughly local to Bellevue). We are not the organizations listed on the site, we don't employ or supervise them, and we're not a party to whatever arrangement you make with them when you sign up to volunteer.</p>
+        <h2>2. What Elpys is — and what it isn't</h2>
+        <p>Elpys is a curated directory. We research volunteer opportunities and list the ones that meet our criteria: no adult required on-site, a clear sign-up process, free, and roughly within 20 minutes of Bellevue.</p>
+        <p>That's the whole of it. Elpys is <strong>not</strong>:</p>
+        <ul>
+          <li>the organizations listed on it — we don't own, run, employ, supervise, sponsor, or partner with any of them;</li>
+          <li>a party to whatever arrangement you make with an organization when you sign up to volunteer;</li>
+          <li>a screening or vetting service. We do not run background checks on organizations, their staff, or their volunteers, and we do not inspect their premises or assess their safety practices;</li>
+          <li>an endorsement. A listing on Elpys means an opportunity met our published criteria at the time we checked it — nothing more;</li>
+          <li>a placement service, an employer, or a certifier of volunteer hours. Whatever hours you earn, and any documentation of them, is between you and the organization.</li>
+        </ul>
+      </div>
+
+      <div id="safety">
+        <h2>3. Safety — please read this one</h2>
+        <p>Elpys tells you where opportunities are. Deciding whether a particular one is right for you is yours to make — and, if you're under 18, your parent's or guardian's too.</p>
+        <p>Before your first visit to any organization:</p>
+        <ul>
+          <li><strong>Confirm the details directly with the organization.</strong> Times, ages, locations, and requirements change.</li>
+          <li><strong>Tell a parent, guardian, or another trusted adult</strong> where you're going and when you'll be back.</li>
+          <li><strong>Read and follow the organization's own rules</strong>, including any waiver, age minimum, orientation, or supervision requirement they set. Those are theirs, not ours, and they override anything a listing says.</li>
+        </ul>
+        <p>Elpys does not supervise you, is not present, and is not responsible for what happens at an organization's site. If something at an organization makes you uncomfortable or feels unsafe, leave and tell a trusted adult. Please also <a href="/feedback">report it to us</a> so we can review the listing — but Elpys is not an emergency service and nobody monitors that inbox around the clock. In an emergency, call 911.</p>
       </div>
 
       <div>
-        <h2>3. Listing accuracy</h2>
-        <p>We verify every listing against the organization's own information before it goes live, and we recheck listings periodically. Even so, organizations change their programs, schedules, and requirements without telling us. <strong>Always confirm the current details directly with the organization before your first visit</strong> — this is stated on every page of the site for exactly that reason. If you find something out of date, please report it (see the "Submit an opportunity" page or use the feedback link) — we act on those reports.</p>
+        <h2>4. Listing accuracy, and what "verified" means</h2>
+        <p>Every listing is checked against the organization's own current published information before it goes live, and listings are rechecked on a regular schedule. "Verified" means exactly that and no more. It does not mean we have visited the site, met the staff, evaluated the organization, or formed any judgment about how safe it is.</p>
+        <p>Organizations change their programs, schedules, ages, links, and requirements without telling us, and listings can be out of date between checks. <strong>Always confirm the current details directly with the organization before your first visit.</strong> That warning appears on every page of the site for exactly this reason.</p>
+        <p>If you find something out of date or wrong, please <a href="/feedback">report it</a> — we act on those reports, usually within days.</p>
       </div>
 
       <div>
-        <h2>4. Submitting an opportunity</h2>
-        <p>Anyone can submit an organization for listing. Submissions are reviewed by a person before publishing — we may edit a submission for clarity or accuracy, decline to publish it if it doesn't meet our criteria, or remove a listing later if it stops meeting them. Submitting a listing doesn't guarantee it will be published.</p>
+        <h2>5. Submitting an opportunity</h2>
+        <p>Anyone can submit an organization for listing. When you submit one, you're telling us that the information is accurate as far as you know, that you have the right to give it to us, and — if you're submitting on behalf of an organization — that you're authorized to do so.</p>
+        <p>You keep whatever rights you have in what you submit. By submitting it, you give Elpys a non-exclusive, worldwide, royalty-free license to store, edit, publish, display, and distribute it on the site and in the weekly digest email, for as long as the listing is on the site. You can ask us to take a listing down at any time.</p>
+        <p>Every submission is reviewed by a person before publishing. We may edit a submission for clarity or accuracy, decline to publish it if it doesn't meet our criteria, or remove a listing later if it stops meeting them. Submitting a listing doesn't guarantee it will be published, and we don't have to explain a decision.</p>
+        <p>Please don't put confidential or personal information in the "Notes for the reviewer" box — see section 1 of the <a href="/privacy">Privacy Policy</a> for why.</p>
       </div>
 
       <div>
-        <h2>5. Your account</h2>
-        <p>If you create an account, you're responsible for keeping your login credentials to yourself and for what happens under your account. Use accurate information when you sign up. We may suspend or remove an account that's used for spam, fraudulent submissions, or abuse of the site.</p>
+        <h2>6. Feedback and reports</h2>
+        <p>Feedback you send us about a listing may be used to correct, update, or remove that listing. We may quote or act on it internally, but we won't publish your email address or identify you publicly. Giving an email address with your feedback is optional.</p>
       </div>
 
       <div>
-        <h2>6. Acceptable use</h2>
-        <p>Don't use Elpys to submit fake or misleading opportunities, impersonate an organization, scrape or bulk-copy the site's listings, attempt to bypass the spam-prevention checks on our forms, or otherwise interfere with the site or other users.</p>
+        <h2>7. Your account</h2>
+        <p>If you create an account, you're responsible for keeping your login details to yourself and for what happens under your account. Use accurate information when you sign up, and use an email address that's actually yours. Tell us if you think someone else has access to your account. You can delete your account yourself, at any time, from your account page.</p>
       </div>
 
       <div>
-        <h2>7. Third parties</h2>
-        <p>Signing up to volunteer with an organization listed on Elpys is an arrangement between you and that organization — including anything related to your safety, supervision, or experience once you're there. We do our best to only list organizations that meet our criteria, but we can't control what an organization actually does, and we're not responsible for it.</p>
+        <h2>8. Acceptable use</h2>
+        <p>Don't use Elpys to:</p>
+        <ul>
+          <li>submit fake, misleading, or spam listings, or impersonate an organization or another person;</li>
+          <li>submit someone else's personal information without their permission;</li>
+          <li>scrape, bulk-copy, or republish the site's listings, or use automated tools to collect them;</li>
+          <li>harvest the contact details of listed organizations for anything unrelated to volunteering with them;</li>
+          <li>bypass or interfere with our spam-prevention checks or rate limits;</li>
+          <li>probe, scan, or test the security of the site, or try to access parts of it that aren't public;</li>
+          <li>interfere with the site or with anyone else's use of it, or break the law while using it.</li>
+        </ul>
       </div>
 
       <div>
-        <h2>8. No warranty</h2>
-        <p>Elpys is provided "as is." We don't guarantee the site will always be available, error-free, or that every listing is perfectly current at every moment. We built Elpys carefully and we stand behind the verification process described in "About," but we can't promise perfection.</p>
+        <h2>9. Content and intellectual property</h2>
+        <p>The design, original text, code, and logo of Elpys belong to the person who built it. Personal, non-commercial use of the listings — reading them, sharing a link, telling a friend — is entirely welcome and is the point. Copying the directory wholesale or republishing it as your own is not.</p>
+        <p>Organization names, logos, and trademarks belong to those organizations. They appear here descriptively, to identify real opportunities, and their use doesn't imply any affiliation with or endorsement by them.</p>
+        <p>If you hold rights in something on Elpys and believe it's being used without permission, email <a href="mailto:elpysnotifications@gmail.com">elpysnotifications@gmail.com</a> with enough detail to identify it and we'll review and, where appropriate, remove it promptly. The same goes for any organization that simply doesn't want to be listed — ask, and we'll take the listing down. No argument.</p>
       </div>
 
       <div>
-        <h2>9. Limitation of liability</h2>
-        <p>To the extent allowed by law, Elpys and the person who built it aren't liable for any harm arising from your use of the site or your interactions with a listed organization. This is a small, independently-run project, not a substitute for your own judgment about a given opportunity or organization.</p>
+        <h2>10. Links to other sites</h2>
+        <p>Sign-up links, organization websites, and map directions take you to services Elpys doesn't control, each with its own terms and privacy practices. We're not responsible for those services or for what they do with information you give them.</p>
       </div>
 
       <div>
-        <h2>10. Changes to these terms</h2>
-        <p>We may update these terms as the site changes. If we make a meaningful change, we'll update the date at the top of this page.</p>
+        <h2>11. Elpys is in beta, and it may change</h2>
+        <p>Elpys is an actively developed personal project run by one person. Features may change, break, or be removed, the site may be unavailable at times, and we may change or discontinue any part of it. We'll try to give notice of anything major, but we can't promise the site will always be there.</p>
       </div>
 
       <div>
-        <h2>11. Governing law</h2>
-        <p>These terms are governed by the laws of the State of Washington, USA, without regard to conflict-of-law principles.</p>
+        <h2>12. No warranty</h2>
+        <p>Elpys is provided "as is" and "as available." To the fullest extent permitted by law, we make no warranties of any kind, express or implied — including any implied warranties of merchantability, fitness for a particular purpose, non-infringement, or accuracy. We don't guarantee the site will always be available or error-free, or that every listing is perfectly current at every moment.</p>
+        <p>We built Elpys carefully and we stand behind the verification process described in <a href="/about">About</a>. We can't promise perfection. Some places don't allow certain warranty exclusions, so parts of this section may not apply to you.</p>
+      </div>
+
+      <div id="liability">
+        <h2>13. Limitation of liability</h2>
+        <p>To the fullest extent permitted by law, Elpys and the person who runs it are not liable for indirect, incidental, special, consequential, or punitive damages, or for lost data, arising out of your use of the site. Our total liability for any claim relating to the site will not exceed one hundred U.S. dollars (US$100) — Elpys is free and earns nothing, and that figure reflects that.</p>
+        <p><strong>What this section does not do.</strong> Nothing in these terms limits or excludes any liability that can't be limited or excluded under the law that applies to you. In particular:</p>
+        <ul>
+          <li>Washington law does not permit a minor's claim for personal injury to be released or waived in advance — not by the minor, and not by a parent or guardian on the minor's behalf. Nothing in these terms attempts to do that, and nothing here waives any personal-injury claim of a user under 18.</li>
+          <li>Nothing here limits liability for fraud, fraudulent misrepresentation, intentional misconduct, or gross negligence.</li>
+        </ul>
+        <p>This section is about the site. What happens between you and an organization you volunteer with is between you and that organization, as section 2 explains.</p>
       </div>
 
       <div>
-        <h2>12. Contact</h2>
+        <h2>14. If you break these terms</h2>
+        <p>If you're 18 or older and you use Elpys in a way that breaks these terms or the law, you agree to cover the reasonable costs Elpys incurs as a direct result. This section does not apply to users under 18.</p>
+        <p>We may suspend or remove an account, decline submissions, or block access if the site is being used for spam, fraudulent submissions, or abuse. You can stop using Elpys and delete your account at any time; sections 5, 9, and 12 through 16 continue to apply afterwards.</p>
+      </div>
+
+      <div>
+        <h2>15. Governing law and disputes</h2>
+        <p>These terms are governed by the laws of the State of Washington, USA, without regard to conflict-of-law principles. Any dispute that can't be worked out by email goes to the state or federal courts located in King County, Washington, and both of us consent to that venue. Nothing here stops either of us from bringing a claim in small claims court.</p>
+        <p>There is no arbitration clause and no class-action waiver in these terms, deliberately.</p>
+      </div>
+
+      <div>
+        <h2>16. The rest of it</h2>
+        <p>If any part of these terms turns out to be unenforceable, the rest stays in effect and that part is applied as closely as the law allows. If we don't enforce something right away, we haven't given up the right to enforce it later. You can't transfer your rights under these terms to someone else; we may transfer ours if Elpys is ever handed to someone else to run, in which case we'll say so on the site. These terms, together with the <a href="/privacy">Privacy Policy</a>, are the whole agreement between us about the site. We'll send any notice to you at the email address on your account, or by posting it on the site.</p>
+      </div>
+
+      <div>
+        <h2>17. Changes to these terms</h2>
+        <p>We may update these terms as the site changes. If we make a meaningful change, we'll update the date at the top of this page and note it on the site. Continuing to use Elpys after a change means you accept the updated terms; if you don't, stop using the site and delete your account.</p>
+      </div>
+
+      <div>
+        <h2>18. Contact</h2>
         <p>Questions about these terms? Email <a href="mailto:elpysnotifications@gmail.com">elpysnotifications@gmail.com</a>.</p>
       </div>
     </div>

@@ -5,6 +5,10 @@ elpys-project-context.md
 elpys-opportunity-scout.zip
 *.zip
 
+# Patch files handed over for review; the changes land as commits, the
+# patch itself is not part of the site.
+*.patch
+
 # Design source for the loading states. The CSS from it lives in styles.css
 # and the markup builders in loading.js, so nothing here is needed to run the
 # site. Left untracked because everything in this folder is served publicly by

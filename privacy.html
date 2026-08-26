@@ -27,6 +27,22 @@
     .legal-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.875rem; }
     .legal-table th, .legal-table td { text-align: left; padding: 0.5rem 0.75rem 0.5rem 0; border-bottom: 1px solid var(--border); vertical-align: top; }
     .legal-table th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
+    .legal-section h1 { scroll-margin-top: 1rem; }
+    .legal-body > div[id] { scroll-margin-top: 5rem; }
+    .legal-summary { background: var(--off); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem 1.35rem; }
+    .legal-summary h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.6rem; }
+    .legal-summary ul { margin-top: 0; }
+    .legal-summary > p { margin-top: 0.75rem; font-size: 0.875rem; color: var(--muted); }
+    @media (max-width: 620px) {
+      /* Three-column tables squeeze unreadably on a phone; stack each row and
+         let the first cell act as its heading (the header row is redundant
+         once stacked, since every row's first cell names its own case). */
+      .legal-table tr:first-child { display: none; }
+      .legal-table, .legal-table tbody, .legal-table tr, .legal-table td { display: block; width: 100%; }
+      .legal-table tr { padding: 0.85rem 0; border-bottom: 1px solid var(--border); }
+      .legal-table td { border: none; padding: 0.1rem 0; }
+      .legal-table td:first-child { font-weight: 700; }
+    }
   </style>
   <script src="analytics.js"></script>
 </head>
@@ -48,82 +64,191 @@
   <section class="legal-section">
     <a href="/" class="back-link">← Back to all opportunities</a>
     <h1>Privacy Policy</h1>
-    <p class="legal-updated">Last updated August 23, 2026</p>
+    <p class="legal-updated">Last updated August 26, 2026</p>
 
     <div class="legal-body">
       <div>
-        <p>Elpys ("we," "us") runs elpys.vercel.app, a directory of verified volunteer opportunities for teens in the Bellevue, WA area. This page explains what information we collect, why, and what choices you have about it. It's written in plain language on purpose — if anything here is unclear, email us (see "Contact" below) and ask.</p>
-        <p>Elpys is meant for use by teens age 13 and older. If you're younger than that, please don't create an account or submit information to us.</p>
+        <p>Elpys ("we," "us") runs elpys.vercel.app — a directory of verified volunteer opportunities for teens in the Bellevue, WA area. This page explains what we collect, why we collect it, who else ends up seeing it, how long we keep it, and what you can ask us to do about it. It's written in plain language on purpose. If anything here is unclear, email us (see "Contact" at the bottom) and ask.</p>
+        <p>Elpys is built for teens age 13 and older. It isn't directed to children under 13, and we don't knowingly collect personal information from them — see section 11.</p>
+      </div>
+
+      <div class="legal-summary">
+        <h2>The short version</h2>
+        <ul>
+          <li>You can browse the entire site without an account and without telling us anything about yourself.</li>
+          <li>An account needs one thing: an email address. Everything else is optional.</li>
+          <li>We don't sell your information, we don't share it for advertising, and Elpys doesn't run ads.</li>
+          <li>Our analytics is anonymous — no cookies, no session recording, no profile of you.</li>
+          <li>You can delete your account, and everything attached to it, yourself, at any time.</li>
+        </ul>
+        <p>The rest of this page is the detail behind those five points.</p>
       </div>
 
       <div>
-        <h2>1. Information we collect</h2>
-        <p>What we collect depends on how you use the site:</p>
+        <h2>1. What we collect</h2>
+        <p>What we collect depends entirely on how you use the site:</p>
         <table class="legal-table">
-          <tr><th>If you...</th><th>We collect</th></tr>
-          <tr><td>Just browse listings</td><td>Nothing that identifies you personally — see "Analytics" below.</td></tr>
-          <tr><td>Create an account</td><td>Your email address, and the password you choose for your Elpys account (that password is handled entirely by our authentication provider, Supabase — we never see or store it in plain text). It's only for Elpys, so don't reuse a password from another site.</td></tr>
-          <tr><td>Set interests/availability for the weekly digest</td><td>The categories and days/times you select, tied to your account. Both are optional and editable any time in your account settings.</td></tr>
-          <tr><td>Submit an opportunity for listing</td><td>Whatever you enter in the form — the organization's details, and your own contact info if you choose to include it in the "notes for reviewer" field.</td></tr>
-          <tr><td>Send feedback about a listing</td><td>The feedback text you write, plus which listing it's about.</td></tr>
+          <tr><th>If you...</th><th>We collect</th><th>Why</th></tr>
+          <tr>
+            <td>Just browse listings</td>
+            <td>Nothing that identifies you to us. Some technical information is handled automatically to deliver the page — see "Automatically, on any page" below.</td>
+            <td>Showing you the site.</td>
+          </tr>
+          <tr>
+            <td>Create an account</td>
+            <td>Your email address, and the password you choose. The password is handled entirely by our authentication provider, Supabase, and stored only as a cryptographic hash — we never see it and can't recover it. Because it's an Elpys-only password, don't reuse one from another site.</td>
+            <td>Logging you in and sending you the weekly digest.</td>
+          </tr>
+          <tr>
+            <td>Set interests and availability</td>
+            <td>The categories and the days/times you pick, stored with your account. Both are optional and you can edit or clear them any time from your account page.</td>
+            <td>Deciding which new listings go in your weekly digest.</td>
+          </tr>
+          <tr>
+            <td>Use the "starting place" box on the map</td>
+            <td>Nothing, on our side — we don't store it. But the address or place name you type is sent to OpenStreetMap's Nominatim geocoder and the OSRM routing service so they can draw the route, and those services receive it. If you'd rather not hand a third party your exact home address, use a cross-street, a school, or a nearby landmark instead.</td>
+            <td>Drawing driving directions to an opportunity.</td>
+          </tr>
+          <tr>
+            <td>Submit an opportunity for listing</td>
+            <td>Everything you type into the form — the organization's details and contact information, and anything you put in "Notes for the reviewer." Please don't put confidential or personal information in that box: it isn't displayed anywhere on the site, but it is stored on the listing record, and once a listing is published that record is served by our database's public read interface. Treat it as "not displayed," not as "private."</td>
+            <td>Reviewing the submission and, if it qualifies, publishing the listing.</td>
+          </tr>
+          <tr>
+            <td>Send feedback about a listing</td>
+            <td>Your message, the page it's about, and your email address if you choose to give one — that field is optional, and feedback works fine without it.</td>
+            <td>Fixing or removing listings, and replying to you if you asked us to.</td>
+          </tr>
+          <tr>
+            <td>Automatically, on any page</td>
+            <td>Our web host (Vercel) records standard server-log information, including your IP address, the page requested, and your browser type. When you submit a form, the IP address is also held briefly in our server's memory to rate-limit spam, and Cloudflare Turnstile runs its bot check. One anonymous analytics event is recorded — see section 5.</td>
+            <td>Serving the site, keeping it online, and blocking spam and abuse.</td>
+          </tr>
         </table>
+        <p>We never ask for your name, your exact age or date of birth, your phone number, your address, your school, or your location. Elpys doesn't request access to your device's location, camera, or microphone, and the site is configured to block those requests outright.</p>
       </div>
 
       <div>
         <h2>2. How we use it</h2>
         <ul>
-          <li><strong>Account &amp; login:</strong> to let you log in and manage your account.</li>
-          <li><strong>Weekly digest email:</strong> to send you new opportunities matching the interests and availability you've set — only if you have an account with an email on file and haven't unsubscribed.</li>
-          <li><strong>Submissions &amp; feedback:</strong> to review and, where accurate, publish new listings, and to fix or flag problems with existing ones. A real person reviews every submission before it goes live — nothing is published automatically.</li>
+          <li><strong>Account and login:</strong> to let you log in and manage your account.</li>
+          <li><strong>Weekly digest email:</strong> to send you new opportunities matching the interests and availability you've set — only if you have an account with an email on file and haven't unsubscribed. Every digest includes a one-click unsubscribe link.</li>
+          <li><strong>Submissions and feedback:</strong> to review and, where accurate, publish new listings, and to fix or flag problems with existing ones. A real person reviews every submission before it goes live — nothing is published automatically.</li>
+          <li><strong>Replying to you:</strong> if you email us, or give us an email address with your feedback, we use it to answer.</li>
+          <li><strong>Keeping the site working and honest:</strong> spam prevention, rate limiting, security, and the anonymous usage counts described in section 5.</li>
         </ul>
-        <p>We do not sell your information to anyone, and we do not use it for advertising — Elpys doesn't run ads.</p>
       </div>
 
       <div>
-        <h2>3. Analytics</h2>
-        <p>We use a small amount of anonymous, aggregate analytics to understand which parts of the site are actually useful, so we can improve it. Specifically: page views, and three actions — clicking a listing's sign-up button, submitting an opportunity, and sending feedback. Nothing else is recorded; using the filters or the map is not tracked. This is configured to avoid identifying you personally: no cookies or persistent tracking identifiers are used for analytics, session recording is turned off, and analytics data is never linked to your account, email, or anything you type into a form.</p>
-      </div>
-
-      <div>
-        <h2>4. Who we share information with</h2>
-        <p>We don't sell or rent your information. A small number of service providers process data on our behalf, only for the purpose of running the site:</p>
+        <h2>3. What we never do</h2>
         <ul>
-          <li><strong>Supabase</strong> — hosts our database and handles account login/authentication.</li>
-          <li><strong>Vercel</strong> — hosts the website itself.</li>
-          <li><strong>Cloudflare (Turnstile)</strong> — a spam-prevention check on our submission and feedback forms; it processes some technical information (like your browser and a temporary token) to confirm you're a real visitor, not a bot.</li>
-          <li><strong>Google (Gmail)</strong> — sends the weekly digest email, if you've signed up for one.</li>
-          <li><strong>PostHog</strong> — provides the anonymous analytics described above.</li>
+          <li>We do not sell your personal information, and we never have.</li>
+          <li>We do not share it for advertising of any kind, including cross-context behavioral or targeted advertising. Elpys doesn't run ads.</li>
+          <li>We do not share it with data brokers, and we do not use it to train AI models.</li>
+          <li>We do not build advertising or behavioral profiles, and we do not make automated decisions about you.</li>
+          <li>We do not record your screen, your typing, or your mouse movements.</li>
+          <li>We do not add people who submit an opportunity or send feedback to any mailing list.</li>
         </ul>
-        <p>Each of these providers has its own privacy policy governing how it handles data on our behalf.</p>
       </div>
 
       <div>
-        <h2>5. Cookies &amp; local storage</h2>
-        <p>Logging in uses your browser's local storage to keep you signed in — this is required for accounts to work and isn't used for tracking. Our spam-prevention check (Cloudflare Turnstile) sets its own short-lived verification cookie when you submit a form. Our analytics is configured not to use cookies at all.</p>
-      </div>
-
-      <div>
-        <h2>6. Your choices</h2>
+        <h2>4. Cookies and local storage</h2>
+        <p>Elpys sets no advertising or tracking cookies. Three things do use your browser's storage:</p>
         <ul>
-          <li><strong>Unsubscribe</strong> from the weekly digest any time — every email includes a one-click unsubscribe link, and you can also turn it off from your account page.</li>
-          <li><strong>Edit or clear</strong> your interests and availability any time from your account page.</li>
-          <li><strong>Delete your account</strong> entirely, any time, from your account page — this permanently removes your account and profile data.</li>
+          <li><strong>Staying logged in:</strong> if you have an account, your login session is kept in your browser's local storage. This is what makes accounts work; it isn't used for tracking, and it goes away when you log out.</li>
+          <li><strong>The beta banner:</strong> once you dismiss it, that fact is stored for the rest of your browsing session so it doesn't reappear on every page.</li>
+          <li><strong>Spam prevention:</strong> Cloudflare Turnstile sets its own short-lived verification cookie when you submit one of our forms.</li>
         </ul>
+        <p>Our analytics is configured to use no cookies and no persistent identifiers at all.</p>
       </div>
 
       <div>
-        <h2>7. Children's privacy</h2>
-        <p>Elpys is intended for teens age 13 and older. We do not knowingly collect personal information from children under 13. If we learn that we've collected information from a child under 13, we'll delete it.</p>
+        <h2>5. Analytics</h2>
+        <p>We use a small amount of anonymous, aggregate analytics — through PostHog — to understand which parts of the site are actually useful, so we can improve them. What's recorded:</p>
+        <ul>
+          <li>Page views (which page, when).</li>
+          <li>Two specific actions: clicking a listing's sign-up button, and successfully submitting the opportunity form or the feedback form. The event records only that the action happened — never what you typed.</li>
+          <li>Basic page-performance measurements (how fast pages load), and technical details your browser sends with any web request, such as the browser and device type and an approximate city-level location derived from your IP address. PostHog receives your IP address to make that estimate; it is not stored against a profile, because no profile exists.</li>
+        </ul>
+        <p>It is deliberately configured for privacy: no cookies or persistent identifiers, no session or screen recording, no blanket click tracking, and no identified user profiles — so nothing here can be tied to your account, your email, or a previous visit. Using the filters, the age box, or the map is not tracked. We can see that a page was viewed 40 times; we cannot see that <em>you</em> viewed it.</p>
+        <p>If your browser sends a Global Privacy Control or Do Not Track signal, we honor it. We don't sell or share personal information in any case, so there's nothing for it to switch off — but we won't override it either.</p>
       </div>
 
       <div>
-        <h2>8. Changes to this policy</h2>
-        <p>If this policy changes in a meaningful way, we'll update the date at the top of this page. Since Elpys is a small, actively developed project, check back occasionally.</p>
+        <h2>6. Who else is involved</h2>
+        <p>We don't sell or rent your information. A small number of companies process data on our behalf, or receive some technical information simply because parts of the site load from them. All of them are listed here — there are no others:</p>
+        <table class="legal-table">
+          <tr><th>Who</th><th>What they do for Elpys</th><th>What they receive</th></tr>
+          <tr><td><strong>Supabase</strong></td><td>Hosts our database and handles account login.</td><td>Your email address, password hash, interests and availability; submissions and feedback.</td></tr>
+          <tr><td><strong>Vercel</strong></td><td>Hosts the website and runs its server functions.</td><td>Standard server-log data, including your IP address and browser type.</td></tr>
+          <tr><td><strong>Cloudflare</strong></td><td>Turnstile, the "are you a real person" check on our forms.</td><td>Your IP address, browser information, and a temporary verification token, when you submit a form.</td></tr>
+          <tr><td><strong>Google</strong></td><td>Sends the weekly digest through Gmail, and serves the site's web font.</td><td>Your email address, for the digest. For the font, your IP address and browser, on any page.</td></tr>
+          <tr><td><strong>PostHog</strong></td><td>The anonymous analytics in section 5.</td><td>Anonymous page views and events, plus your IP address for a city-level estimate.</td></tr>
+          <tr><td><strong>OpenStreetMap</strong></td><td>Supplies the map tiles, and the Nominatim geocoder behind the map's "starting place" box.</td><td>Your IP address when the map loads, and the starting place you type, if you use that box.</td></tr>
+          <tr><td><strong>Project OSRM</strong></td><td>Calculates the driving route drawn on the map.</td><td>Your IP address and the start and end coordinates of the route.</td></tr>
+          <tr><td><strong>jsDelivr and unpkg</strong></td><td>Content-delivery networks that serve two open-source code libraries the site uses.</td><td>Your IP address and browser, on the pages that load them.</td></tr>
+        </table>
+        <p>Each of these has its own privacy policy governing what it does with what it receives. We may also disclose information if we're legally required to — for example, in response to a valid subpoena or court order — or where it's necessary to protect someone's safety. That has never happened, and if it ever does we'll tell you unless we're legally prohibited from doing so.</p>
       </div>
 
       <div>
-        <h2>9. Contact</h2>
-        <p>Questions about this policy, or about your data? Email <a href="mailto:elpysnotifications@gmail.com">elpysnotifications@gmail.com</a>.</p>
+        <h2>7. How long we keep things</h2>
+        <p>We don't keep personal information indefinitely. Specifically:</p>
+        <table class="legal-table">
+          <tr><th>What</th><th>How long</th></tr>
+          <tr><td>Your account and profile (email, interests, availability)</td><td>Until you delete your account. Deleting it removes both the account and its profile record immediately and permanently.</td></tr>
+          <tr><td>Feedback you send us</td><td>Up to 12 months, and deleted sooner once the problem it reports is fixed. Feedback isn't linked to your account, so deleting your account doesn't remove it — email us if you'd like it removed earlier.</td></tr>
+          <tr><td>Opportunity submissions</td><td>Published listings are kept as long as the listing is on the site. Submissions we decline are deleted within 12 months.</td></tr>
+          <tr><td>Server logs (IP address, request details)</td><td>Kept by Vercel under its standard log retention — a short period, measured in days — then discarded. We don't copy them anywhere else.</td></tr>
+          <tr><td>Spam rate-limiting records</td><td>IP addresses are held in server memory for at most one hour and are never written to our database.</td></tr>
+          <tr><td>Anonymous analytics</td><td>Retained in aggregate by PostHog. Because it was never linked to you in the first place, it can't be traced back to you or individually deleted.</td></tr>
+        </table>
+      </div>
+
+      <div>
+        <h2>8. Your choices and your rights</h2>
+        <p>You can do all of this yourself, any time:</p>
+        <ul>
+          <li><strong>Unsubscribe</strong> from the weekly digest — every email has a one-click unsubscribe link, and you can also turn it off from your account page.</li>
+          <li><strong>Edit or clear</strong> your interests and availability from your account page.</li>
+          <li><strong>Delete your account</strong> from your account page. This permanently removes your account and its profile record — email address, interests, availability — and stops all digest emails.</li>
+        </ul>
+        <p>And you can always ask us to:</p>
+        <ul>
+          <li><strong>Tell you what we hold about you</strong> and give you a copy of it.</li>
+          <li><strong>Correct</strong> anything that's wrong.</li>
+          <li><strong>Delete</strong> something specific — including feedback or a submission you sent us.</li>
+        </ul>
+        <p>Email <a href="mailto:elpysnotifications@gmail.com">elpysnotifications@gmail.com</a> and we'll take care of it. We'll reply within 45 days and usually much sooner. We may need to confirm that you control the email address in question first, so that we're not handing your information to someone else. Asking never costs anything and we won't treat you differently for asking.</p>
+        <p>Elpys is small enough that it isn't currently covered by laws like the CCPA or the GDPR. We offer these rights anyway, to everyone, because they're the right thing to offer.</p>
+      </div>
+
+      <div>
+        <h2>9. Security</h2>
+        <p>What we do: the whole site is served over HTTPS and is protected by a strict content-security policy and related browser security headers. Passwords are hashed by Supabase; we never see them. Database access is locked down with row-level security, so one account can only ever read its own profile, and the tables holding feedback and internal review notes aren't publicly readable at all. The admin panel is password-protected and rate-limits guessing. Only the person who runs Elpys has administrative access.</p>
+        <p>What we can't promise: no website is perfectly secure, and Elpys is a one-person project, not a company with a security team. If a breach ever affects your information, we'll email you and tell you what happened, what to do about it, and what we're doing about it — within 30 days at the outside, as Washington law requires, and realistically much faster than that.</p>
+      </div>
+
+      <div>
+        <h2>10. Where your information is handled</h2>
+        <p>Elpys is run from the United States and every provider listed in section 6 processes data in the United States or in the region where it operates its own infrastructure. Elpys is built for people in the Bellevue, Washington area and isn't offered to people in the EU or UK. If you use it from outside the United States, your information will be handled in the United States.</p>
+      </div>
+
+      <div>
+        <h2>11. If you're under 13 — and a note for parents and guardians</h2>
+        <p>Elpys is intended for teens age 13 and older. It isn't directed to children under 13, and we do not knowingly collect personal information from them. Creating an account requires confirming you're 13 or older. We don't ask anyone for an exact age or a date of birth, on this site or anywhere else.</p>
+        <p>Anyone can read the listings without giving us anything at all, and we'd rather a younger kid browse with a parent than be turned away — but please don't create an account, submit an opportunity, or send us feedback if you're under 13.</p>
+        <p><strong>Parents and guardians:</strong> if you believe a child under 13 has given us personal information, email <a href="mailto:elpysnotifications@gmail.com">elpysnotifications@gmail.com</a> and we will delete it and any associated account promptly, without requiring you to prove anything beyond enough detail to find the record. You can also ask us at any time to tell you what we hold about your child, or to stop collecting anything further.</p>
+      </div>
+
+      <div>
+        <h2>12. Changes to this policy</h2>
+        <p>If this policy changes in a meaningful way, we'll update the date at the top of this page and note the change on the site. Elpys is small and actively developed, so it's worth checking back occasionally. We'll never apply a materially different use of information we already hold without telling you first.</p>
+      </div>
+
+      <div>
+        <h2>13. Contact</h2>
+        <p>Questions about this policy, about what we hold, or about anything on this page? Email <a href="mailto:elpysnotifications@gmail.com">elpysnotifications@gmail.com</a>. A real person reads it.</p>
       </div>
     </div>
   </section>

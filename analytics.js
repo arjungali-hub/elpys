@@ -40,12 +40,28 @@ posthog.init(POSTHOG_KEY, {
   disable_session_recording: true,
   cookieless_mode: 'always',
   person_profiles: 'identified_only',
-  // The project's remote config turns on web vitals and network timing, which
-  // would collect per-visitor performance data on top of page views and the
-  // three explicit events — more than the privacy policy says we collect.
-  // Turned off here so the client-side config is the stricter one and the
-  // policy stays true. It also stops the extra web-vitals script download.
-  capture_performance: false,
+
+  // The five below are NOT covered by autocapture: false. A dated `defaults`
+  // value turns dead-click and rageclick capture on by itself, and heatmaps,
+  // exception capture and performance capture fall back to whatever is toggled
+  // in the PostHog project UI — i.e. they can be switched on remotely, without
+  // a code change, which is exactly what a privacy policy must not depend on.
+  // Pinning them here keeps privacy.html section 5 ("no blanket click
+  // tracking", "no session or screen recording") true no matter what the
+  // project settings say. Dead clicks and rageclicks each record the element
+  // that was clicked and where on the page it was — click tracking by another
+  // name, and not something a teen-facing directory needs.
+  //
+  // capture_performance is deliberately left at its default (web vitals on):
+  // it is pure page-speed telemetry, it is disclosed in privacy.html section 5,
+  // and it is the site's only production performance signal. It was briefly
+  // pinned to false on 2026-08-25, when the then-current policy did not mention
+  // it; the rewritten policy does, so the disclosure now carries it instead.
+  capture_dead_clicks: false,
+  rageclick:           false,
+  capture_heatmaps:    false,
+  enable_heatmaps:     false,   // older alias, set too in case the loaded SDK predates the rename
+  capture_exceptions:  false,
 });
 
 // One explicit, site-wide custom event: a click on an opportunity's primary

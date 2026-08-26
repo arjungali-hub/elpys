@@ -38,6 +38,8 @@
     .avail-cell { height: 32px; background: var(--off); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: background 0.1s, border-color 0.1s; }
     .avail-cell:hover { border-color: #aaa; background: #ebebeb; }
     .avail-cell.active { background: var(--body); border-color: var(--body); }
+    .consent-note { font-size: 0.8125rem; line-height: 1.55; color: var(--muted); margin: 0.25rem 0 0; }
+    .consent-note a { color: var(--body); text-decoration: underline; }
   </style>
   <script src="analytics.js"></script>
 </head>
@@ -105,6 +107,8 @@
             <input type="checkbox" id="age-confirm" required>
             <span>I confirm I am 13 or older. <em style="color:var(--muted);">You must be 13 or older to use Elpys.</em></span>
           </label>
+
+          <p class="consent-note">By creating an account you agree to the <a href="/terms">Terms of Service</a> and the <a href="/privacy">Privacy Policy</a>. If you are under 18, please read them with a parent or guardian first.</p>
 
           <button type="submit" class="submit-btn" id="submit-btn">Create account →</button>
 
