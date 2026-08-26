@@ -7,6 +7,47 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-08-26 — Corrections for the Project Context doc
+
+Not a code change. This is a list for whoever next refreshes the "Elpys Project
+Context" Google Doc — every item below was checked against the repo or the
+database today, and each contradicts what the doc currently says.
+
+- **"The 14 current opportunities" — it is 16.** Two one-time listings were
+  added (ids 117, 118, Keep Bellevue Beautiful).
+- **`Feedback` and `data_review_flags` are no longer "purpose unknown".**
+  `Feedback` backs the feedback form (`api/feedback.js`). `data_review_flags` is
+  the weekly accuracy check's queue and now has a whole UI on `/review`, with
+  three sections and a red/yellow/green health dot in the admin header. Both
+  still have RLS on with zero policies, and that is **correct by design** — all
+  access goes through the service role server-side. It is not an open issue.
+- The doc calls the `data_review_flags` FK unindexed. It is indexed now.
+- **Open issue #4 (detail pages are individual static files with no rewrite
+  rule) is resolved.** There is no `opportunities/` directory; there is one
+  template, `opportunities-detail.html`, reading `?slug=` from the URL. A newly
+  approved listing does not 404.
+- **URLs are extensionless now.** `/about`, `/map`, `/submit`; the homepage is
+  the bare domain. Old `.html` paths 308-redirect. Anywhere the doc writes a
+  path like `opportunities/detail.html`, it is out of date.
+- **The logo description is stale.** The doc describes "sunrise arcs"; the mark
+  is now a torch — the "l" of the wordmark doubles as the handle, with a flame
+  above it and sparkles behind. Files: `logos/elpys-favicon.svg`,
+  `elpys-logo-mark.svg`, `elpys-logo-full.html`.
+- **The colour tokens are stale.** Doc says `--body #1A1A1A`, `--border
+  #E2E2E2`, `--muted #888888`. Actual: `#111827`, `#E5E7EB`, `#6B7280`. There is
+  also a `--subtle` (`#767D89`, raised from `#9CA3AF` for WCAG AA contrast) and
+  a `--dot-green/yellow/red` status set.
+- **Open issue #5 (junk test rows) is half done.** Id 114 is gone. Id 115 still
+  exists — name "a", status `pending`, created 18 Aug. It is *not* published, so
+  it is invisible on the site and sits only in the admin queue. Left in place
+  rather than deleted without asking.
+- **`admin_notes` is no longer readable by the anon key** (see the entry below).
+  The doc lists it as an ordinary column; it is now revoked at the database
+  level from `anon` and `authenticated`.
+- **Still true, do not "fix":** open issue #7, `noindex` is on all 13 pages and
+  must come off at launch. Everything is on `main`. `signup_steps` is still
+  pipe-separated text.
+
 ## 2026-08-26 — Legal review applied, and admin_notes closed off
 
 - Landed the August 2026 legal review: `privacy.html` and `terms.html` rewritten
