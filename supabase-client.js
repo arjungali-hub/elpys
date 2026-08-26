@@ -53,6 +53,34 @@ function safeUrl(value) {
 
 // ── Fetch + cache ────────────────────────────────────────────────────────────
 
+// Exactly the columns the public client renders — nothing more.
+//
+// This used to be `select=*`, which meant the anon key could pull EVERY column
+// of every published row straight from the REST endpoint, `admin_notes`
+// included. The site never renders that field, so it was invisible in the UI,
+// but the submission form offers it as a private note to the reviewer — the
+// natural place for someone to type a phone number. It is excluded here on
+// purpose: do not go back to `select=*`.
+//
+// `contact_info` is deliberately absent despite _transformRow reading it: it
+// is not a real column and never has been, so the read has always been
+// undefined. Naming it here would make PostgREST reject the whole request and
+// blank every page.
+//
+// Also excluded, simply because the public client never touches them: `id`,
+// `status`, `created_at`, `published_at`, `admin_notes`. `status`,
+// `opportunity_type` and `event_date` are used in the query's filters, which
+// work regardless of the select list — the latter two stay because the
+// renderer reads them as well.
+const PUBLIC_COLUMNS = [
+  'name', 'description', 'long_description', 'category',
+  'age_display', 'age_min', 'age_condition', 'age_filter',
+  'when', 'where', 'address', 'lat', 'lng', 'approx',
+  'signup_link', 'signup_label', 'signup_steps', 'section', 'slug',
+  'live_url', 'card_note', 'website', 'contact_email', 'contact_phone',
+  'schedule', 'opportunity_type', 'event_date',
+].join(',');
+
 let _oppCache = null;
 
 async function fetchOpportunities() {
@@ -63,7 +91,7 @@ async function fetchOpportunities() {
   // simply stop being served here.
   const todayIso = _todayIso();
   const res = await fetch(
-    SUPABASE_URL + 'Opportunities?status=eq.published&select=*&order=name.asc' +
+    SUPABASE_URL + 'Opportunities?status=eq.published&select=' + PUBLIC_COLUMNS + '&order=name.asc' +
     '&or=(opportunity_type.eq.recurring,event_date.gte.' + todayIso + ')',
     {
       headers: {
