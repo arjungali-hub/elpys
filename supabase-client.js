@@ -21,14 +21,34 @@ function escHtml(value) {
 
 // URLs get a second check: escaping stops an attribute breakout, but
 // `javascript:` needs no quotes to be dangerous. Anything that isn't a plain
-// web or mail link becomes '#'.
+// web or mail link, or a same-site path, becomes '#'.
 //
-// The leading-slash case is deliberately `/` NOT followed by another `/`:
-// `//evil.example` is a protocol-relative URL that loads from another origin
-// entirely, and a bare `^\/` would have waved it through as a same-site path.
+// Written as reject-then-allow rather than one permissive pattern. The site
+// uses extensionless URLs, so internal links no longer end in .html and the
+// allowlist can't key on that — and a naive "allow bare words" rule would wave
+// `javascript:alert(1)` straight through, since `javascript` is a bare word.
+// So anything carrying a scheme we don't explicitly want is rejected FIRST,
+// and only then is what remains accepted as a path.
 function safeUrl(value) {
   const url = String(value == null ? '' : value).trim();
-  return /^(https?:\/\/|mailto:|\/(?!\/)|[\w.-]+\.html)/i.test(url) ? escHtml(url) : '#';
+
+  // Explicitly allowed schemes.
+  if (/^(https?:\/\/|mailto:)/i.test(url)) return escHtml(url);
+
+  // `//evil.example` is protocol-relative: it loads from another origin
+  // entirely, despite looking like a same-site path.
+  if (/^\/\//.test(url)) return '#';
+
+  // Any other scheme — javascript:, data:, vbscript:, file: — is refused.
+  // A colon after a leading run of scheme-legal characters is a scheme.
+  if (/^[a-z][a-z0-9+.\-]*:/i.test(url)) return '#';
+
+  // What's left must look like a path: "/about", "opportunities-detail?slug=x".
+  // The character classes exclude whitespace and control characters, so
+  // "java\nscript:alert(1)" cannot sneak through by breaking up the scheme.
+  if (/^[\w\-./]+(\?[^\s<>"']*)?(#[^\s<>"']*)?$/.test(url)) return escHtml(url);
+
+  return '#';
 }
 
 // ── Fetch + cache ────────────────────────────────────────────────────────────
@@ -119,7 +139,7 @@ function _transformRow(row) {
     name:    row.name,
     tag:     normalizedCategory,
     slug:    slug,
-    link:    'opportunities-detail.html?slug=' + slug,
+    link:    '/opportunities-detail?slug=' + slug,
     address: row.address    || '',
     lat:     parseFloat(row.lat),
     lng:     parseFloat(row.lng),

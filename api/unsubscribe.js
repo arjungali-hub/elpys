@@ -38,14 +38,14 @@ module.exports = async function handler(req, res) {
     return res.status(404).send(page(
       'We couldn\'t find that account',
       'This unsubscribe link doesn\'t match an Elpys account. It may have been deleted already. ' +
-      'If you\'re still receiving emails, <a href="/feedback.html">let us know</a>.'
+      'If you\'re still receiving emails, <a href="/feedback">let us know</a>.'
     ));
   }
 
   return res.status(200).send(page(
     'You\'ve been unsubscribed',
     'You won\'t receive any more weekly digest emails from Elpys. ' +
-    'You can re-enable notifications anytime from your <a href="/account.html">account page</a>.'
+    'You can re-enable notifications anytime from your <a href="/account">account page</a>.'
   ));
 };
 

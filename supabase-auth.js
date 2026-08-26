@@ -85,14 +85,14 @@ function showModal(opts) {
         return a;
       }
 
-      adminGroup.appendChild(makeAdminLink('Feedback',              'admin.html?view=feedback'));
-      adminGroup.appendChild(makeAdminLink('Approve opportunities', 'admin.html?view=confirm'));
+      adminGroup.appendChild(makeAdminLink('Feedback',              '/admin?view=feedback'));
+      adminGroup.appendChild(makeAdminLink('Approve opportunities', '/admin?view=confirm'));
 
       // Data review carries a traffic light so the queue and the database's
       // health are visible without opening the page. Colour comes from the
       // server (/api/review?summary=1), which is the only thing that can see
       // the flag counts and reach Supabase.
-      var reviewLink = makeAdminLink('Data review', 'review.html');
+      var reviewLink = makeAdminLink('Data review', '/review');
       var reviewDot  = document.createElement('span');
       reviewDot.className = 'status-dot is-unknown';
       reviewDot.setAttribute('aria-hidden', 'true');
@@ -121,7 +121,7 @@ function showModal(opts) {
       adminLogoutBtn.className   = 'header-logout-btn';
       adminLogoutBtn.addEventListener('click', function () {
         sessionStorage.removeItem('elpys_admin_pw');
-        location.href = 'index.html';
+        location.href = '/';
       });
       adminGroup.appendChild(adminLogoutBtn);
       inner.appendChild(adminGroup);
@@ -131,13 +131,13 @@ function showModal(opts) {
       sub.className = 'header-admin-sub';
 
       var subEdit = document.createElement('a');
-      subEdit.href        = 'admin.html?view=edit';
+      subEdit.href        = '/admin?view=edit';
       subEdit.textContent = 'Edit opportunities';
       subEdit.className   = 'header-admin-link';
       sub.appendChild(subEdit);
 
       var subSubmit = document.createElement('a');
-      subSubmit.href      = 'submit.html';
+      subSubmit.href      = '/submit';
       subSubmit.textContent = 'Submit an opportunity';
       subSubmit.className   = 'header-admin-link';
       sub.appendChild(subSubmit);
@@ -179,7 +179,7 @@ function showModal(opts) {
   // ── Normal user session (async Supabase check) ───────────────────────────
   if (!authEl) return;
 
-  authEl.href        = 'login.html';
+  authEl.href        = '/login';
   authEl.textContent = 'Log in';
 
   var client = supabase.createClient(SUPA_URL, SUPA_ANON);
@@ -187,7 +187,7 @@ function showModal(opts) {
     var session = result.data && result.data.session;
     if (!session) return;
 
-    authEl.href        = 'account.html';
+    authEl.href        = '/account';
     authEl.textContent = 'My account';
 
     var logoutBtn = document.createElement('button');
@@ -200,7 +200,7 @@ function showModal(opts) {
         confirmText: 'Log out',
         onConfirm:   function () {
           client.auth.signOut().then(function () {
-            location.href = 'index.html';
+            location.href = '/';
           });
         },
       });

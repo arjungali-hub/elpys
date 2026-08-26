@@ -13,20 +13,14 @@
 //     posthog.identify(...), no identified person profiles are created at
 //     all — everything stays anonymous, aggregate counts.
 //
-// TODO before this goes live: replace <POSTHOG_PROJECT_API_KEY> below with
-// the real project API key. Get it by creating a new project named "Elpys"
-// inside the existing PostHog account (Project settings → API keys → the
-// "Project API key", NOT a personal/private key — this one is meant to be
-// public and safe to ship in client-side code like this).
-// Also confirm POSTHOG_HOST matches the region shown on that same settings
-// page (US cloud is 'https://us.i.posthog.com'; EU cloud is
-// 'https://eu.i.posthog.com' — use whichever the account is actually on).
-//
 // NOTE: PostHog's hosts also have to be allowed by the Content-Security-Policy
 // in vercel.json (script-src for the loader, connect-src for the events).
 // They are already listed there; if POSTHOG_HOST changes region, update both.
 
-var POSTHOG_KEY  = '<POSTHOG_PROJECT_API_KEY>';
+// Project API key — public by design, meant to ship in client-side code.
+// Region confirmed as US cloud: this key resolves at us.i.posthog.com and
+// 404s at eu.i.posthog.com, so POSTHOG_HOST below is correct as-is.
+var POSTHOG_KEY  = 'phc_Djsocccc9gViK57QBT7abSeZptD5ubtdTrXURLQGbHRg';
 var POSTHOG_HOST = 'https://us.i.posthog.com';
 
 // While the key is still the placeholder, load nothing. Initialising with it
