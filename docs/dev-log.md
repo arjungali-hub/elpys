@@ -7,6 +7,48 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-08-26 — Legal review applied, and admin_notes closed off
+
+- Landed the August 2026 legal review: `privacy.html` and `terms.html` rewritten
+  (13 and 18 sections), and `analytics.js` pins five capture settings that
+  `autocapture: false` does not cover. Commits `2e3c7a4`, `d1b0eb5`.
+- Consent lines above the submit buttons on signup/submit/feedback, which moves
+  the terms from browsewrap to sign-in-wrap. That is the difference between
+  terms that bind and terms that mostly do not.
+- **Reversed a decision from the day before.** `capture_performance: false` was
+  pinned on 25 Aug because the then-current policy did not mention performance
+  data. The rewritten policy discloses it, so the condition that justified the
+  pin is gone and web vitals are back on, disclosed. Recorded so it does not
+  read as drift.
+- **`admin_notes` was publicly readable and is not any more.** `select=*` plus a
+  table-level grant meant the anon key could pull the reviewer-notes field off
+  the REST endpoint. Nothing had leaked — only internal build notes on two rows —
+  but the form offers that box as a private channel to the reviewer.
+- **The prescribed SQL did not work, and the verification is what caught it.**
+  `revoke select (admin_notes) ... from anon` ran without error and changed
+  nothing: Postgres cannot subtract a column from a *table-level* grant, and
+  `anon` had one. `select=*` still returned the notes afterwards. The working
+  fix is to revoke the table grant and re-grant the allowed columns:
+  `revoke select on public."Opportunities" from anon, authenticated;` then
+  `grant select (<27 columns>, status) ... to anon, authenticated;`.
+  Anyone repeating this pattern on another table needs the same shape.
+- `status` has to be in the grant even though the client never selects it —
+  PostgREST filters on it, and filtering a column requires SELECT on it.
+- Client-side change shipped *before* the database change, deliberately: a
+  missed column then shows as blanks and is fixable, rather than taking the live
+  site down. `service_role` keeps its table grant, so the admin panel is
+  unaffected — verified, not assumed.
+- Retention: `privacy.html` section 7 now publishes a 12-month schedule for
+  feedback and declined submissions. Added `public.enforce_retention()` in
+  Supabase (SECURITY DEFINER, execute granted to `service_role` only) so the
+  weekly check needs one line: `select * from public.enforce_retention();`.
+  Nothing is over 12 months yet, so today it deletes zero rows.
+- **Open follow-up:** that function is not scheduled. The weekly data check is a
+  Cowork task (`trig_01YcPNPrCWaQegPxhpBE2a5J`) which Claude Code cannot edit, so
+  a person has to add that one line to it. pg_cron is available but not installed
+  if a database-native schedule is preferred instead. Until then the published
+  retention promise has nothing enforcing it.
+
 ## 2026-08-25 — Clean URLs, analytics switched on, designed loading states
 
 - **Loading states** (`10bd132`) — implemented the skeleton + button-spinner set
