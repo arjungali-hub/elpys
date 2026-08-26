@@ -40,6 +40,12 @@ posthog.init(POSTHOG_KEY, {
   disable_session_recording: true,
   cookieless_mode: 'always',
   person_profiles: 'identified_only',
+  // The project's remote config turns on web vitals and network timing, which
+  // would collect per-visitor performance data on top of page views and the
+  // three explicit events — more than the privacy policy says we collect.
+  // Turned off here so the client-side config is the stricter one and the
+  // policy stays true. It also stops the extra web-vitals script download.
+  capture_performance: false,
 });
 
 // One explicit, site-wide custom event: a click on an opportunity's primary
