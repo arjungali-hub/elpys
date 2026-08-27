@@ -7,6 +7,35 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-08-26 — Retention job scheduled, and a stale-prompt trap
+
+- `enforce_retention()` is now scheduled in the database via pg_cron (extension
+  installed), job `elpys-enforce-retention`, `17 4 1 * *` — 04:17 UTC on the 1st
+  of each month. The published retention schedule is now enforced by Postgres
+  rather than by anyone remembering, and it does not depend on the Cowork task
+  or on Vercel. Unschedule with
+  `select cron.unschedule('elpys-enforce-retention');`.
+- Monthly, not weekly: the window is 12 months, so month granularity is ample.
+  pg_cron only ticks while the project is awake — a paused project skips a run
+  and catches up on the next, immaterial here.
+
+**Trap for anyone re-running the F-03 admin_notes prompt.** A prompt circulated
+for this fix that specifies a column list including `id`, `created_at`,
+`status` and `published_at`. That list **no longer works**: anon's table-level
+grant has been replaced with a column-level grant covering only the 27 columns
+the renderer uses plus `status`, so selecting `id`/`created_at`/`published_at`
+as anon now returns `42501 permission denied` and would blank the site.
+Verified against the live endpoint, not assumed.
+
+- If a genuinely new public field is ever needed, it must be added in **both**
+  places: `PUBLIC_COLUMNS` in `supabase-client.js` *and* the column grant to
+  `anon`/`authenticated` on `public."Opportunities"`. Changing only the JS gets
+  a permission error; changing only the grant gets an unused privilege.
+- That prompt also names a column `needs_browser_check` to exclude. There is no
+  such column on `Opportunities` — checked against `information_schema`.
+  Harmless as an exclusion, but a sign the list was written against an assumed
+  schema rather than the real one.
+
 ## 2026-08-26 — Corrections for the Project Context doc
 
 Not a code change. This is a list for whoever next refreshes the "Elpys Project
