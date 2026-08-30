@@ -210,12 +210,156 @@
     if (btn.dataset.label !== undefined) btn.innerHTML = btn.dataset.label;
   }
 
+  // ── Card stacks (Aug 2026 corrections pass) ───────────────────────────────
+  // admin.html and review.html render "header → body → footer actions" cards,
+  // not tables, so skeletonTable was the wrong shape for both. It stays
+  // exported for any genuinely tabular view added later.
+
+  function bar(cls, width, extra) {
+    return '<div class="skel ' + cls + '" style="width:' + width +
+           (extra ? ';' + extra : '') + '"></div>';
+  }
+
+  // review.html — data_review_flags. Roughly half the real flags carry a
+  // suggested value, so alternate rather than drawing the callout every time;
+  // a stack of identical cards reads as a printed grid.
+  var FLAG_W = [
+    ['54%', '86px', '30%', '92%', '78%'],
+    ['60%', '70px', '34%', '88%', '64%'],
+    ['48%', '94px', '26%', '95%', '71%'],
+    ['57%', '78px', '38%', '90%', '58%'],
+  ];
+
+  function skeletonFlagCards(opts) {
+    opts = opts || {};
+    var n = opts.count || 4;
+    var out = [srLine(opts.label || 'Loading flagged listings')];
+    for (var i = 0; i < n; i++) {
+      var w = pick(FLAG_W, i);
+      var withSuggested = i % 2 === 0;
+      out.push(
+        '<div class="skel-stackcard">' +
+          '<div class="skel-cardhead">' + bar('skel-title', w[0]) + bar('skel-chip', w[1]) + '</div>' +
+          bar('skel-meta', w[2]) +
+          bar('skel-line', w[3]) +
+          bar('skel-line', w[4]) +
+          (withSuggested
+            ? bar('skel-meta', '22%', 'margin-top:4px') + '<div class="skel skel-callout"></div>'
+            : '') +
+          '<div class="skel-cardfoot">' +
+            bar('skel-btn-sm', '84px') +
+            bar('skel-btn-sm', '96px') +
+            (withSuggested ? bar('skel-btn-sm', '72px') : '') +
+          '</div>' +
+        '</div>');
+    }
+    return out.join('');
+  }
+
+  // admin.html. 'pending' cards carry the approve panel — slug/lat/lng inputs,
+  // the Leaflet map and its hint — which makes them tall, so two or three is
+  // plenty. 'published' cards are just a name, a meta line and two buttons.
+  function skeletonSubmissionCards(opts) {
+    opts = opts || {};
+    var pending = opts.variant !== 'published';
+    var n = opts.count || (pending ? 2 : 3);
+    var out = [srLine(opts.label || (pending ? 'Loading the pending queue' : 'Loading published listings'))];
+    var W = pending
+      ? [['56%', '38%'], ['62%', '34%'], ['50%', '42%']]
+      : [['50%', '42%'], ['58%', '36%'], ['46%', '48%'], ['54%', '40%']];
+
+    for (var i = 0; i < n; i++) {
+      var w = pick(W, i);
+      out.push(
+        '<div class="skel-stackcard">' +
+          '<div class="skel-cardhead">' + bar('skel-h1', w[0]) + '</div>' +
+          bar('skel-meta', w[1]) +
+          (pending
+            ? // description, steps, sign-up link
+              bar('skel-line', '96%') + bar('skel-line', '90%') + bar('skel-line', '62%') +
+              bar('skel-meta', '24%', 'margin-top:6px') +
+              bar('skel-line', '74%') + bar('skel-line', '68%') + bar('skel-line', '56%') +
+              bar('skel-meta', '46%') +
+              // approve panel: label, three inputs, map, hint
+              bar('skel-meta', '28%', 'margin-top:8px') +
+              '<div class="skel-inputrow">' +
+                '<div class="skel skel-input-sm"></div>' +
+                '<div class="skel skel-input-sm"></div>' +
+                '<div class="skel skel-input-sm"></div>' +
+              '</div>' +
+              '<div class="skel skel-map"></div>' +
+              bar('skel-meta', '54%')
+            : '') +
+          '<div class="skel-cardfoot">' +
+            (pending
+              ? bar('skel-btn-sm', '90px') + bar('skel-btn-sm', '78px') + bar('skel-btn-sm', '66px')
+              : bar('skel-btn-sm', '74px') + bar('skel-btn-sm', '88px')) +
+          '</div>' +
+        '</div>');
+    }
+    return out.join('');
+  }
+
+  // ── account.html profile form (replaces skeletonForm here) ────────────────
+  // Four blocks in the page's real order. No leading label+input pair: the
+  // account page has no free-text field, and the old skeleton invented one.
+  var DAYS = 7;
+
+  function availGrid() {
+    var cells = '<div class="skel-spacer"></div>' +
+      '<div class="skel skel-colhead"></div>'.repeat(3);
+    for (var d = 0; d < DAYS; d++) {
+      cells += '<div class="skel skel-day"></div>' +
+               '<div class="skel skel-cell-sq"></div>'.repeat(3);
+    }
+    return '<div class="skel-availgrid">' + cells + '</div>';
+  }
+
+  function skeletonAvailForm(label) {
+    var interests = [84, 62, 104, 74, 92, 58, 88, 66].map(function (w) {
+      return bar('skel-chip', w + 'px');
+    }).join('');
+
+    return srLine(label || 'Loading your profile') +
+      // 1. Interests
+      '<div class="skel-block">' +
+        bar('skel-label', '20%') +
+        '<div class="skel skel-hint"></div>' +
+        '<div class="skel-checks">' + interests + '</div>' +
+        bar('skel-button', '124px') +
+      '</div>' +
+      // 2. Availability
+      '<div class="skel-block">' +
+        bar('skel-label', '24%') +
+        bar('skel-hint', '54%') +
+        availGrid() +
+        bar('skel-button', '140px') +
+      '</div>' +
+      // 3. Email notifications
+      '<div class="skel-block">' +
+        bar('skel-label', '28%') +
+        bar('skel-hint', '70%') +
+        bar('skel-button', '150px') +
+      '</div>' +
+      // 4. Account
+      '<div class="skel-block">' +
+        bar('skel-label', '16%') +
+        '<div class="skel-actions">' +
+          bar('skel-button', '88px') +
+          bar('skel-button', '126px') +
+        '</div>' +
+      '</div>';
+  }
+
   global.Loading = {
     cards:    skeletonCards,
     rows:     skeletonRows,
     detail:   skeletonDetail,
-    table:    skeletonTable,
-    form:     skeletonForm,
+    table:    skeletonTable,          // kept for a genuinely tabular view
+    form:     skeletonForm,           // generic; account.html uses availForm
+    flagCards:       skeletonFlagCards,
+    submissionCards: skeletonSubmissionCards,
+    availForm:       skeletonAvailForm,
     show:     showSkeleton,
     clear:    clearSkeleton,
     setBusy:  setBusy,

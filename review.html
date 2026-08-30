@@ -156,8 +156,7 @@
   </div>
 
   <div id="loading-panel" style="display:none;">
-    <div class="skel-table skel-wave" id="loading-skeleton" aria-busy="true"
-         style="--cols: 1.1fr 2fr 1.4fr 80px"></div>
+    <div class="skel-stack skel-wave" id="loading-skeleton" aria-busy="true"></div>
   </div>
 
   <div id="content" style="display:none;">
@@ -228,11 +227,7 @@
     // column widths as the real rows, so nothing shifts when they land.
     var skel = document.getElementById('loading-skeleton');
     if (skel && window.Loading) {
-      skel.innerHTML = Loading.table({
-        cols: '1.1fr 2fr 1.4fr 80px', rows: 5, pillAt: 0,
-        headWidths: ['56%', '34%', '42%', '70%'],
-        label: 'Loading data checks',
-      });
+      skel.innerHTML = Loading.flagCards({ count: 4 });
     }
   }
 

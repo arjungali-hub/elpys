@@ -1242,6 +1242,11 @@ footer a {
    every page picks them up from the stylesheet it already loads,
    rather than adding a second request to fourteen pages.
    Depends only on tokens defined above.
+
+   Aug 2026 corrections pass: extensions 4 and 5 added. The card
+   stack replaces the .skel-table shapes previously used on
+   admin.html and review.html — both render stacked cards, not
+   tables. .skel-table is kept for any genuinely tabular view.
    ============================================================ */
 
 /* Elpys — skeleton loading state
@@ -1391,4 +1396,91 @@ footer a {
   .btn-spin circle { animation: none !important }
   .btn-spin .btn-spin-arc { stroke-dasharray: none; opacity: .75 }
   .skel-thead .skel { opacity: .5 }
+}
+
+
+/* ═════════════════════════════════════════════════════════════
+   EXTENSION 4 — Card-stack rows  (corrections pass, Aug 2026)
+   Replaces the .skel-table usage on review.html and admin.html.
+   Both pages render "name header → body → footer actions" cards,
+   not tables. .skel-table stays in the file only for any genuine
+   tabular view added later.
+   For: review.html (.flag-card), admin.html (.submission-card)
+   ───────────────────────────────────────────────────────────── */
+
+.skel-stack { display: flex; flex-direction: column; gap: .85rem }
+
+.skel-stackcard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* top row: name (left) + field-name pill (right) */
+.skel-cardhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+/* footer actions, separated by the card's top border */
+.skel-cardfoot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+.skel-btn-sm { height: 28px; border-radius: 4px }
+
+/* suggested-value / admin-note callout box — a filled block, not a bar */
+.skel-callout {
+  height: 46px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--off);
+  animation: none;
+}
+/* embedded Leaflet map stand-in — admin.html pending cards only */
+.skel-map {
+  height: 200px;
+  width: 100%;
+  border-radius: var(--radius, 6px);
+  border: 1px solid var(--border);
+}
+/* three short labeled inputs (slug / lat / lng) */
+.skel-inputrow { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px }
+.skel-input-sm { height: 32px; border-radius: 4px }
+
+/* ═════════════════════════════════════════════════════════════
+   EXTENSION 5 — Availability grid  (account.html)
+   Mirrors .avail-grid's real 2.5rem 1fr 1fr 1fr template:
+   a header row of 3 column labels, then 7 day rows of
+   day-label + 3 unlabeled square toggles.
+   ───────────────────────────────────────────────────────────── */
+
+.skel-availgrid {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr 1fr 1fr;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+}
+.skel-availgrid > .skel-spacer { height: 1px }        /* empty top-left corner */
+.skel-colhead { height: 8px; justify-self: center; width: 62% }
+.skel-day     { height: 9px; width: 78% }
+.skel-cell-sq { height: 30px; border-radius: 4px }
+
+/* account.html block rhythm — matches .account-block spacing */
+.skel-block { display: flex; flex-direction: column; gap: 12px }
+.skel-hint  { height: 8px; width: 62% }
+.skel-actions { display: flex; gap: 10px; flex-wrap: wrap }
+
+@media (prefers-reduced-motion: reduce) {
+  .skel-callout, .skel-map { opacity: .55 }
 }

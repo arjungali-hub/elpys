@@ -7,6 +7,34 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-08-27 — Corrected loading skeletons, and one that was never visible
+
+- Second pass on the designed loading states, from an updated
+  `loading animations/` drop. The new CSS is a superset of the old, adding two
+  extensions, and it corrects a shape I had got wrong.
+- **`admin.html` and `review.html` were using a table skeleton for pages that
+  render stacked cards.** Both are "header → body → footer actions" cards, not
+  tables. They now use `.skel-stack` / `.skel-stackcard`: pending submissions
+  get the slug/lat/lng input row and a 200px map stand-in, published cards get
+  the shorter two-button shell, feedback gets compact rows. `Loading.table` is
+  kept for any genuinely tabular view added later.
+- **`account.html`'s skeleton invented a field that does not exist.** The old
+  generic form skeleton opened with a label + text input; the account page has
+  no free-text field at all (verified — zero text/email inputs). It now mirrors
+  the real four blocks, including the 7×3 availability grid on the same
+  `2.5rem 1fr 1fr 1fr` template as `.avail-grid`.
+- **The admin skeletons were never actually visible.** `#submissions-panel`,
+  `#published-panel` and `#feedback-panel` are `display: none` in CSS and were
+  only revealed *after* the fetch resolved — so the skeletons were built,
+  inserted into hidden containers, and replaced by real content without anyone
+  seeing them. Which panels to show depends only on the `?view=` parameter, not
+  on the response, so that logic moved into `applyViewVisibility()` and now runs
+  before the request as well as after.
+- Caught by an assertion on the map stand-in's height coming back as `0px`.
+  Every count-based check passed regardless, because `querySelectorAll` does not
+  care whether an element is displayed — worth remembering when testing
+  anything that is only meaningful when visible.
+
 ## 2026-08-26 — Retention job scheduled, and a stale-prompt trap
 
 - `enforce_retention()` is now scheduled in the database via pg_cron (extension
