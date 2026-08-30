@@ -27,12 +27,13 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RESOLVED_LIMIT = 20;
 const DECISIONS = ['change_needed', 'fine_as_is'];
 
-// Supabase pauses a free project after this long without activity.
-const PAUSE_AFTER_DAYS = 7;
-// How little margin is left before the header dot turns red. At 5 days idle
-// there are 2 days to act, which is what "about to pause" is worth warning
-// about — raise or lower this one number to change how early the warning fires.
-const PAUSE_WARN_AT_IDLE_DAYS = 5;
+// Cadence the two automated safety nets are expected to run on. The cloud
+// check is weekly; a run older than this plus a few days' grace means it
+// missed a cycle. The local check is monthly AND only fires when the site
+// owner's own machine happens to be on, so its normal gap is 4-7 weeks —
+// this threshold is set well past that, to flag only genuine abandonment.
+const CLOUD_WEEKLY_STALE_DAYS = 10;
+const LOCAL_VERIFY_STALE_DAYS = 70;
 
 function supabaseHeaders(extra) {
   return Object.assign({
@@ -83,66 +84,77 @@ async function probeSupabase() {
   }
 }
 
-// Newest write we can see across the app's own tables.
-//
-// This is a PROXY for Supabase's pause clock, not the clock itself: Supabase
-// counts any API request as activity, including plain page views, which leave
-// no trace in the data. So this can only say "nothing has been written here
-// for a while" — a good signal that the project is idle, but it will read
-// stale on a site that is being read and not written to. Erring toward warning
-// early is the right side to be wrong on; the cost of a false warning is a
-// glance at the dashboard, the cost of a missed one is a paused site.
-async function newestActivity() {
-  const probes = [
-    'Opportunities?select=created_at&order=created_at.desc.nullslast&limit=1',
-    'Opportunities?select=published_at&order=published_at.desc.nullslast&limit=1',
-    'Feedback?select=created_at&order=created_at.desc.nullslast&limit=1',
-    'data_review_flags?select=last_flagged_at&order=last_flagged_at.desc.nullslast&limit=1',
-  ];
+// Health of the two automated safety nets, read straight from task_runs.
+// task_runs.task_name = 'cloud_weekly' is upserted by the weekly cloud check
+// every run, whatever the outcome; 'local_verify' is upserted by the monthly
+// local browser check. This table is the intended source for this dot — it
+// used to be driven by a guess about database write recency instead, which
+// misread an ordinary quiet week (no new submissions, no flag decisions) as
+// "about to pause," even though the project was active and being served the
+// whole time.
+async function fetchTaskRuns() {
+  const r = await fetch(
+    SUPABASE_URL + 'task_runs?task_name=in.(cloud_weekly,local_verify)&select=task_name,last_run_at,status,note',
+    { headers: supabaseHeaders() }
+  );
+  if (!r.ok) return { cloudWeekly: null, localVerify: null };
+  const rows = await r.json().catch(() => null);
+  const byName = {};
+  (Array.isArray(rows) ? rows : []).forEach(row => { byName[row.task_name] = row; });
 
-  let newest = null;
-  await Promise.all(probes.map(async (path) => {
-    try {
-      const r = await fetch(SUPABASE_URL + path, { headers: supabaseHeaders() });
-      if (!r.ok) return;
-      const rows = await r.json();
-      if (!Array.isArray(rows) || !rows.length) return;
-      const value = Object.values(rows[0])[0];
-      if (!value) return;
-      const t = new Date(value).getTime();
-      if (isFinite(t) && (newest === null || t > newest)) newest = t;
-    } catch (_) { /* one missing table must not sink the whole probe */ }
-  }));
+  function normalize(row) {
+    if (!row) return null;
+    const t = new Date(row.last_run_at).getTime();
+    return {
+      status:    row.status,
+      note:      row.note,
+      lastRunAt: row.last_run_at,
+      ageDays:   isFinite(t) ? Math.floor((Date.now() - t) / 86400000) : null,
+    };
+  }
 
-  if (newest === null) return { lastActivityAt: null, idleDays: null };
-  return {
-    lastActivityAt: new Date(newest).toISOString(),
-    idleDays: Math.floor((Date.now() - newest) / 86400000),
-  };
+  return { cloudWeekly: normalize(byName.cloud_weekly), localVerify: normalize(byName.local_verify) };
 }
 
-// The single traffic light the admin header shows. Most urgent wins:
-//   red    — the project looks about to pause; act now or the site goes down
-//   yellow — flags are waiting on a human, or the project is already paused
-//   green  — nothing waiting and nothing to worry about
-function computeStatus(supabase, awaitingHuman, activity) {
-  if (supabase.state === 'active' && activity.idleDays !== null &&
-      activity.idleDays >= PAUSE_WARN_AT_IDLE_DAYS) {
-    return {
-      dot: 'red',
-      label: 'Supabase may pause soon',
-      detail: 'No database writes for ' + activity.idleDays + ' days. Free projects pause after ' +
-              PAUSE_AFTER_DAYS + ' days idle. Note this only counts writes — page views keep the ' +
-              'project awake without showing up here.',
-    };
-  }
+// The single traffic light the admin header and the Data review page both
+// show. Most urgent wins:
+//   red    — Supabase is unreachable right now, confirmed by a live probe.
+//            This is the state that actually starts the clock toward
+//            Supabase's real failure mode: a project left paused too long is
+//            DELETED, not just parked. This app has no way to know the exact
+//            day count — that lives in the weekly cloud check's own log —
+//            so the detail below points there rather than guessing a number.
+//   yellow — one of the automated safety nets looks unhealthy, or flags are
+//            waiting on a human decision.
+//   green  — nothing waiting, and both checks look healthy.
+function computeStatus(supabase, awaitingHuman, taskRuns) {
   if (supabase.state !== 'active') {
     return {
-      dot: 'yellow',
+      dot: 'red',
       label: supabase.state === 'paused' ? 'Supabase is paused' : 'Supabase is unreachable',
-      detail: supabase.detail || 'The review queue cannot load until the project is running again.',
+      detail: (supabase.detail ? supabase.detail + ' ' : '') +
+        'Restore it from the Supabase dashboard soon — a project left paused too long is deleted, ' +
+        'not just parked. Check the weekly cloud report for exactly how many days it has been down.',
     };
   }
+
+  const cw = taskRuns.cloudWeekly;
+  if (!cw) {
+    return {
+      dot: 'yellow',
+      label: 'Weekly check has never reported in',
+      detail: 'No record yet from the automated weekly Supabase check (task_runs has no cloud_weekly row).',
+    };
+  }
+  if (cw.status === 'failed' || (cw.ageDays !== null && cw.ageDays > CLOUD_WEEKLY_STALE_DAYS)) {
+    return {
+      dot: 'yellow',
+      label: cw.status === 'failed' ? 'Weekly check failed' : 'Weekly check is overdue',
+      detail: (cw.note || 'No note recorded.') +
+        ' (last ran ' + cw.ageDays + (cw.ageDays === 1 ? ' day' : ' days') + ' ago)',
+    };
+  }
+
   if (awaitingHuman > 0) {
     return {
       dot: 'yellow',
@@ -150,7 +162,22 @@ function computeStatus(supabase, awaitingHuman, activity) {
       detail: 'The weekly accuracy check raised these and is waiting on your decision.',
     };
   }
-  return { dot: 'green', label: 'All clear', detail: 'Nothing waiting on you, and the database is healthy.' };
+
+  const lv = taskRuns.localVerify;
+  if (lv && lv.ageDays !== null && lv.ageDays > LOCAL_VERIFY_STALE_DAYS) {
+    return {
+      dot: 'yellow',
+      label: 'Local browser check is overdue',
+      detail: 'Last ran ' + lv.ageDays + ' days ago. It only runs when your computer is on, so an ' +
+              'occasional multi-week gap is normal — this is well past that.',
+    };
+  }
+
+  return {
+    dot: 'green',
+    label: 'All clear',
+    detail: 'Nothing waiting on you, and both automated checks look healthy.',
+  };
 }
 
 module.exports = async function handler(req, res) {
@@ -194,7 +221,7 @@ async function handleReview(req, res) {
     const summaryOnly = req.query && (req.query.summary === '1' || req.query.summary === 'true');
 
     if (supabase.state !== 'active') {
-      const status = computeStatus(supabase, 0, { lastActivityAt: null, idleDays: null });
+      const status = computeStatus(supabase, 0, { cloudWeekly: null, localVerify: null });
       return res.status(200).json(summaryOnly
         ? { supabase, status, awaitingHuman: 0, awaitingRun: 0 }
         : { supabase, status, pending: [], decided: [], resolved: [] });
@@ -211,18 +238,18 @@ async function handleReview(req, res) {
         return isFinite(total) ? total : 0;
       }
 
-      const [awaitingHuman, awaitingRun, activity] = await Promise.all([
+      const [awaitingHuman, awaitingRun, taskRuns] = await Promise.all([
         countOf('status=eq.pending&human_decision=is.null'),
         countOf('status=eq.pending&human_decision=not.is.null'),
-        newestActivity(),
+        fetchTaskRuns(),
       ]);
 
       return res.status(200).json({
         supabase,
         awaitingHuman,
         awaitingRun,
-        activity,
-        status: computeStatus(supabase, awaitingHuman, activity),
+        taskRuns,
+        status: computeStatus(supabase, awaitingHuman, taskRuns),
       });
     }
 
@@ -276,11 +303,11 @@ async function handleReview(req, res) {
     const awaitingHuman = pending.filter(f => !f.human_decision);
     const awaitingRun   = pending.filter(f => !!f.human_decision);
 
-    const activity = await newestActivity();
+    const taskRuns = await fetchTaskRuns();
 
     return res.status(200).json({
-      status: computeStatus(supabase, awaitingHuman.length, activity),
-      activity,
+      status: computeStatus(supabase, awaitingHuman.length, taskRuns),
+      taskRuns,
       decided: awaitingRun.map(attach),
       supabase,
       pending:  awaitingHuman.map(attach),

@@ -42,6 +42,18 @@
     .page-head a:hover, .page-head button:hover { color: var(--body); }
     .subtitle { color: var(--muted); font-size: 0.9375rem; margin-bottom: 2rem; max-width: 62ch; }
 
+    /* The plain-language explanation of the admin header's dot. Colour comes
+       from the same --dot-green/yellow/red tokens the header dot uses, so the
+       two never disagree; size and layout are local to this box. */
+    .status-panel { display: flex; align-items: flex-start; gap: 0.65rem;
+      background: var(--bg-primary); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 0.9rem 1.1rem; margin-bottom: 1.75rem;
+      max-width: 62ch; }
+    .status-panel .status-dot { width: 10px; height: 10px; border-radius: 50%;
+      margin-top: 0.3rem; flex-shrink: 0; }
+    .status-panel-label { font-size: 0.9375rem; font-weight: 700; margin-bottom: 0.15rem; }
+    .status-panel-detail { font-size: 0.8125rem; color: var(--text-muted); line-height: 1.5; }
+
     /* Supabase reachability, checked server-side on each load */
     .supa-status { font-size: 0.75rem; color: var(--text-muted); display: inline-flex; align-items: center;
       gap: 0.35rem; border: 1px solid var(--border); background: var(--bg-primary);
@@ -143,6 +155,18 @@
   </div>
   <p class="subtitle">Flags raised by the weekly automated accuracy check. Your decision is recorded here; the next scheduled run applies the fix and resolves the flag.</p>
 
+  <!-- Always-visible explanation of the dot the admin header shows elsewhere.
+       That dot only ever had a hover tooltip, which is no help if you do not
+       know there is something to hover — this panel says the same thing in
+       plain text, in a place you are already looking. -->
+  <div id="status-panel" class="status-panel" hidden>
+    <span class="status-dot" id="status-panel-dot" aria-hidden="true"></span>
+    <div>
+      <p class="status-panel-label" id="status-panel-label"></p>
+      <p class="status-panel-detail" id="status-panel-detail"></p>
+    </div>
+  </div>
+
   <!-- Hidden from the start when a password is already stored: the load begins
        immediately in that case, and showing a password box you never have to
        touch — with a "Loading…" button beside it — reads as being asked to log
@@ -198,6 +222,18 @@
     const el = document.getElementById('login-msg');
     el.textContent = msg;
     el.style.color = type === 'error' ? '#111827' : '#6B7280';
+  }
+
+  // Plain-text version of the traffic light the admin header shows — same
+  // {dot, label, detail} object, just always visible instead of a tooltip
+  // only found by hovering something you'd have to already know about.
+  function renderStatusPanel(status) {
+    const panel = document.getElementById('status-panel');
+    if (!status) { panel.hidden = true; return; }
+    document.getElementById('status-panel-dot').className = 'status-dot is-' + status.dot;
+    document.getElementById('status-panel-label').textContent = status.label || '';
+    document.getElementById('status-panel-detail').textContent = status.detail || '';
+    panel.hidden = false;
   }
 
   // Reachability of the Supabase project, as reported by the server.
@@ -277,12 +313,13 @@
         throw new Error([e.error || 'HTTP ' + res.status, e.message, e.details].filter(Boolean).join(' — '));
       }
 
-      const { pending, decided, resolved, supabase } = await res.json();
+      const { pending, decided, resolved, supabase, status } = await res.json();
       sessionStorage.setItem('elpys_admin_pw', _password);
       loginPanel().style.display   = 'none';
       loadingPanel().style.display = 'none';
       document.getElementById('content').style.display = 'block';
       renderSupabaseStatus(supabase);
+      renderStatusPanel(status);
       if (supabase && supabase.state !== 'active') {
         // Nothing could be read, so show why rather than an empty queue that
         // looks like "no flags".

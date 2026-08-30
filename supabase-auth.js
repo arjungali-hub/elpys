@@ -106,7 +106,11 @@ function showModal(opts) {
         .then(function (d) {
           if (!d || !d.status) return;
           reviewDot.className = 'status-dot is-' + d.status.dot;
-          var text = d.status.label + (d.status.detail ? ' — ' + d.status.detail : '');
+          // A tooltip is easy to miss if you don't already know there's
+          // something to hover — this page's own Data review link says the
+          // same thing in a panel that's always visible, not just on hover.
+          var text = d.status.label + (d.status.detail ? ' — ' + d.status.detail : '') +
+            ' (see Data review for details)';
           reviewLink.title = text;
           // Colour alone is not a signal for everyone, so the state is also
           // readable text for a screen reader.
