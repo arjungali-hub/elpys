@@ -7,6 +7,39 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-08-30 — The Data review dot now reads real task_runs health, not a guess
+
+- Arjun asked what the red dot meant. The honest answer was that it did not
+  mean anything real: red fired on "no database write in 5+ days," a proxy for
+  Supabase pausing that cannot see reads, so an ordinary quiet week read as an
+  imminent pause while the project was ACTIVE_HEALTHY the whole time.
+- The fix is not a threshold tweak. task_runs (cloud_weekly / local_verify) was
+  already being upserted by both automated safety nets every run - the cloud
+  check's own prompt says outright "this is how the admin Data review page
+  colours its traffic light" - and nothing ever read it. Wired that up for
+  real; deleted the write-recency proxy rather than adjusting it.
+- Red is now reserved for Supabase being unreachable RIGHT NOW, confirmed by a
+  live probe - the state that actually starts the real failure mode (a project
+  paused too long is deleted, not just parked). This app has no way to know
+  the exact day count toward that - it lives in the weekly check's own log -
+  so the detail text says where to look rather than inventing a number.
+- Live right now: there is no cloud_weekly row in task_runs at all, so the
+  correct state is yellow "Weekly check has never reported in" - a real
+  finding, not a guess. Worth Arjun's attention: the cloud task's own
+  contract says to write that row on every run, success or failure, and it
+  apparently never has.
+- review.html previously never showed this status object at all - only a
+  header tooltip on OTHER pages did, which is no help if you don't know
+  there's something to hover. It now renders in an always-visible panel on
+  the page itself.
+- Found and left alone: a concurrent reorganization of the working tree
+  (_work/, an updated .gitignore, an untracked organize-elpys.ps1) was already
+  in progress when this started - _work/README.md changed while it was being
+  read. Confirmed docs/dev-log.md stays tracked regardless of that .gitignore
+  change (already-tracked files are unaffected by a later ignore rule), then
+  left every one of those files uncommitted rather than touch something another
+  session was actively mid-edit on.
+
 ## 2026-08-27 — Corrected loading skeletons, and one that was never visible
 
 - Second pass on the designed loading states, from an updated
