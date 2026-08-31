@@ -68,6 +68,7 @@
     .hp-field { position: absolute; left: -9999px; top: -9999px; }
     .consent-note { font-size: 0.8125rem; line-height: 1.55; color: var(--muted); margin: 0.25rem 0 0; }
     .consent-note a { color: var(--body); text-decoration: underline; }
+    .org-concern-notice { background: var(--off); border: 1px solid var(--border); border-left: 3px solid var(--body); border-radius: var(--radius); padding: 0.85rem 1rem; font-size: 0.875rem; line-height: 1.55; color: var(--body); margin-bottom: 0.35rem; }
   </style>
   <script src="analytics.js"></script>
 </head>
@@ -96,6 +97,13 @@
     <form class="feedback-form" id="feedback-form" novalidate>
 
       <div class="field">
+        <div id="org-concern-notice" class="org-concern-notice" hidden>
+          <strong>Reporting a concern about an organization.</strong>
+          Thank you for telling us. We take a listing down first and ask questions
+          afterwards, so you don't need to be certain before sending this. If you are
+          in immediate danger, call 911 — this form is not monitored around the clock.
+        </div>
+
         <label for="f-message">What did you find? <span aria-hidden="true">*</span></label>
         <span class="hint">Describe the issue or share your suggestion.</span>
         <textarea id="f-message" name="message" required placeholder="e.g. The sign-up steps aren't showing on the FamilyWorks detail page."></textarea>
@@ -134,6 +142,7 @@
       <p>Listings are checked regularly for accuracy, but links and details can change — always confirm with the org before your first visit. Something look wrong? <a href="/feedback">Let us know</a>.</p>
       <nav class="footer-links">
         <a href="/about">About</a>
+        <a href="/how-we-check">How we check</a>
         <a href="/privacy">Privacy Policy</a>
         <a href="/terms">Terms of Service</a>
       </nav>
@@ -144,8 +153,24 @@
 <script src="loading.js"></script>
 <script>
   // Pre-fill page field from ?from= param (set by beta banner link)
-  const fromParam = new URLSearchParams(location.search).get('from');
+  const params    = new URLSearchParams(location.search);
+  const fromParam = params.get('from');
   if (fromParam) document.getElementById('f-page').value = fromParam;
+
+  // A concern about an organization is not the same report as a broken link, and
+  // it should not arrive looking like one. Detail pages link here with
+  // ?concern=org; that surfaces a notice and seeds the message so the report is
+  // identifiable at a glance in the admin panel without a schema change.
+  if (params.get('concern') === 'org') {
+    const notice = document.getElementById('org-concern-notice');
+    if (notice) notice.hidden = false;
+    const msg = document.getElementById('f-message');
+    if (msg && !msg.value) {
+      msg.value = 'Concern about the organization: ';
+      msg.focus();
+      msg.setSelectionRange(msg.value.length, msg.value.length);
+    }
+  }
 
   const form   = document.getElementById('feedback-form');
   const btn    = document.getElementById('submit-btn');

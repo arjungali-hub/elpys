@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How we check organizations — Elpys</title>
+  <!-- noindex: remove this tag when ready to launch publicly -->
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="logos/elpys-favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&display=swap" rel="stylesheet">
+  <style>
+    .about-section { padding: 3rem 0 4rem; }
+    .about-section h1 { font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+    .about-section .page-intro { font-size: 0.9375rem; color: #444; line-height: 1.6; max-width: 62ch; margin-bottom: 2.5rem; }
+    .about-body { max-width: 62ch; display: flex; flex-direction: column; gap: 1.5rem; }
+    .about-body h2 { font-size: 1.0625rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 0.5rem; }
+    .about-body p { font-size: 0.9375rem; line-height: 1.65; color: var(--body); }
+    /* The flex gap only separates the section blocks; this spaces paragraphs
+       that follow another paragraph or a list inside one. */
+    .about-body > div > * + p { margin-top: 0.75rem; }
+    .about-body ul { margin: 0.25rem 0 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.4rem; }
+    .about-body li { font-size: 0.9375rem; line-height: 1.55; color: var(--body); }
+    .about-cta { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .hwc-callout { background: var(--off); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem 1.35rem; }
+    .hwc-callout h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.5rem; }
+    .hwc-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.875rem; }
+    .hwc-table th, .hwc-table td { text-align: left; padding: 0.55rem 0.75rem 0.55rem 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .hwc-table th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
+    .hwc-table code { font-size: 0.8125rem; }
+    @media (max-width: 620px) {
+      .hwc-table tr:first-child { display: none; }
+      .hwc-table, .hwc-table tbody, .hwc-table tr, .hwc-table td { display: block; width: 100%; }
+      .hwc-table tr { padding: 0.85rem 0; border-bottom: 1px solid var(--border); }
+      .hwc-table td { border: none; padding: 0.1rem 0; }
+    }
+  </style>
+  <script src="analytics.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <a href="/" class="site-name"><svg class="site-name-sparkles" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 129" aria-hidden="true"><g fill="#d9662f"><path d="M11 21 C11 27.3 11 27.3 17.3 30 C11 32.7 11 32.7 11 39 C11 32.7 11 32.7 4.7 30 C11 27.3 11 27.3 11 21 Z"/><path d="M189 17 C189 23.3 189 23.3 195.3 26 C189 28.7 189 28.7 189 35 C189 28.7 189 28.7 182.7 26 C189 23.3 189 23.3 189 17 Z"/></g><g fill="#e8935f"><path d="M8 73.8 C8 78.1 8 78.1 12.3 80 C8 81.9 8 81.9 8 86.2 C8 81.9 8 81.9 3.7 80 C8 78.1 8 78.1 8 73.8 Z"/><path d="M192 69.8 C192 74.1 192 74.1 196.3 76 C192 77.9 192 77.9 192 82.2 C192 77.9 192 77.9 187.7 76 C192 74.1 192 74.1 192 69.8 Z"/><path d="M70 111.8 C70 116.1 70 116.1 74.3 118 C70 119.9 70 119.9 70 124.2 C70 119.9 70 119.9 65.7 118 C70 116.1 70 116.1 70 111.8 Z"/><path d="M133 112.8 C133 117.1 133 117.1 137.3 119 C133 120.9 133 120.9 133 125.2 C133 120.9 133 120.9 128.7 119 C133 117.1 133 117.1 133 112.8 Z"/></g></svg>e<span class="site-name-l">l<svg class="site-name-flame" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 34" aria-hidden="true"><path d="M15 34 C9 30 7.5 23 10 17 C11.2 20.5 13.5 20.5 13.5 17 C15.5 20.5 19 23 16.5 28 C20 25.5 21 19.5 17.5 13.5 C22 17 23.5 24 20 30 C18 32.5 16 34 15 34 Z" fill="#d9662f"/><path d="M15 30 C12 28 11 24.5 12.4 21.5 C13 23.3 14.2 23.3 14.2 21.5 C15.2 23.3 17 24.5 15.6 27 C17.4 25.7 18 22.5 16.2 19.5 C18.5 21.3 19.2 25 17.4 28 C16.4 29.3 15.5 30 15 30 Z" fill="#f2a03d"/></svg><svg class="site-name-torch-base" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 12" aria-hidden="true"><path d="M3 0 L17 0 L14.5 6 L5.5 6 Z" fill="#2b2420"/><rect x="4.5" y="6" width="11" height="3.2" rx="1.6" fill="#2b2420"/></svg></span>pys</a>
+      <span class="beta-badge">Beta</span>
+      <a href="/submit" class="header-submit-link">Submit an opportunity</a>
+      <a href="/login" id="header-auth-link" class="header-auth-link">Log in</a>
+      <a href="/signup" id="header-signup-link" class="header-signup-btn">Sign up</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="about-section">
+    <a href="/" class="back-link">← Back to all opportunities</a>
+    <h1>How we check organizations</h1>
+    <p class="page-intro">Every listing on Elpys goes through the same check before it goes live. Here is exactly what that check is — and, just as importantly, what it isn't.</p>
+
+    <div class="about-body">
+
+      <div class="hwc-callout">
+        <h2>The honest part first</h2>
+        <p>Elpys cannot tell you an organization is <em>safe</em>. No directory can, and any site that says otherwise is overpromising. What we can do is make sure every organization here is real, registered, and answerable to somebody other than itself — and then be straight with you about everything that check doesn't cover.</p>
+      </div>
+
+      <div>
+        <h2>1. Every organization is one of two kinds</h2>
+        <p>Before anything else, an organization has to fit one of these. If it fits neither, it isn't listed — no matter how good the opportunity sounds.</p>
+        <table class="hwc-table">
+          <tr>
+            <th>Kind</th><th>What that means</th><th>How we confirm it</th>
+          </tr>
+          <tr>
+            <td><strong>Government or public body</strong></td>
+            <td>A city, county or state department, a school district, a public library. Most of what's on Elpys right now.</td>
+            <td>It's on an official <code>.gov</code> or district website, and the program is described there.</td>
+          </tr>
+          <tr>
+            <td><strong>Registered charity</strong></td>
+            <td>A nonprofit that has registered with both the federal government and Washington State, and files public financial reports.</td>
+            <td>Four public records, all listed below. All four have to check out.</td>
+          </tr>
+          <tr>
+            <td><strong>Anything else</strong></td>
+            <td>A group with no registration, a brand-new organization, an individual person.</td>
+            <td>Not listed. There's no third category and no exceptions.</td>
+          </tr>
+        </table>
+      </div>
+
+      <div>
+        <h2>2. What we check for a charity</h2>
+        <p>All four of these, every time, from public records anyone can look up:</p>
+        <ul>
+          <li><strong>The IRS.</strong> They're a current 501(c)(3) in the IRS's own database, and they haven't had that status automatically revoked for failing to file.</li>
+          <li><strong>Washington Secretary of State.</strong> They're registered with the state's Charities Program and their registration is <em>active</em>, not lapsed or delinquent.</li>
+          <li><strong>Their public financials.</strong> They've filed at least one Form 990 — the annual report nonprofits have to make public.</li>
+          <li><strong>Their actual footprint.</strong> A website that's been around for years, at an address that matches what's on their state registration.</li>
+        </ul>
+        <p>Any one of those failing means no listing. It takes about five minutes per organization, and it is the single most useful thing we do.</p>
+      </div>
+
+      <div>
+        <h2>3. Things we never list, however good they look</h2>
+        <ul>
+          <li>An individual person instead of an organization.</li>
+          <li>Anything happening at somebody's home.</li>
+          <li>Anything where you'd be one-on-one with an adult rather than part of a group.</li>
+          <li>Anything where the only way to reach them is a personal Gmail address or a mobile number.</li>
+          <li>Anything where the sign-up link doesn't live on the organization's own website.</li>
+        </ul>
+        <p>These are rules, not judgment calls. That's deliberate — a rule holds up on a tired Sunday evening in a way that "does this feel okay?" doesn't.</p>
+      </div>
+
+      <div>
+        <h2>4. We never trust a link we were sent</h2>
+        <p>Anyone can submit an opportunity, and the likelier way to misuse that isn't inventing a fake charity — it's pretending to be a real one. "New teen program at [real, well-known organization], sign up here."</p>
+        <p>So when something is submitted, we ignore the links in it. We find the organization's real website ourselves, navigate to their volunteer page from their own homepage, and use that. If we can't get to the sign-up page that way, it doesn't get listed. For anything new, we also confirm the opportunity using the phone number or email published on their site — not the one in the submission.</p>
+      </div>
+
+      <div>
+        <h2>5. We re-check every week</h2>
+        <p>Organizations change, and so do the records about them. An automated check runs weekly against every listing and flags anything that's moved: an IRS status that's lapsed, a state registration that's gone delinquent, or — the sneaky one — a sign-up link that's started pointing at a different website than it used to. Anything it flags gets looked at by a person.</p>
+      </div>
+
+      <div>
+        <h2>6. What none of this tells you</h2>
+        <p>Being clear about the limits is part of the job:</p>
+        <ul>
+          <li><strong>We haven't been there.</strong> No one from Elpys has visited these places or met the people who run them.</li>
+          <li><strong>We don't run background checks</strong> on anyone, and we're not in a position to confirm whether an organization runs them on its own staff. Good youth programs usually do — it's a fair thing to ask them directly.</li>
+          <li><strong>A listing isn't a recommendation.</strong> It means the organization cleared the checks on this page. It isn't us vouching for them.</li>
+          <li><strong>Details go out of date.</strong> Programs change without telling us, which is why every page on this site says to confirm with the organization before your first visit.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2>7. Before your first visit</h2>
+        <p>Four things, every time — they take about five minutes and they matter more than anything on the rest of this page:</p>
+        <ul>
+          <li><strong>Confirm the details with the organization.</strong> Times, ages and requirements change.</li>
+          <li><strong>Tell a parent, guardian or another adult you trust</strong> where you're going and when you'll be back.</li>
+          <li><strong>Read their rules</strong> — waivers, age minimums, orientation. Theirs override anything a listing says.</li>
+          <li><strong>If something feels off when you get there, leave</strong>, and tell an adult you trust. You never owe anyone an explanation for going home. In an emergency, call 911.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2>8. If something's wrong, tell us</h2>
+        <p>A broken link, an out-of-date detail, or something that felt off about an organization — all of it is worth sending. Reports about an organization itself get treated differently from a typo: we take the listing down first and ask questions afterwards. Nobody has to be sure before they say something.</p>
+        <div class="about-cta">
+          <a href="/feedback" class="btn">Report a problem →</a>
+          <a href="/about" class="btn btn-ghost">About Elpys →</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <p>Listings are checked regularly for accuracy, but links and details can change — always confirm with the org before your first visit. Something look wrong? <a href="/feedback">Let us know</a>.</p>
+      <nav class="footer-links">
+        <a href="/about">About</a>
+        <a href="/how-we-check">How we check</a>
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/terms">Terms of Service</a>
+      </nav>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
+<script src="supabase-auth.js"></script>
+<script src="beta-banner.js"></script>
+
+</body>
+</html>

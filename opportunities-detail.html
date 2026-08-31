@@ -44,6 +44,7 @@
       <p>Listings are checked regularly for accuracy, but links and details can change — always confirm with the org before your first visit. Something look wrong? <a href="/feedback">Let us know</a>.</p>
       <nav class="footer-links">
         <a href="/about">About</a>
+        <a href="/how-we-check">How we check</a>
         <a href="/privacy">Privacy Policy</a>
         <a href="/terms">Terms of Service</a>
       </nav>
@@ -188,12 +189,42 @@
         '</div>' +
       '</div>' +
       contactHtml +
-      orgContactHtml;
+      orgContactHtml +
+      safetyHtml(opp);
 
     section.appendChild(content);
 
     renderSingleMiniMap('mini-map', slug, '/map');
   })();
+
+  // The first-visit checklist used to live only in the terms, which is the one
+  // place nobody reads before going somewhere. It belongs on the page a teen is
+  // actually looking at when they decide to go.
+  function safetyHtml(opp) {
+    const from = encodeURIComponent(location.pathname + location.search);
+    return '' +
+      '<div class="detail-safety">' +
+        '<p class="detail-safety-title">Before your first visit</p>' +
+        '<ul class="detail-safety-list">' +
+          '<li>Confirm the details directly with ' + esc(opp.name) + ' — times, ages and requirements change without reaching us.</li>' +
+          '<li>Tell a parent, guardian or another adult you trust where you are going and when you will be back.</li>' +
+          '<li>Read their own rules, waivers and age minimums. Theirs override anything on this page.</li>' +
+          '<li>If something feels off when you get there, leave and tell an adult you trust. In an emergency, call 911.</li>' +
+        '</ul>' +
+        '<p class="detail-safety-foot">' +
+          // Deliberately a statement about the listing standard, not a per-listing
+          // claim: the 17 rows that predate the org-verification check have no
+          // verified_at yet, and asserting "we checked this one" over a row that
+          // has not been through it is the exact overclaiming the terms disclaim.
+          // Once the backfill is done, swap this for the row's own verified date.
+          'Elpys only lists government bodies and registered charities, and checks each listing against the organization&#39;s own page. ' +
+          '<a href="/how-we-check">What we check, and what we don\'t →</a>' +
+        '</p>' +
+        '<p class="detail-safety-foot">' +
+          '<a href="/feedback?concern=org&amp;from=' + from + '">Report a concern about this organization →</a>' +
+        '</p>' +
+      '</div>';
+  }
 
   function esc(str) {
     return String(str || '')

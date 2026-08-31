@@ -908,6 +908,42 @@ footer a {
   display: flex;
   flex-direction: column;
 }
+/* Before-your-first-visit block on a listing's detail page. Sits below the
+   contact details, deliberately quiet — it is reference, not an alarm. */
+.detail-safety {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  max-width: 62ch;
+}
+.detail-safety-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--subtle);
+  margin-bottom: 0.6rem;
+}
+.detail-safety-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.detail-safety-list li {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--body);
+}
+.detail-safety-foot {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--muted);
+  margin-top: 0.9rem;
+}
+.detail-safety-foot a { color: var(--body); }
+
 .detail-box {
   border: 1px solid var(--border);
   border-radius: var(--radius);
