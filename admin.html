@@ -773,7 +773,7 @@
     { key: 'irs_not_revoked', label: 'Exempt status has not been automatically revoked for failing to file',
       lookup: 'https://apps.irs.gov/app/eos/', lookupLabel: 'IRS search ↗' },
     { key: 'wa_charity_active', label: 'Registered with WA Secretary of State’s Charities Program, and active',
-      lookup: 'https://ccfs.sos.wa.gov/#/AdvancedSearch/Charity', lookupLabel: 'WA Charities search ↗' },
+      lookup: 'https://ccfs.sos.wa.gov/', lookupLabel: 'WA Charities search ↗' },
     { key: 'form_990_on_file', label: 'Has filed at least one Form 990',
       lookup: 'https://projects.propublica.org/nonprofits/', lookupLabel: 'ProPublica search ↗' },
   ];
@@ -781,10 +781,9 @@
     label: 'Program is described on the body’s own official .gov (or district) site', lookup: null };
   const EXCLUSIONS_CHECK_KEY = 'exclusions_confirmed';
   const EXCLUSIONS_TEXT =
-    'None of these apply: an individual person instead of an organization, anything happening at ' +
-    'somebody’s home, anything one-on-one with an adult rather than part of a group, an organization ' +
-    'reachable only by a personal Gmail address or mobile number, or a sign-up link that doesn’t live ' +
-    'on the organization’s own website.';
+    'Not an individual; not at a private residence; not one-on-one with an adult; contact is an ' +
+    'organizational or .gov address, not a personal one; the sign-up link was reached by navigating ' +
+    'from the organization’s own homepage rather than trusted from the submission.';
 
   function isCleanDomainClient(d) {
     d = String(d || '').trim();
