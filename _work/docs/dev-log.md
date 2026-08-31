@@ -7,6 +7,33 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-08-31 — Repo tidy-up, and the organization-verification public pages
+
+- Ran the prepared reorganization: everything that is not the website moved
+  under _work/ (already gitignored) - patches, the opportunity-scout skill
+  archive, the loading-states design source, and the notes/status/log
+  folders that used to sit untracked-but-not-ignored at the repo root. That
+  last state is exactly how a skill archive reached the live site once
+  (568bb20); this closes it by construction.
+- docs/dev-log.md moved to _work/docs/dev-log.md via git mv, since it was
+  already tracked. History follows the rename; it stays committed and pushed
+  exactly as before, this file included. Verified before running anything:
+  the other five items were untracked, this one was not, and the prompt that
+  drove this assumed all six were - checking rather than trusting that
+  assumption is what caught it.
+- Applied _work/patches/elpys-org-verification.patch: how-we-check.html (the
+  public statement of the two-tier org check, and section 6 - what it does
+  not cover - which matters more than the parts that sound reassuring), a
+  "Before your first visit" safety block on the detail page, and a
+  ?concern=org path through feedback.html that shows a take-down-first
+  notice and seeds the message so an organization concern is distinguishable
+  from a typo report without a schema change.
+- One test result worth recording so it is not re-litigated: every page
+  failed a local "no console errors" check on /lantern/static/array.js
+  404ing. That is not a defect in this patch - it is today's PostHog proxy
+  change, and my local static-file test server does not simulate Vercel's
+  rewrite. Confirmed clean against the real deployed site with a real user
+  agent before trusting that explanation.
 ## 2026-08-31 — PostHog routed through a same-origin reverse proxy
 
 - `/lantern/*` now rewrites to PostHog's US endpoints in vercel.json, and
