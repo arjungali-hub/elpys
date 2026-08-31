@@ -31,3 +31,20 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.swp
+
+# Everything that is not the website. This folder is served from the repository
+# root, so anything committed here becomes a public URL — which is how a skill
+# archive ended up on the live site once (fixed in 568bb20). Keeping the whole
+# working tree of prompts, patches, design sources, notes and logs under one
+# ignored folder closes that off by construction rather than by remembering.
+#
+# Before this existed, .playwright-mcp/, docs/, claude/ and the design sources
+# were all untracked but NOT ignored — one `git add -A` away from being live.
+_work/
+
+# The old locations, kept so that anything a tool recreates at the original path
+# still never reaches the site. The scheduled data-check tasks in particular may
+# write claude/ again on their own.
+.playwright-mcp/
+claude/
+docs/
