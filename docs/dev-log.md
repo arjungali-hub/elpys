@@ -7,6 +7,24 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-08-31 — PostHog routed through a same-origin reverse proxy
+
+- `/lantern/*` now rewrites to PostHog's US endpoints in vercel.json, and
+  analytics.js points `api_host` at that relative path instead of
+  us.i.posthog.com directly. Ad blockers keep domain blocklists that catch
+  known analytics hosts; routing through the site's own origin avoids that
+  class of undercounting. `ui_host` stays pointed at the real posthog.com so
+  toolbar/dashboard links still resolve correctly.
+- The PostHog domains came out of the CSP entirely (script-src and
+  connect-src) - traffic is same-origin now, covered by 'self'. If the proxy
+  is ever removed, those entries need to come back; the code comment says so.
+- privacy.html needed no change - it already describes PostHog as the data
+  processor, never the transport domain, so nothing there became inaccurate.
+- Verified against the live site with a real user agent (not headless
+  Chrome's default - PostHog silently drops that): all four /lantern
+  requests (loader, config, and both event endpoints) returned 200, and an
+  explicitly captured event came back from PostHog with a real event UUID.
+
 ## 2026-08-30 — The Data review dot now reads real task_runs health, not a guess
 
 - Arjun asked what the red dot meant. The honest answer was that it did not
