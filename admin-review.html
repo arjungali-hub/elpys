@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Review — Elpys Admin</title>
+  <link rel="icon" type="image/svg+xml" href="logos/elpys-favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&display=swap" rel="stylesheet">
+  <!-- Leaflet, for the location preview on a pending row -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <style>
+    /* Layered on styles.css, same token remap as admin.html — these two pages
+       are meant to look like one tool split across two screens. */
+    :root {
+      --bg-primary:    var(--white);
+      --bg-secondary:  var(--off);
+      --bg-surface:    var(--surface);
+      --border-strong: #D1D5DB;
+      --text-main:     var(--body);
+      --text-muted:    var(--muted);
+      --text-subtle:   var(--subtle);
+    }
+    body { padding-bottom: 4rem; }
+    .page-head { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap;
+                 padding-top: 2.25rem; margin-bottom: 0.2rem; }
+    .page-title { display: flex; align-items: baseline; gap: 0.85rem;
+                  font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+                  font-size: 1.5rem; font-weight: 700; letter-spacing: 0;
+                  color: #2b2420; line-height: 1; }
+    .page-title .site-name { font-size: 1em; }
+    .page-head a, .page-head button { font-size: 0.875rem; color: var(--muted); text-decoration: none;
+                  background: none; border: none; padding: 0; font-family: inherit; cursor: pointer; }
+    .page-head a:hover, .page-head button:hover { color: var(--body); }
+    .subtitle { color: var(--muted); font-size: 0.9375rem; margin-bottom: 2rem; max-width: 62ch; }
+
+    .msg { font-size: 0.875rem; margin-top: 0.75rem; padding: 0.7rem 0.9rem; background: var(--bg-primary); border: 1px solid var(--border); border-left: 3px solid var(--text-main); border-radius: var(--radius); display: none; font-weight: 600; }
+    .msg.error { display: block; }
+    .empty-state { color: var(--text-muted); font-size: 0.9375rem; padding: 1.5rem 0; }
+
+    /* Cards — hairline first, lift on hover, like .card on the public site,
+       rather than carrying a shadow all the time. */
+    .submission-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; max-width: 860px; }
+    .sub-name { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.15rem; }
+    /* Hairline-delimited spec list, not a filled panel — a grey box inside an
+       already-bordered card reads as a card within a card. */
+    .sub-meta { font-size: 0.8125rem; color: var(--muted); margin-bottom: 1.125rem;
+                display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 0.35rem 1.25rem; padding: 0.75rem 0;
+                border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .sub-desc { font-size: 0.9375rem; color: #374151; margin-bottom: 0.75rem; line-height: 1.55; }
+    .sub-steps { font-size: 0.875rem; color: #374151; padding-left: 1.1rem; margin-bottom: 0.75rem; }
+    .sub-steps li { margin-bottom: 0.2rem; }
+    .sub-note { font-size: 0.875rem; color: var(--text-muted); font-style: italic; margin-bottom: 0.75rem; }
+    .sub-links { font-size: 0.875rem; margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; align-items: center; }
+    .sub-links a { color: var(--text-main); text-decoration: underline; }
+
+    /* Pending approve fields */
+    .approve-fields { border-top: 1px solid var(--border); padding: 1rem 0 0.25rem; margin-bottom: 0.85rem; }
+    .approve-fields > p { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .approve-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
+
+    /* Location preview — confirm the geocoded pin before publishing */
+    .approve-map { height: 220px; border: 1px solid var(--border); border-radius: var(--radius);
+                   margin-top: 0.85rem; isolation: isolate; }
+    /* Overrides the uppercase label styling that .approve-fields > p applies —
+       that treatment is meant for the section label, not for sentence copy. */
+    .approve-fields > p.approve-map-hint {
+      font-size: 0.75rem; color: var(--text-muted); margin: 0.4rem 0 0;
+      text-transform: none; letter-spacing: normal; font-weight: 400;
+    }
+    /* Shown when the geocoder couldn't place the address. Monochrome like the
+       rest of the panel — the weight and the left rule carry the emphasis. */
+    .geocode-warning { font-size: 0.8125rem; font-weight: 600; color: var(--text-main);
+                       background: var(--bg-secondary); border: 1px solid var(--border);
+                       border-left: 3px solid var(--text-main); border-radius: var(--radius);
+                       padding: 0.55rem 0.75rem; margin-top: 0.85rem; }
+    .geocode-warning span { font-weight: 400; color: var(--text-muted); display: block; margin-top: 0.15rem; }
+    .approve-field { display: flex; flex-direction: column; gap: 0.25rem; }
+    .approve-field label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+    .approve-field input { font-family: inherit; font-size: 0.875rem; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.45rem 0.65rem; background: var(--bg-primary); width: 180px; }
+    .approve-field input.short { width: 110px; }
+    .approve-field input:focus { outline: 2px solid var(--text-main); outline-offset: 2px; }
+
+    /* Inline edit form */
+    .edit-form { display: none; background: var(--off); border: 1px solid var(--border);
+                 border-radius: var(--radius); padding: 1.25rem; margin-bottom: 0.85rem; }
+    .edit-form.open { display: block; }
+    .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem 1.1rem; }
+    @media (max-width: 560px) { .edit-grid { grid-template-columns: 1fr; } }
+    .edit-field { display: flex; flex-direction: column; gap: 0.25rem; }
+    .edit-field.full { grid-column: 1 / -1; }
+    .edit-field label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+    /* Category picker — same four options as the public submit form, so a
+       typo or stray capital can no longer create a one-off category. */
+    .cat-group { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; padding: 0.15rem 0; }
+    .cat-check { display: flex; align-items: center; gap: 0.35rem; font-size: 0.875rem;
+                 font-weight: 400; color: var(--text-main); cursor: pointer; text-transform: none; }
+    .cat-check input { width: auto; }
+    .cat-other { margin-top: 0.35rem; }
+    /* Weekly schedule grid — mirrors the picker on the submit form */
+    .sched-grid { display: grid; grid-template-columns: 2.6rem 1fr 1fr 1fr; gap: 3px; margin-top: 0.3rem; }
+    .sched-head { font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+                  color: var(--text-subtle); text-align: center; padding-bottom: 0.15rem; }
+    .sched-day { font-size: 0.6875rem; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; }
+    .avail-cell { height: 26px; padding: 0; background: var(--bg-surface); border: 1px solid var(--border);
+                  border-radius: 4px; cursor: pointer; transition: background 0.1s, border-color 0.1s; }
+    .avail-cell:hover { border-color: var(--border-strong); }
+    .avail-cell.active { background: var(--text-main); border-color: var(--text-main); }
+    .edit-field input, .edit-field textarea, .edit-field select {
+      font-family: inherit; font-size: 0.875rem; border: 1px solid var(--border-strong);
+      border-radius: var(--radius); padding: 0.5rem 0.7rem; background: var(--bg-primary); color: var(--text-main);
+    }
+    .edit-field input:focus, .edit-field textarea:focus, .edit-field select:focus { outline: 2px solid var(--text-main); outline-offset: 2px; }
+    .edit-field textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+    .edit-actions { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.9rem; }
+
+    /* Organization verification — the gate a pending listing can't be
+       approved without, and the same fields shown read/write on a published
+       row so old research can be backfilled into it. */
+    .verify-block { border: 1px solid var(--border-strong); border-radius: var(--radius);
+                     background: var(--bg-secondary); padding: 1rem 1.1rem; margin-top: 0.4rem; }
+    .verify-title { font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+                     text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.6rem; }
+    .verify-existing { font-size: 0.8125rem; color: var(--text-muted); margin: -0.3rem 0 0.7rem; }
+    .verify-legacy { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.7rem; }
+    .verify-legacy summary { cursor: pointer; font-weight: 600; }
+    .verify-legacy pre { white-space: pre-wrap; word-break: break-word; background: var(--bg-primary);
+                          border: 1px solid var(--border); border-radius: var(--radius);
+                          padding: 0.6rem 0.75rem; margin-top: 0.4rem; max-height: 220px; overflow-y: auto; }
+    .verify-tier { display: flex; gap: 1.2rem; margin-bottom: 0.75rem; font-size: 0.875rem; }
+    .verify-tier label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+    .verify-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem 1rem; margin-bottom: 0.75rem; }
+    @media (max-width: 560px) { .verify-grid { grid-template-columns: 1fr; } }
+    .verify-field { display: flex; flex-direction: column; gap: 0.25rem; }
+    .verify-field label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+    .verify-field input { font-family: inherit; font-size: 0.875rem; border: 1px solid var(--border-strong);
+                           border-radius: var(--radius); padding: 0.45rem 0.65rem; background: var(--bg-primary); }
+    .verify-check { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; font-size: 0.8125rem;
+                     padding: 0.5rem 0; border-top: 1px solid var(--border); }
+    .verify-check-label { display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; flex: 1 1 260px; }
+    .verify-check-label input { margin-top: 0.15rem; }
+    .verify-lookup { color: var(--text-muted); text-decoration: underline; white-space: nowrap; font-size: 0.75rem; }
+    .verify-source { font-family: inherit; font-size: 0.8125rem; border: 1px solid var(--border-strong);
+                      border-radius: var(--radius); padding: 0.35rem 0.55rem; background: var(--bg-primary);
+                      flex: 1 1 220px; min-width: 0; }
+    .verify-exclusions { border-top: 2px solid var(--border-strong); margin-top: 0.4rem; padding-top: 0.75rem; }
+    .verify-exclusions .verify-check-label { font-size: 0.8125rem; color: var(--text-muted); }
+    .verify-status { font-size: 0.8125rem; font-weight: 600; margin: 0.7rem 0 0; }
+    .verify-missing-badge { color: #92400e; font-weight: 700; }
+
+    /* Action buttons — solid black for primary, ghost outline for secondary/destructive.
+       Destructive actions are distinguished by weight, not color. */
+    .sub-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; margin-top: 1rem; }
+    .sub-actions button, .edit-actions button {
+      font-family: inherit; font-size: 0.875rem; border-radius: var(--radius);
+      padding: 0.5rem 1rem; cursor: pointer; transition: background-color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+    }
+    .sub-actions button:disabled, .edit-actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-approve, .btn-save {
+      font-weight: 600; color: #fff; background: var(--text-main); border: 1px solid var(--text-main);
+    }
+    .btn-approve:hover, .btn-save:hover { opacity: 0.85; }
+
+    .btn-edit, .btn-unpublish, .btn-cancel {
+      font-weight: 500; color: var(--text-main); background: var(--bg-primary); border: 1px solid var(--border-strong);
+    }
+    .btn-edit:hover, .btn-unpublish:hover, .btn-cancel:hover { background: var(--bg-surface); }
+
+    .btn-reject, .btn-delete {
+      font-weight: 700; color: var(--text-main); background: var(--bg-primary); border: 1px solid var(--text-main);
+    }
+    .btn-reject:hover, .btn-delete:hover { background: var(--text-main); color: #fff; }
+
+    .sub-action-msg { font-size: 0.8125rem; color: var(--text-muted); font-weight: 600; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="page-head">
+  <h1 class="page-title"><span class="site-name"><svg class="site-name-sparkles" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 129" aria-hidden="true"><g fill="#d9662f"><path d="M11 21 C11 27.3 11 27.3 17.3 30 C11 32.7 11 32.7 11 39 C11 32.7 11 32.7 4.7 30 C11 27.3 11 27.3 11 21 Z"/><path d="M189 17 C189 23.3 189 23.3 195.3 26 C189 28.7 189 28.7 189 35 C189 28.7 189 28.7 182.7 26 C189 23.3 189 23.3 189 17 Z"/></g><g fill="#e8935f"><path d="M8 73.8 C8 78.1 8 78.1 12.3 80 C8 81.9 8 81.9 8 86.2 C8 81.9 8 81.9 3.7 80 C8 78.1 8 78.1 8 73.8 Z"/><path d="M192 69.8 C192 74.1 192 74.1 196.3 76 C192 77.9 192 77.9 192 82.2 C192 77.9 192 77.9 187.7 76 C192 74.1 192 74.1 192 69.8 Z"/><path d="M70 111.8 C70 116.1 70 116.1 74.3 118 C70 119.9 70 119.9 70 124.2 C70 119.9 70 119.9 65.7 118 C70 116.1 70 116.1 70 111.8 Z"/><path d="M133 112.8 C133 117.1 133 117.1 137.3 119 C133 120.9 133 120.9 133 125.2 C133 120.9 133 120.9 128.7 119 C133 117.1 133 117.1 133 112.8 Z"/></g></svg>e<span class="site-name-l">l<svg class="site-name-flame" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 34" aria-hidden="true"><path d="M15 34 C9 30 7.5 23 10 17 C11.2 20.5 13.5 20.5 13.5 17 C15.5 20.5 19 23 16.5 28 C20 25.5 21 19.5 17.5 13.5 C22 17 23.5 24 20 30 C18 32.5 16 34 15 34 Z" fill="#d9662f"/><path d="M15 30 C12 28 11 24.5 12.4 21.5 C13 23.3 14.2 23.3 14.2 21.5 C15.2 23.3 17 24.5 15.6 27 C17.4 25.7 18 22.5 16.2 19.5 C18.5 21.3 19.2 25 17.4 28 C16.4 29.3 15.5 30 15 30 Z" fill="#f2a03d"/></svg><svg class="site-name-torch-base" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 12" aria-hidden="true"><path d="M3 0 L17 0 L14.5 6 L5.5 6 Z" fill="#2b2420"/><rect x="4.5" y="6" width="11" height="3.2" rx="1.6" fill="#2b2420"/></svg></span>pys</span> Admin</h1>
+  <a href="/admin" id="back-link">← Back</a>
+  <a href="/">Home</a>
+</div>
+<p class="subtitle" id="page-subtitle">Loading…</p>
+
+<div id="status-msg" class="msg"></div>
+<div id="detail-container"></div>
+
+</div><!-- /wrap -->
+
+<script src="loading.js"></script>
+<script>
+  const API = '/api/admin';
+  const _password = sessionStorage.getItem('elpys_admin_pw');
+  const ID = new URLSearchParams(location.search).get('id');
+  // Set once the row is found, so handleSave and the back-link know which
+  // list this opportunity belongs to without re-deriving it every time.
+  let CURRENT_KIND = null;
+
+  if (!_password) {
+    // Only reachable from a link inside admin.html after a successful load,
+    // so a missing session here means it expired or was never persisted —
+    // back to the one login surface rather than duplicating a login form.
+    location.replace('/admin');
+  } else if (!ID) {
+    showStatus('No opportunity was specified.', true);
+  } else {
+    loadRow();
+  }
+
+  function showStatus(msg, isError) {
+    const el = document.getElementById('status-msg');
+    el.textContent = msg;
+    el.className = 'msg' + (isError ? ' error' : '');
+    el.style.display = msg ? 'block' : 'none';
+  }
+
+  async function loadRow() {
+    const container = document.getElementById('detail-container');
+    Loading.show(container, Loading.detail('Loading opportunity'));
+    try {
+      const res = await fetch(API, { headers: { 'x-admin-password': _password } });
+      if (res.status === 401) {
+        sessionStorage.removeItem('elpys_admin_pw');
+        location.replace('/admin');
+        return;
+      }
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error([e.error || 'HTTP ' + res.status, e.message].filter(Boolean).join(' — '));
+      }
+      const { pending, published } = await res.json();
+
+      let row = (pending || []).find(r => String(r.id) === ID);
+      if (row) {
+        CURRENT_KIND = 'pending';
+      } else {
+        row = (published || []).find(r => String(r.id) === ID);
+        if (row) CURRENT_KIND = 'published';
+      }
+
+      // Loading.clear only lifts the shimmer class — the skeleton markup
+      // itself stays in the container until something replaces it.
+      Loading.clear(container);
+      container.innerHTML = '';
+      if (!row) {
+        document.getElementById('page-subtitle').textContent = 'Not found';
+        showStatus('No opportunity with that id — it may have already been approved, rejected, or deleted.', true);
+        return;
+      }
+
+      document.title = row.name + ' — Elpys Admin';
+      document.getElementById('page-subtitle').textContent =
+        CURRENT_KIND === 'pending' ? 'Reviewing a pending submission' : 'Editing a published listing';
+      document.getElementById('back-link').href = CURRENT_KIND === 'pending' ? '/admin?view=confirm' : '/admin?view=edit';
+      document.getElementById('back-link').textContent =
+        CURRENT_KIND === 'pending' ? '← Pending submissions' : '← Published listings';
+
+      const card = CURRENT_KIND === 'pending' ? buildPendingCard(row) : buildPublishedCard(row);
+      container.appendChild(card);
+      if (CURRENT_KIND === 'pending') initApproveMap(row);
+    } catch (err) {
+      const c = document.getElementById('detail-container');
+      Loading.clear(c);
+      c.innerHTML = '';
+      showStatus('Error: ' + err.message, true);
+    }
+  }
+
+  // ── Dialogs ────────────────────────────────────────────────────────────────
+  function showModal(opts) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-box" role="dialog" aria-modal="true">' +
+        '<button class="modal-close" aria-label="Close">&times;</button>' +
+        '<p class="modal-title">' + esc(opts.title) + '</p>' +
+        '<p class="modal-body">' + esc(opts.body) + '</p>' +
+        '<div class="modal-actions">' +
+          (opts.confirmText
+            ? '<button class="modal-btn-cancel">' + esc(opts.cancelText || 'Cancel') + '</button>' +
+              '<button class="modal-btn-action' + (opts.danger ? ' danger' : '') + '">' + esc(opts.confirmText) + '</button>'
+            : '<button class="modal-btn-action">' + esc(opts.dismissText || 'OK') + '</button>') +
+        '</div>' +
+      '</div>';
+
+    const prevFocus = document.activeElement;
+    function close() {
+      overlay.remove();
+      document.removeEventListener('keydown', onKey);
+      if (prevFocus && prevFocus.focus) prevFocus.focus();
+    }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+
+    const cancelBtn = overlay.querySelector('.modal-btn-cancel');
+    if (cancelBtn) cancelBtn.addEventListener('click', close);
+    overlay.querySelector('.modal-close').addEventListener('click', close);
+    overlay.querySelector('.modal-btn-action').addEventListener('click', function () {
+      close();
+      if (opts.onConfirm) opts.onConfirm();
+    });
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', onKey);
+
+    document.body.appendChild(overlay);
+    overlay.querySelector('.modal-btn-action').focus();
+  }
+
+  function confirmAction(title, body, confirmText, onConfirm, danger) {
+    showModal({
+      title: title, body: body, confirmText: confirmText,
+      danger: danger !== false, onConfirm: onConfirm,
+    });
+  }
+
+  function notify(title, body) {
+    showModal({ title: title, body: body });
+  }
+
+  // ── Pending ────────────────────────────────────────────────────────────────
+
+  function buildPendingCard(row) {
+    const card = document.createElement('div');
+    card.className = 'submission-card';
+    card.id = 'card-' + row.id;
+
+    // Coordinates are geocoded at submission time; null means the geocoder
+    // couldn't place the address and the admin has to set them.
+    const hasCoords = row.lat != null && row.lng != null &&
+                      isFinite(parseFloat(row.lat)) && isFinite(parseFloat(row.lng));
+    const steps = stepsToArray(row.signup_steps);
+    const stepsHtml = steps.length ? '<ol class="sub-steps">' + steps.map(s => '<li>' + esc(s) + '</li>').join('') + '</ol>' : '';
+    const noteHtml      = row.card_note   ? '<p class="sub-note">' + esc(row.card_note) + '</p>' : '';
+    const adminNoteHtml = row.admin_notes ? '<p style="font-size:0.8125rem;background:var(--bg-secondary);border:1px solid var(--border);border-left:3px solid var(--text-main);border-radius:5px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;"><strong>Admin note:</strong> ' + esc(row.admin_notes) + '</p>' : '';
+
+    card.innerHTML =
+      '<div class="sub-name">' + esc(row.name) + '</div>' +
+      '<div class="sub-meta">' + metaHtml(row, 'pending') + '</div>' +
+      '<p class="sub-desc">' + esc(row.description || '') + '</p>' +
+      (row.long_description ? '<p style="font-size:0.8125rem;font-weight:600;margin:0.5rem 0 0.2rem;">Full description</p><p class="sub-desc" style="color:var(--text-muted);">' + esc(row.long_description) + '</p>' : '') +
+      '<p style="font-size:0.8125rem;font-weight:600;margin-bottom:0.3rem;">Sign-up steps</p>' +
+      stepsHtml + noteHtml + adminNoteHtml +
+      '<div class="sub-links">' +
+        '<a href="' + esc(row.signup_link || '#') + '" target="_blank" rel="noopener">Sign-up link ↗</a>' +
+        '<span style="color:#999;font-size:0.8125rem;">Submitted: ' + (row.created_at ? new Date(row.created_at).toLocaleDateString() : '—') + '</span>' +
+      '</div>' +
+      '<div class="approve-fields">' +
+        '<p>Confirm before approving</p>' +
+        '<div class="approve-row">' +
+          '<div class="approve-field"><label for="slug-' + row.id + '">Slug</label><input id="slug-' + row.id + '" type="text" placeholder="e.g. food-lifeline" value="' + esc(autoSlug(row.name)) + '" /></div>' +
+          '<div class="approve-field"><label for="lat-' + row.id + '">Latitude</label><input id="lat-' + row.id + '" type="text" class="short" placeholder="e.g. 47.6264" value="' + esc(hasCoords ? row.lat : '') + '" /></div>' +
+          '<div class="approve-field"><label for="lng-' + row.id + '">Longitude</label><input id="lng-' + row.id + '" type="text" class="short" placeholder="e.g. -122.2054" value="' + esc(hasCoords ? row.lng : '') + '" /></div>' +
+        '</div>' +
+        (hasCoords ? '' :
+          '<div class="geocode-warning">Couldn’t place this address automatically.' +
+            '<span>Drag the pin to the right spot, or type the coordinates above. ' +
+            'Address given: ' + esc(row.address || '—') + '</span></div>') +
+        '<div class="approve-map" id="map-' + row.id + '"></div>' +
+        '<p class="approve-map-hint">' +
+          (hasCoords ? 'Geocoded from the submitted address. ' : '') +
+          'Drag the pin to correct it — the coordinates update as you move it.' +
+        '</p>' +
+        verificationHtml(row) +
+      '</div>' +
+      // Same inline editor as published cards, so a submission can be cleaned up
+      // before approving rather than published and then fixed. Slug/lat/lng stay
+      // in the approve panel above so there is only one place to enter them.
+      editFormHtml(row, { withPlacement: false, withMsg: false }) +
+      '<div class="sub-actions" id="actions-' + row.id + '">' +
+        '<button class="btn-edit">Edit</button>' +
+        '<button class="btn-approve" disabled>Approve</button>' +
+        '<button class="btn-reject">Reject</button>' +
+        '<span class="sub-action-msg" id="msg-' + row.id + '"></span>' +
+      '</div>';
+
+    wireScheduleCells(card);
+    wireTypeToggle(card, row.id);
+    // Approve stays disabled until the verification checklist above is
+    // complete — this is a UI convenience only, the server enforces the same
+    // gate independently in verificationError() in api/admin.js.
+    wireVerification(card, row.id, function (complete) {
+      card.querySelector('.btn-approve').disabled = !complete;
+    });
+    card.querySelector('.btn-edit').addEventListener('click',    () => toggleEdit(row.id));
+    card.querySelector('.btn-save').addEventListener('click',    () => handleSave(row.id));
+    card.querySelector('.btn-cancel').addEventListener('click',  () => toggleEdit(row.id, false));
+    card.querySelector('.btn-approve').addEventListener('click', () => handleApprove(row));
+    card.querySelector('.btn-reject').addEventListener('click',  () => handleReject(row.id));
+    return card;
+  }
+
+  async function handleApprove(row) {
+    const id = row.id;
+    const slug = document.getElementById('slug-' + id).value.trim();
+    const lat  = document.getElementById('lat-'  + id).value.trim();
+    const lng  = document.getElementById('lng-'  + id).value.trim();
+    if (!slug || !lat || !lng) { setCardMsg(id, 'Fill in slug, lat, and lng first.', '#111827'); return; }
+    if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lng))) { setCardMsg(id, 'Lat and lng must be numbers.', '#111827'); return; }
+    const verify = readVerification(id);
+    if (!verify.complete) { setCardMsg(id, verify.message, '#111827'); return; }
+
+    setCardBtns(id, true); setCardMsg(id, 'Approving…', '#6B7280');
+    try {
+      const res = await postAction(Object.assign(
+        { action: 'approve', id, slug, lat: parseFloat(lat), lng: parseFloat(lng) },
+        verify.payload
+      ));
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'HTTP ' + res.status); }
+      destroyApproveMap(id);
+      setCardMsg(id, '✓ Approved. Taking you back to Published…', '#111827');
+      setTimeout(function () { location.href = '/admin?view=edit'; }, 800);
+    } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
+  }
+
+  function handleReject(id) {
+    confirmAction('Reject this submission?',
+      'It will be deleted permanently. This cannot be undone.',
+      'Delete', function () { doReject(id); });
+  }
+
+  async function doReject(id) {
+    setCardBtns(id, true); setCardMsg(id, 'Deleting…', '#6B7280');
+    try {
+      const res = await postAction({ action: 'reject', id });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      destroyApproveMap(id);
+      setCardMsg(id, '✓ Rejected. Taking you back…', '#111827');
+      setTimeout(function () { location.href = '/admin?view=confirm'; }, 800);
+    } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
+  }
+
+  // ── Published ──────────────────────────────────────────────────────────────
+
+  function buildPublishedCard(row) {
+    const card = document.createElement('div');
+    card.className = 'submission-card';
+    card.id = 'card-' + row.id;
+
+    card.innerHTML =
+      '<div class="sub-name">' + esc(row.name) + '</div>' +
+      '<div class="sub-meta">' + metaHtml(row, 'published') + '</div>' +
+
+      editFormHtml(row, { withPlacement: true, withMsg: true, withVerification: true }) +
+
+      '<div class="sub-actions" id="actions-' + row.id + '">' +
+        '<button class="btn-edit">Edit</button>' +
+        '<button class="btn-unpublish">Unpublish</button>' +
+        '<button class="btn-delete">Delete permanently</button>' +
+        '<span class="sub-action-msg" id="msg2-' + row.id + '"></span>' +
+      '</div>';
+
+    wireScheduleCells(card);
+    wireTypeToggle(card, row.id);
+    wireVerification(card, row.id);
+    card.querySelector('.btn-edit').addEventListener('click',      () => toggleEdit(row.id));
+    card.querySelector('.btn-save').addEventListener('click',      () => handleSave(row.id));
+    card.querySelector('.btn-cancel').addEventListener('click',    () => toggleEdit(row.id, false));
+    card.querySelector('.btn-unpublish').addEventListener('click', () => handleUnpublish(row));
+    card.querySelector('.btn-delete').addEventListener('click',    () => handleDelete(row.id, row.name));
+    return card;
+  }
+
+  function handleUnpublish(row) {
+    confirmAction('Move "' + row.name + '" back to pending?',
+      'It will be hidden from the public site immediately, and will reappear in Pending submissions.',
+      'Unpublish', function () { doUnpublish(row); }, false);
+  }
+
+  async function doUnpublish(row) {
+    const id = row.id;
+    setPublishedBtns(id, true); setCardMsg2(id, 'Unpublishing…', '#6B7280');
+    try {
+      const res = await postAction({ action: 'unpublish', id });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      setCardMsg2(id, '✓ Unpublished. Taking you back…', '#111827');
+      setTimeout(function () { location.href = '/admin?view=confirm'; }, 800);
+    } catch (err) { setCardMsg2(id, 'Error: ' + err.message, '#111827'); setPublishedBtns(id, false); }
+  }
+
+  function handleDelete(id, name) {
+    confirmAction('Delete "' + name + '" permanently?',
+      'The listing and its details are removed from the database. This cannot be undone.',
+      'Delete permanently', function () { doDelete(id); });
+  }
+
+  async function doDelete(id) {
+    setPublishedBtns(id, true); setCardMsg2(id, 'Deleting…', '#6B7280');
+    try {
+      const res = await postAction({ action: 'delete', id });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      setCardMsg2(id, '✓ Deleted. Taking you back…', '#111827');
+      setTimeout(function () { location.href = '/admin?view=edit'; }, 800);
+    } catch (err) { setCardMsg2(id, 'Error: ' + err.message, '#111827'); setPublishedBtns(id, false); }
+  }
+
+  // signup_steps is a TEXT column holding " | "-separated steps. Older rows can
+  // still hold a JSON array, so read both shapes but always write the string.
+  function stepsToArray(v) {
+    if (!v) return [];
+    if (Array.isArray(v)) return v;
+    const s = String(v).trim();
+    // Rows written before the format fix hold a JSON array serialised into the
+    // text column, e.g. ["a","b"]. Parse those back so they show as real steps
+    // and get rewritten in the correct format on the next save.
+    if (s.charAt(0) === '[' && s.charAt(s.length - 1) === ']') {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed.map(x => String(x).trim()).filter(Boolean);
+      } catch (_) { /* not JSON after all — treat as a normal string */ }
+    }
+    return s.split('|').map(x => x.trim()).filter(Boolean);
+  }
+  function stepsToLines(v) { return stepsToArray(v).join('\n'); }
+  function linesToSteps(text) {
+    return String(text == null ? '' : text).split('\n')
+      .map(s => s.replace(/\|/g, '/').trim()).filter(Boolean).join(' | ');
+  }
+
+  // The inline edit form, shared by pending and published cards.
+  // Pending cards keep slug/lat/lng in the approve panel instead, and reuse the
+  // message span already in their action row.
+  function editFormHtml(row, opts) {
+    opts = opts || {};
+    const stepsText = stepsToLines(row.signup_steps);
+    return '<div class="edit-form" id="edit-' + row.id + '">' +
+      '<div class="edit-grid">' +
+        ef('Name',          'text',   'e-name-'    + row.id, esc(row.name || '')) +
+        ef('Age display',   'text',   'e-age-'     + row.id, esc(row.age_display || '')) +
+        ef('Age min',       'number', 'e-agemin-'  + row.id, esc(row.age_min != null ? row.age_min : '')) +
+        efTypeSelect('e-type-' + row.id, row.opportunity_type || 'recurring') +
+        ef('Event date',    'date',   'e-eventdate-' + row.id, esc(row.event_date || '')) +
+        ef('When',          'text',   'e-when-'    + row.id, esc(row['when'] || '')) +
+        ef('Where',         'text',   'e-where-'   + row.id, esc(row['where'] || '')) +
+        ef('Address',       'text',   'e-addr-'    + row.id, esc(row.address || '')) +
+        (opts.withPlacement
+          ? ef('Slug',      'text',   'e-slug-'    + row.id, esc(row.slug || '')) +
+            ef('Latitude',  'text',   'e-lat-'     + row.id, esc(row.lat != null ? row.lat : '')) +
+            ef('Longitude', 'text',   'e-lng-'     + row.id, esc(row.lng != null ? row.lng : ''))
+          : '') +
+        ef('Sign-up link',  'text',   'e-link-'    + row.id, esc(row.signup_link || '')) +
+        ef('Sign-up label', 'text',   'e-label-'   + row.id, esc(row.signup_label || '')) +
+        efSelect('Section', 'e-section-' + row.id, row.section || 'online') +
+        efCategories(row.id, row.category) +
+        efSchedule(row.id, row.schedule) +
+        efArea('Card description', 'e-desc-' + row.id, esc(row.description || ''), false) +
+        efArea('Full description (detail page)', 'e-detaildesc-' + row.id, esc(row.long_description || ''), false) +
+        efArea('Sign-up steps (one per line)', 'e-steps-' + row.id, esc(stepsText), false) +
+        efArea('Card note', 'e-note-' + row.id, esc(row.card_note || ''), false) +
+        efArea('Admin notes (not shown on site)', 'e-adminnotes-' + row.id, esc(row.admin_notes || ''), false) +
+        (opts.withVerification ? '<div class="edit-field full">' + verificationHtml(row) + '</div>' : '') +
+      '</div>' +
+      '<div class="edit-actions">' +
+        '<button class="btn-save">Save changes</button>' +
+        '<button class="btn-cancel">Cancel</button>' +
+        (opts.withMsg ? '<span class="sub-action-msg" id="msg-' + row.id + '"></span>' : '') +
+      '</div>' +
+    '</div>';
+  }
+
+  // ── Organization verification ──────────────────────────────────────────────
+  // Mirrors how-we-check.html sections 1-2: every listing is either a
+  // government/public body (one check) or a registered charity (four checks),
+  // or it isn't listed. Check keys here must match REQUIRED_CHARITY_CHECKS,
+  // GOVERNMENT_CHECK and EXCLUSIONS_CHECK in api/admin.js — that is what the
+  // server actually enforces; this UI only exists so an admin never has to
+  // fail that check by hand.
+  const CHARITY_CHECKS = [
+    { key: 'irs_exempt', label: 'Currently a 501(c)(3) in the IRS’s own database',
+      lookup: 'https://apps.irs.gov/app/eos/', lookupLabel: 'IRS search ↗' },
+    { key: 'irs_not_revoked', label: 'Exempt status has not been automatically revoked for failing to file',
+      lookup: 'https://apps.irs.gov/app/eos/', lookupLabel: 'IRS search ↗' },
+    { key: 'wa_charity_active', label: 'Registered with WA Secretary of State’s Charities Program, and active',
+      lookup: 'https://ccfs.sos.wa.gov/', lookupLabel: 'WA Charities search ↗' },
+    { key: 'form_990_on_file', label: 'Has filed at least one Form 990',
+      lookup: 'https://projects.propublica.org/nonprofits/', lookupLabel: 'ProPublica search ↗' },
+  ];
+  const GOVERNMENT_CHECK_DEF = { key: 'org_official_site',
+    label: 'Program is described on the body’s own official .gov (or district) site', lookup: null };
+  const EXCLUSIONS_CHECK_KEY = 'exclusions_confirmed';
+  const EXCLUSIONS_TEXT =
+    'Not an individual; not at a private residence; not one-on-one with an adult; contact is an ' +
+    'organizational or .gov address, not a personal one; the sign-up link was reached by navigating ' +
+    'from the organization’s own homepage rather than trusted from the submission.';
+
+  function isCleanDomainClient(d) {
+    d = String(d || '').trim();
+    if (!d || /^[a-z]+:\/\//i.test(d) || d.indexOf('/') !== -1 || /^www\./i.test(d)) return false;
+    return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(d);
+  }
+
+  // row.verification may hold the older, differently-shaped research the
+  // weekly cloud task wrote (a flat object of sourced facts, not a checks
+  // array). That data is shown as reference only — it is not parsed into the
+  // form below, and completing the checklist and saving supersedes it.
+  function legacyVerificationHtml(row) {
+    const v = row.verification;
+    if (!v || typeof v !== 'object' || Array.isArray(v.checks)) return '';
+    let text;
+    try { text = JSON.stringify(v, null, 2); } catch (_) { text = String(v); }
+    return '<details class="verify-legacy"><summary>Earlier automated research on file (reference only)</summary>' +
+           '<pre>' + esc(text) + '</pre></details>';
+  }
+
+  function verifyCheckRow(def, checksByKey, id) {
+    const c = checksByKey[def.key] || {};
+    const checked = c.result === 'pass' ? ' checked' : '';
+    return '<div class="verify-check">' +
+      '<label class="verify-check-label"><input type="checkbox" id="v-chk-' + def.key + '-' + id + '"' + checked + '> ' +
+        def.label + '</label>' +
+      (def.lookup ? '<a href="' + def.lookup + '" target="_blank" rel="noopener" class="verify-lookup">' + def.lookupLabel + '</a>' : '') +
+      '<input type="text" id="v-src-' + def.key + '-' + id + '" class="verify-source" ' +
+        'placeholder="Source URL you checked" value="' + esc(c.source || '') + '" />' +
+    '</div>';
+  }
+
+  function verificationHtml(row) {
+    const id = row.id;
+    const tier = row.org_tier === 'government' || row.org_tier === 'charity' ? row.org_tier : '';
+    const checksByKey = {};
+    if (row.verification && Array.isArray(row.verification.checks)) {
+      row.verification.checks.forEach(function (c) { if (c && c.check) checksByKey[c.check] = c; });
+    }
+    return '<div class="verify-block" id="verify-' + id + '">' +
+      '<p class="verify-title">Organization verification</p>' +
+      (row.verified_at
+        ? '<p class="verify-existing">Verified ' + new Date(row.verified_at).toLocaleDateString() +
+          '. Changing anything below and saving replaces this record.</p>'
+        : '') +
+      legacyVerificationHtml(row) +
+      '<div class="verify-tier">' +
+        '<label><input type="radio" name="v-tier-' + id + '" id="v-tier-gov-' + id + '" value="government"' +
+          (tier === 'government' ? ' checked' : '') + '> Government / public body</label>' +
+        '<label><input type="radio" name="v-tier-' + id + '" id="v-tier-charity-' + id + '" value="charity"' +
+          (tier === 'charity' ? ' checked' : '') + '> Registered charity</label>' +
+      '</div>' +
+      '<div class="verify-grid">' +
+        '<div class="verify-field"><label for="v-legalname-' + id + '">Legal name</label>' +
+          '<input type="text" id="v-legalname-' + id + '" value="' + esc(row.org_legal_name || '') + '" /></div>' +
+        '<div class="verify-field"><label for="v-domain-' + id + '">Official domain (no https://, no www.)</label>' +
+          '<input type="text" id="v-domain-' + id + '" placeholder="e.g. earthcorps.org" value="' + esc(row.org_domain || '') + '" /></div>' +
+      '</div>' +
+      '<div class="verify-gov" id="verify-gov-' + id + '">' +
+        verifyCheckRow(GOVERNMENT_CHECK_DEF, checksByKey, id) +
+      '</div>' +
+      '<div class="verify-charity" id="verify-charity-' + id + '">' +
+        '<div class="verify-grid">' +
+          '<div class="verify-field"><label for="v-ein-' + id + '">EIN</label>' +
+            '<input type="text" id="v-ein-' + id + '" placeholder="12-3456789" value="' + esc(row.ein || '') + '" /></div>' +
+          '<div class="verify-field"><label for="v-wacharity-' + id + '">WA charity registration number</label>' +
+            '<input type="text" id="v-wacharity-' + id + '" value="' + esc(row.wa_charity_number || '') + '" /></div>' +
+        '</div>' +
+        CHARITY_CHECKS.map(function (def) { return verifyCheckRow(def, checksByKey, id); }).join('') +
+      '</div>' +
+      '<div class="verify-check verify-exclusions">' +
+        '<label class="verify-check-label"><input type="checkbox" id="v-chk-' + EXCLUSIONS_CHECK_KEY + '-' + id + '"' +
+          (checksByKey[EXCLUSIONS_CHECK_KEY] && checksByKey[EXCLUSIONS_CHECK_KEY].result === 'pass' ? ' checked' : '') +
+          '> ' + EXCLUSIONS_TEXT + '</label>' +
+      '</div>' +
+      '<p class="verify-status" id="verify-status-' + id + '"></p>' +
+    '</div>';
+  }
+
+  // Reads the verification block for a row back into { complete, message,
+  // payload }. Client-side mirror of verificationError() in api/admin.js —
+  // that copy is the actual gate; this one only drives the UI so the admin
+  // finds out what's missing before submitting, not after a 400 comes back.
+  // root defaults to document, but a pending card is a detached node the
+  // instant it is built (readVerification runs once during construction,
+  // before it is appended) — document.getElementById can't see into a
+  // detached subtree, so that first call must be scoped to the card itself.
+  function readVerification(id, root) {
+    root = root || document;
+    if (!root.querySelector('#v-tier-gov-' + id)) return { complete: true, payload: {} };
+    const val = function (fid) { const el = root.querySelector('#' + fid); return el ? el.value.trim() : ''; };
+    const isChecked = function (fid) { const el = root.querySelector('#' + fid); return !!(el && el.checked); };
+    const tier = isChecked('v-tier-charity-' + id) ? 'charity' : (isChecked('v-tier-gov-' + id) ? 'government' : '');
+    const org_legal_name = val('v-legalname-' + id);
+    const org_domain = val('v-domain-' + id);
+    const ein = val('v-ein-' + id);
+    const wa_charity_number = val('v-wacharity-' + id);
+
+    const allKeys = [EXCLUSIONS_CHECK_KEY, GOVERNMENT_CHECK_DEF.key].concat(CHARITY_CHECKS.map(function (c) { return c.key; }));
+    const checks = allKeys
+      .filter(function (k) { return root.querySelector('#v-chk-' + k + '-' + id); })
+      .map(function (k) {
+        return { check: k, result: isChecked('v-chk-' + k + '-' + id) ? 'pass' : 'fail', source: val('v-src-' + k + '-' + id) };
+      });
+
+    let message = null;
+    if (tier !== 'government' && tier !== 'charity') message = 'Choose government or charity.';
+    else if (!org_legal_name) message = 'Legal name is required.';
+    else if (!isCleanDomainClient(org_domain)) message = 'Official domain must be a bare domain, e.g. earthcorps.org.';
+    else if (!isChecked('v-chk-' + EXCLUSIONS_CHECK_KEY + '-' + id)) message = 'Confirm none of the exclusions apply.';
+    else if (tier === 'government' && !isChecked('v-chk-' + GOVERNMENT_CHECK_DEF.key + '-' + id)) {
+      message = 'Confirm: ' + GOVERNMENT_CHECK_DEF.label;
+    } else if (tier === 'charity') {
+      if (!ein) message = 'EIN is required.';
+      else if (!wa_charity_number) message = 'WA charity registration number is required.';
+      else {
+        const missing = CHARITY_CHECKS.find(function (c) { return !isChecked('v-chk-' + c.key + '-' + id); });
+        if (missing) message = 'Confirm: ' + missing.label;
+      }
+    }
+
+    return {
+      complete: !message,
+      message: message,
+      payload: {
+        org_tier: tier || null,
+        org_legal_name: org_legal_name || null,
+        org_domain: org_domain || null,
+        ein: tier === 'charity' ? (ein || null) : null,
+        wa_charity_number: tier === 'charity' ? (wa_charity_number || null) : null,
+        verification: { checks: checks },
+      },
+    };
+  }
+
+  // Toggles the government/charity sub-panels and keeps the status line and,
+  // for pending cards, the Approve button in sync as fields change.
+  function wireVerification(card, id, onChange) {
+    const govRadio = card.querySelector('#v-tier-gov-' + id);
+    if (!govRadio) return;
+    const chaRadio = card.querySelector('#v-tier-charity-' + id);
+    const govBox = card.querySelector('#verify-gov-' + id);
+    const chaBox = card.querySelector('#verify-charity-' + id);
+    const statusEl = card.querySelector('#verify-status-' + id);
+
+    // Switching tiers clears the other tier's checks rather than leaving them
+    // checked-but-hidden — otherwise a stray "org_official_site: pass" from an
+    // earlier government selection would ride along into a charity record,
+    // claiming a check was done that the current tier never asked for.
+    function clearGroup(box) {
+      if (!box) return;
+      box.querySelectorAll('input[type=checkbox]').forEach(function (cb) { cb.checked = false; });
+      box.querySelectorAll('.verify-source').forEach(function (inp) { inp.value = ''; });
+    }
+
+    function sync() {
+      const t = chaRadio.checked ? 'charity' : (govRadio.checked ? 'government' : '');
+      govBox.style.display = t === 'government' ? '' : 'none';
+      chaBox.style.display = t === 'charity' ? '' : 'none';
+      const result = readVerification(id, card);
+      if (statusEl) {
+        statusEl.textContent = result.complete ? 'Verification complete.' : result.message;
+        statusEl.style.color = result.complete ? '#166534' : 'var(--text-muted)';
+      }
+      if (onChange) onChange(result.complete);
+    }
+
+    govRadio.addEventListener('change', function () { clearGroup(chaBox); sync(); });
+    chaRadio.addEventListener('change', function () { clearGroup(govBox); sync(); });
+    // Radios are already wired above (with the clear-on-switch step first) —
+    // excluded here so a tier switch doesn't run sync() twice.
+    card.querySelectorAll('#verify-' + id + ' input:not([type=radio])').forEach(function (el) {
+      el.addEventListener('input', sync);
+      el.addEventListener('change', sync);
+    });
+    sync();
+  }
+
+  // ── Category picker ────────────────────────────────────────────────────────
+  // Categories are stored lowercase and comma-separated ("community, food").
+  const CATEGORIES = ['Animals', 'Community', 'Environment', 'Food'];
+
+  function splitCategories(value) {
+    return String(value == null ? '' : value)
+      .split(/\s*[·,]\s*/).map(c => c.trim().toLowerCase()).filter(Boolean);
+  }
+
+  function efCategories(id, value) {
+    const current = splitCategories(value);
+    const known   = CATEGORIES.map(c => c.toLowerCase());
+    const extras  = current.filter(c => known.indexOf(c) === -1);
+    const boxes = CATEGORIES.map(c => {
+      const v = c.toLowerCase();
+      return '<label class="cat-check"><input type="checkbox" data-cat="' + id + '" value="' + v + '"' +
+             (current.indexOf(v) !== -1 ? ' checked' : '') + '> ' + c + '</label>';
+    }).join('');
+    return '<div class="edit-field full"><label>Category</label>' +
+             '<div class="cat-group">' + boxes + '</div>' +
+             '<input class="cat-other" id="e-cat-other-' + id + '" type="text" ' +
+               'placeholder="Anything else, comma-separated" value="' + esc(extras.join(', ')) + '" />' +
+           '</div>';
+  }
+
+  function readCategories(id) {
+    const boxes = Array.prototype.slice
+      .call(document.querySelectorAll('input[data-cat="' + id + '"]:checked'))
+      .map(b => b.value);
+    const otherEl = document.getElementById('e-cat-other-' + id);
+    const extras = otherEl ? splitCategories(otherEl.value) : [];
+    return boxes.concat(extras).filter((v, i, a) => a.indexOf(v) === i).sort();
+  }
+
+  // ── Weekly schedule grid ───────────────────────────────────────────────────
+  const SCHED_DAYS  = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+  const SCHED_ABBR  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const SCHED_SLOTS = ['morning','afternoon','evening'];
+
+  function efSchedule(id, schedule) {
+    const s = (schedule && typeof schedule === 'object' && !Array.isArray(schedule)) ? schedule : {};
+    const head = '<div class="sched-head"></div>' +
+      ['Morning','Afternoon','Evening'].map(l => '<div class="sched-head">' + l + '</div>').join('');
+    const rows = SCHED_DAYS.map((day, i) => {
+      const on = Array.isArray(s[day]) ? s[day] : [];
+      return '<div class="sched-day">' + SCHED_ABBR[i] + '</div>' +
+        SCHED_SLOTS.map(slot =>
+          '<button type="button" class="avail-cell' + (on.indexOf(slot) !== -1 ? ' active' : '') + '"' +
+          ' data-sched="' + id + '" data-day="' + day + '" data-slot="' + slot + '"' +
+          ' aria-pressed="' + (on.indexOf(slot) !== -1 ? 'true' : 'false') + '"' +
+          ' aria-label="' + SCHED_ABBR[i] + ' ' + slot + '"></button>'
+        ).join('');
+    }).join('');
+    return '<div class="edit-field full"><label>Weekly schedule</label>' +
+             '<div class="sched-grid">' + head + rows + '</div>' +
+           '</div>';
+  }
+
+  function readSchedule(id) {
+    const cells = document.querySelectorAll('[data-sched="' + id + '"]');
+    if (!cells.length) return undefined;          // grid not on this card
+    const out = {};
+    SCHED_DAYS.forEach(d => { out[d] = []; });
+    let any = false;
+    Array.prototype.forEach.call(cells, c => {
+      if (c.classList.contains('active')) { out[c.dataset.day].push(c.dataset.slot); any = true; }
+    });
+    return any ? out : null;                       // null clears the column
+  }
+
+  // Toggling a schedule cell, for cards built via innerHTML.
+  function wireScheduleCells(card) {
+    card.addEventListener('click', function (e) {
+      const cell = e.target.closest ? e.target.closest('.avail-cell') : null;
+      if (!cell) return;
+      const on = cell.classList.toggle('active');
+      cell.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  // Small helpers for building edit form fields
+  function ef(label, type, id, value) {
+    return '<div class="edit-field"><label for="' + id + '">' + label + '</label>' +
+           '<input id="' + id + '" type="' + type + '" value="' + value + '" /></div>';
+  }
+  function efArea(label, id, value, full) {
+    return '<div class="edit-field' + (full ? ' full' : ' full') + '">' +
+           '<label for="' + id + '">' + label + '</label>' +
+           '<textarea id="' + id + '">' + value + '</textarea></div>';
+  }
+  function efSelect(label, id, value) {
+    const opts = ['online','contact'].map(v =>
+      '<option value="' + v + '"' + (v === value ? ' selected' : '') + '>' + v + '</option>'
+    ).join('');
+    return '<div class="edit-field"><label for="' + id + '">' + label + '</label>' +
+           '<select id="' + id + '">' + opts + '</select></div>';
+  }
+  function efTypeSelect(id, value) {
+    const opts = [['recurring', 'Recurring'], ['one_time', 'One-time']].map(([v, label]) =>
+      '<option value="' + v + '"' + (v === value ? ' selected' : '') + '>' + label + '</option>'
+    ).join('');
+    return '<div class="edit-field"><label for="' + id + '">Opportunity type</label>' +
+           '<select id="' + id + '">' + opts + '</select></div>';
+  }
+
+  // The event date only applies to one-time rows, so it follows the type select
+  // rather than sitting there empty and confusing on a recurring listing.
+  function wireTypeToggle(card, id) {
+    // Query within the card: it is still detached from the document when the
+    // builder wires it up, so getElementById would find nothing here.
+    const typeSel  = card.querySelector('#e-type-' + id);
+    const dateEl   = card.querySelector('#e-eventdate-' + id);
+    const dateWrap = dateEl ? dateEl.closest('.edit-field') : null;
+    if (!typeSel || !dateWrap) return;
+    function sync() { dateWrap.style.display = typeSel.value === 'one_time' ? '' : 'none'; }
+    typeSel.addEventListener('change', sync);
+    sync();
+  }
+
+  function toggleEdit(id, forceOpen) {
+    const form    = document.getElementById('edit-' + id);
+    const actions = document.getElementById('actions-' + id);
+    const open    = forceOpen !== undefined ? forceOpen : !form.classList.contains('open');
+    form.classList.toggle('open', open);
+    actions.querySelector('.btn-edit').textContent = open ? 'Close' : 'Edit';
+  }
+
+  async function handleSave(id) {
+    // Returns null when the field is not on this card — pending cards omit
+    // slug/lat/lng — so an absent field is left untouched rather than blanked.
+    const g = fid => { const el = document.getElementById(fid); return el ? el.value : null; };
+
+    const payload = { action: 'update', id };
+    const set = (key, val) => { if (val !== null && val !== undefined) payload[key] = val; };
+    const text = fid => { const v = g(fid); return v === null ? null : v.trim(); };
+    const orNull = fid => { const v = text(fid); return v === null ? null : (v || null); };
+
+    set('name',             text('e-name-' + id));
+    set('description',      text('e-desc-' + id));
+    // The column is long_description; sending detail_description silently
+    // dropped every full-description edit, since the API ignores unknown keys.
+    set('long_description', orNull('e-detaildesc-' + id));
+    set('age_display',      text('e-age-' + id));
+    set('when',             text('e-when-' + id));
+    set('opportunity_type', g('e-type-' + id));
+    const eventDateVal = text('e-eventdate-' + id);
+    if (eventDateVal !== null) {
+      // A recurring row must have event_date null (DB CHECK). The input keeps
+      // its value while hidden, so switching type back has to clear it here or
+      // every such save would fail on a stale date.
+      payload.event_date = g('e-type-' + id) === 'one_time' ? (eventDateVal || null) : null;
+    }
+    set('where',            text('e-where-' + id));
+    set('address',          text('e-addr-' + id));
+    set('signup_link',      text('e-link-' + id));
+    set('signup_label',     orNull('e-label-' + id));
+    set('section',          g('e-section-' + id));
+    set('card_note',        orNull('e-note-' + id));
+    set('admin_notes',      orNull('e-adminnotes-' + id));
+
+    // Only present on published cards (editFormHtml's withVerification option).
+    // Always sent in full when present, so what's on screen is exactly what's
+    // saved — this is the backfill path for the verification checklist.
+    if (document.getElementById('v-tier-gov-' + id)) {
+      const verify = readVerification(id);
+      payload.org_tier = verify.payload.org_tier;
+      payload.org_legal_name = verify.payload.org_legal_name;
+      payload.org_domain = verify.payload.org_domain;
+      payload.ein = verify.payload.ein;
+      payload.wa_charity_number = verify.payload.wa_charity_number;
+      payload.verification = verify.payload.verification;
+    }
+
+    const ageMin = g('e-agemin-' + id);
+    if (ageMin !== null) payload.age_min = ageMin ? parseInt(ageMin, 10) : null;
+
+    // Category comes from the checkboxes plus anything in the "other" box.
+    // Refuse to save it away entirely rather than blank a required field.
+    const cats = readCategories(id);
+    if (document.getElementById('e-cat-other-' + id)) {
+      if (!cats.length) {
+        setCardMsg(id, 'Pick at least one category.', '#111827');
+        return;
+      }
+      payload.category = cats.join(', ');
+    }
+
+    const sched = readSchedule(id);
+    if (sched !== undefined) payload.schedule = sched;
+
+    // signup_steps is TEXT — join, never send an array
+    const stepsVal = g('e-steps-' + id);
+    if (stepsVal !== null) payload.signup_steps = linesToSteps(stepsVal);
+
+    const slug = text('e-slug-' + id);
+    if (slug !== null) payload.slug = slug;
+    const latVal = g('e-lat-' + id);
+    if (latVal !== null) payload.lat = parseFloat(latVal) || null;
+    const lngVal = g('e-lng-' + id);
+    if (lngVal !== null) payload.lng = parseFloat(lngVal) || null;
+
+    // A changed address needs new coordinates, or the pin keeps pointing at the
+    // old place. defaultValue is what the field was rendered with, so this
+    // compares against the stored row without tracking state separately.
+    //
+    // Hand-edited coordinates win: if the admin corrected lat/lng in the same
+    // save, they looked the location up themselves and a re-geocode would throw
+    // that away. Pending cards have no lat/lng in this form — they live in the
+    // approve panel — so those are checked too.
+    const addrEl = document.getElementById('e-addr-' + id);
+    const changed = el => el && el.value.trim() !== el.defaultValue.trim();
+    const coordsTouched =
+      changed(document.getElementById('e-lat-' + id)) ||
+      changed(document.getElementById('e-lng-' + id)) ||
+      changed(document.getElementById('lat-' + id))   ||
+      changed(document.getElementById('lng-' + id));
+
+    const willGeocode = changed(addrEl) && !coordsTouched;
+    if (willGeocode) payload.regeocode = true;
+
+    const saveBtn = document.getElementById('edit-' + id).querySelector('.btn-save');
+    saveBtn.disabled = true;
+    setCardMsg(id, willGeocode ? 'Looking up the new address…' : 'Saving…', '#6B7280');
+
+    try {
+      const res = await postAction(payload);
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        console.error('Save failed — full response:', e);
+        // A failed lookup saves nothing rather than leaving the old coordinates
+        // attached to a new address, so say what to do about it.
+        if (res.status === 422 && e.geocodeError) {
+          throw new Error(e.geocodeError +
+            ' Nothing was saved. Check the address, or type the coordinates in yourself — ' +
+            'entering lat/lng by hand skips the lookup.');
+        }
+        const parts = [e.error || 'HTTP ' + res.status];
+        if (e.message) parts.push(e.message);
+        if (e.details) parts.push(e.details);
+        if (e.hint)    parts.push('Hint: ' + e.hint);
+        throw new Error(parts.join(' — '));
+      }
+
+      const saved = await res.json().catch(() => ({}));
+      if (saved.geocoded) {
+        payload.lat = saved.geocoded.lat;
+        payload.lng = saved.geocoded.lng;
+        applyNewCoords(id, saved.geocoded.lat, saved.geocoded.lng);
+      }
+      setCardMsg(id, saved.geocoded
+        ? '✓ Saved — pin moved to the new address.'
+        : '✓ Saved.', '#111827', 3000);
+
+      // Re-baseline the fields so a second save doesn't re-detect the same
+      // edit as a change and geocode again.
+      ['e-addr-', 'e-lat-', 'e-lng-', 'lat-', 'lng-'].forEach(function (prefix) {
+        const el = document.getElementById(prefix + id);
+        if (el) el.defaultValue = el.value;
+      });
+      // Update the visible name, page title and meta in the card header
+      const card = document.getElementById('card-' + id);
+      if (payload.name) {
+        card.querySelector('.sub-name').textContent = payload.name;
+        document.title = payload.name + ' — Elpys Admin';
+      }
+      // The summary line was only ever refreshed for the name, so an edited
+      // category, age, when, where or slug stayed stale until a reload.
+      const metaEl = card.querySelector('.sub-meta');
+      if (metaEl) metaEl.innerHTML = metaHtml(payload, CURRENT_KIND);
+      // (the 3s self-clear is set by setCardMsg above)
+    } catch (err) {
+      setCardMsg(id, 'Error: ' + err.message, '#111827');
+    } finally {
+      saveBtn.disabled = false;
+    }
+  }
+
+  // ── Shared helpers ─────────────────────────────────────────────────────────
+
+  function postAction(body) {
+    return fetch(API, {
+      method: 'POST',
+      headers: { 'x-admin-password': _password, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
+  // ── Location preview ───────────────────────────────────────────────────────
+  // Must run *after* the card is in the document: Leaflet measures its
+  // container on creation, and a detached div has no size.
+  const BELLEVUE = [47.6101, -122.2015];   // fallback centre when unlocatable
+  const _approveMaps = {};
+
+  function initApproveMap(row) {
+    if (!window.L) return;                       // Leaflet blocked or offline
+    const el = document.getElementById('map-' + row.id);
+    if (!el || _approveMaps[row.id]) return;
+
+    const lat = parseFloat(row.lat), lng = parseFloat(row.lng);
+    const located = isFinite(lat) && isFinite(lng);
+    const centre = located ? [lat, lng] : BELLEVUE;
+
+    const map = L.map(el, { scrollWheelZoom: false }).setView(centre, located ? 15 : 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    const marker = L.marker(centre, { draggable: true, icon: makeApproveIcon() }).addTo(map);
+    const latEl = document.getElementById('lat-' + row.id);
+    const lngEl = document.getElementById('lng-' + row.id);
+
+    // Pin -> inputs. Six decimals is ~10cm, far finer than needed here.
+    marker.on('dragend', function () {
+      const p = marker.getLatLng();
+      if (latEl) latEl.value = p.lat.toFixed(6);
+      if (lngEl) lngEl.value = p.lng.toFixed(6);
+    });
+
+    // Inputs -> pin, so typing coordinates moves it too.
+    function syncFromInputs() {
+      const a = parseFloat(latEl && latEl.value), b = parseFloat(lngEl && lngEl.value);
+      if (!isFinite(a) || !isFinite(b)) return;
+      marker.setLatLng([a, b]);
+      map.setView([a, b], Math.max(map.getZoom(), 15));
+    }
+    if (latEl) latEl.addEventListener('change', syncFromInputs);
+    if (lngEl) lngEl.addEventListener('change', syncFromInputs);
+
+    // The card is inserted then measured; nudge Leaflet once layout settles.
+    setTimeout(function () { map.invalidateSize(); }, 60);
+    // The marker is kept alongside the map so a re-geocode after an address
+    // edit can move the pin without rebuilding the whole thing.
+    _approveMaps[row.id] = { map: map, marker: marker };
+  }
+
+  // Called after the server re-geocodes an edited address: fills whichever
+  // coordinate inputs this card has and moves the pin if a map is showing.
+  function applyNewCoords(id, lat, lng) {
+    ['e-lat-', 'lat-'].forEach(function (p) {
+      const el = document.getElementById(p + id);
+      if (el) el.value = lat.toFixed(6);
+    });
+    ['e-lng-', 'lng-'].forEach(function (p) {
+      const el = document.getElementById(p + id);
+      if (el) el.value = lng.toFixed(6);
+    });
+
+    const entry = _approveMaps[id];
+    if (entry) {
+      entry.marker.setLatLng([lat, lng]);
+      entry.map.setView([lat, lng], Math.max(entry.map.getZoom(), 15));
+    }
+  }
+
+  function makeApproveIcon() {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 41">' +
+        '<path d="M12.5 0C5.6 0 0 5.6 0 12.5c0 9.4 12.5 28.5 12.5 28.5S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0z" fill="#FF2A00" stroke="#ffffff" stroke-width="1.5"/>' +
+        '<circle cx="12.5" cy="12.5" r="5" fill="#ffffff" opacity="0.9"/>' +
+      '</svg>';
+    return L.icon({
+      iconUrl: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+      iconSize: [25, 41], iconAnchor: [12, 41],
+    });
+  }
+
+  function destroyApproveMap(id) {
+    if (_approveMaps[id]) { _approveMaps[id].map.remove(); delete _approveMaps[id]; }
+  }
+
+  function typeMetaLabel(row) {
+    if (row.opportunity_type === 'one_time') {
+      return 'One-time' + (row.event_date ? ' — ' + esc(row.event_date) : '');
+    }
+    return 'Recurring';
+  }
+
+  function metaHtml(row, kind) {
+    const cells = [
+      '<span>' + typeMetaLabel(row) + '</span>',
+      '<span>' + esc(row.category || '—') + '</span>',
+      '<span>Age: ' + esc(row.age_display || '—') + '</span>',
+      '<span>When: ' + esc(row['when'] || '—') + '</span>',
+      '<span>Where: ' + esc(row['where'] || '—') + '</span>',
+    ];
+    if (kind === 'published') {
+      cells.push('<span>Slug: ' + esc(row.slug || '—') + '</span>');
+      cells.push('<span>Lat: ' + esc(row.lat != null ? row.lat : '—') + '</span>');
+      cells.push('<span>Lng: ' + esc(row.lng != null ? row.lng : '—') + '</span>');
+      if (!row.verified_at) cells.push('<span class="verify-missing-badge">Not yet verified</span>');
+    } else {
+      cells.push('<span>Section: ' + esc(row.section || '—') + '</span>');
+    }
+    return cells.join('');
+  }
+
+  function setCardBtns(id, disabled) {
+    document.getElementById('card-' + id).querySelectorAll('button').forEach(b => b.disabled = disabled);
+  }
+
+  function setPublishedBtns(id, disabled) {
+    document.getElementById('actions-' + id).querySelectorAll('button').forEach(b => b.disabled = disabled);
+  }
+
+  // msg inside the edit form
+  // "✓ Saved" clears itself after 3s. That timer used to be able to fire over
+  // a message set afterwards — save, then save again and fail inside 3
+  // seconds, and the error was wiped a moment after appearing. Setting a
+  // message now cancels any pending clear for that card.
+  const _msgTimers = {};
+  function setCardMsg(id, msg, color, clearAfterMs) {
+    const el = document.getElementById('msg-' + id);
+    if (!el) return;
+    if (_msgTimers[id]) { clearTimeout(_msgTimers[id]); delete _msgTimers[id]; }
+    el.textContent = msg;
+    el.style.color = color;
+    if (clearAfterMs) {
+      _msgTimers[id] = setTimeout(function () {
+        delete _msgTimers[id];
+        const cur = document.getElementById('msg-' + id);
+        if (cur) { cur.textContent = ''; cur.style.color = '#666'; }
+      }, clearAfterMs);
+    }
+  }
+
+  // msg in the main action row (unpublish/delete)
+  function setCardMsg2(id, msg, color) {
+    const el = document.getElementById('msg2-' + id);
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = color;
+  }
+
+  function autoSlug(name) {
+    return (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  function esc(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+</script>
+
+</body>
+</html>

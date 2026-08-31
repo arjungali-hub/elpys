@@ -7,6 +7,44 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-08-31 — Split admin.html into a list page and a review page
+
+- Pending and published listings on admin.html used to render as full cards —
+  description, sign-up steps, the approve panel with its map, the whole edit
+  form, and (as of the verification gate above) the whole checklist too -
+  stacked one after another for every row at once. Fine for one or two
+  submissions, unreadable for ten. Requested change: collapse each row to a
+  name and a one-line summary, and move everything else to its own page,
+  reached by clicking the row.
+- New admin-review.html carries that page: reads ?id= from the URL, fetches
+  the same /api/admin GET admin.html already used, finds the row in whichever
+  of pending/published it's actually in (no separate kind= param needed - the
+  id is unique across both, since they're the same table), and renders it
+  with buildPendingCard/buildPublishedCard moved over unmodified. Everything
+  those two functions depend on moved with them: the edit form, the category
+  and schedule pickers, the Leaflet map, and the whole verification block —
+  none of it is duplicated in admin.html anymore, it simply isn't there.
+- What changes on success now that there's no second list on the same page to
+  move a card into: approve/reject/unpublish/delete show their confirmation
+  message, then redirect to /admin?view=edit or /admin?view=confirm after
+  ~800ms, landing back on the list the row now belongs to. Save (a plain
+  update, no status change) still stays on the page and patches the header
+  in place, same as before - there's nothing to navigate back to for that
+  one.
+- Two things caught in local testing before this went out: a genuine session-
+  persistence gap (typing the password directly into admin.html's own login
+  form never wrote it to sessionStorage - only admin-login.html and review.html
+  did - so a row click from that path would have bounced straight back to
+  /admin; admin.html's loadAll() now sets it too on success), and
+  Loading.clear() only lifts the shimmer class, it doesn't empty the
+  container - the skeleton markup was staying mounted underneath the real
+  card until innerHTML was cleared explicitly.
+- Also fixed in passing, found while touching this code: loadAll() referenced
+  a bare `view` where it meant the module-level `VIEW` constant, throwing on
+  every successful non-view= load right after the login panel was hidden -
+  caught by the surrounding try/catch with nothing visible to show it, so the
+  section-nav badges, scroll-spy and the Send digest button silently never
+  appeared. Now reads VIEW correctly.
 ## 2026-08-31 — The admin verification gate
 
 - Part 2 of the org-verification work: a pending listing can no longer be
