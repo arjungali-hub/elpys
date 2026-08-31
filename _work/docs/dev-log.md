@@ -7,6 +7,52 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-08-31 — The admin verification gate
+
+- Part 2 of the org-verification work: a pending listing can no longer be
+  approved without a completed verification record. Server-side, in
+  api/admin.js, a new verificationError() runs inside the approve action
+  before the PATCH and rejects with a specific message (missing legal name,
+  bad domain, an unconfirmed check) - this is the actual gate. It requires
+  org_tier (government or charity), a bare org_domain with no scheme/www,
+  org_legal_name, and a verification.checks array containing a passing entry
+  for exclusions_confirmed always, plus org_official_site for government or
+  all four of irs_exempt / irs_not_revoked / wa_charity_active /
+  form_990_on_file (with EIN and a WA charity number) for a charity.
+- The four charity check names came from the prompt; the government checkbox
+  and the always-required exclusions confirmation didn't have names given to
+  them there, only descriptions ("one checkbox", "a final confirmation
+  checkbox") - named them org_official_site and exclusions_confirmed and
+  enforced both server-side too, since the whole point stated up front was
+  that a stale tab or a hand-rolled request can't skip it, and leaving those
+  two client-only would have quietly broken that for two of the checklist's
+  items.
+- admin.html grew a verification panel: government/charity radio, always-on
+  legal name + domain fields, then either the one government checkbox or the
+  four charity checks (each with a lookup link and a source-URL field) plus
+  EIN and WA charity number. It appears on pending cards, tied directly to
+  Approve - disabled until readVerification() (a client-side mirror of the
+  server check, for a same-page answer instead of a 400) reports complete -
+  and again on published cards' edit view, for correcting or backfilling
+  verified_at afterward. verified_at itself is only ever set in one place,
+  server-side, inside approve - never by update, and nothing client-side can
+  reach it.
+- Two bugs the local harness caught before this went anywhere near
+  production: the gate briefly read as "complete" on first paint, because
+  its initial check ran via document.getElementById on a pending card that
+  was still a detached node at that point in construction (fixed by scoping
+  the lookup to the card itself); and switching from government to charity
+  and back left the other tier's checkboxes checked, so a charity record
+  could pick up a stray org_official_site: pass it never earned (fixed by
+  clearing the inactive tier's fields on switch).
+- Published rows with the older research shape the weekly cloud task wrote
+  (a flat object of sourced facts, not a checks array) show that JSON
+  verbatim in a collapsed "reference only" panel rather than trying to parse
+  it into the new checklist - a human still has to run the four checks and
+  check the boxes themselves before verified_at gets set. Rows 91/92/93 are
+  exactly this backfill queue. Published rows with verified_at still null
+  get a "Not yet verified" badge in the list so the queue is visible without
+  opening each one.
 ## 2026-08-31 — Repo tidy-up, and the organization-verification public pages
 
 - Ran the prepared reorganization: everything that is not the website moved

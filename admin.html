@@ -165,6 +165,40 @@
     .edit-field textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
     .edit-actions { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.9rem; }
 
+    /* Organization verification — the gate a pending listing can't be
+       approved without, and the same fields shown read/write on a published
+       row so old research can be backfilled into it. */
+    .verify-block { border: 1px solid var(--border-strong); border-radius: var(--radius);
+                     background: var(--bg-secondary); padding: 1rem 1.1rem; margin-top: 0.4rem; }
+    .verify-title { font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+                     text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.6rem; }
+    .verify-existing { font-size: 0.8125rem; color: var(--text-muted); margin: -0.3rem 0 0.7rem; }
+    .verify-legacy { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.7rem; }
+    .verify-legacy summary { cursor: pointer; font-weight: 600; }
+    .verify-legacy pre { white-space: pre-wrap; word-break: break-word; background: var(--bg-primary);
+                          border: 1px solid var(--border); border-radius: var(--radius);
+                          padding: 0.6rem 0.75rem; margin-top: 0.4rem; max-height: 220px; overflow-y: auto; }
+    .verify-tier { display: flex; gap: 1.2rem; margin-bottom: 0.75rem; font-size: 0.875rem; }
+    .verify-tier label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+    .verify-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem 1rem; margin-bottom: 0.75rem; }
+    @media (max-width: 560px) { .verify-grid { grid-template-columns: 1fr; } }
+    .verify-field { display: flex; flex-direction: column; gap: 0.25rem; }
+    .verify-field label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+    .verify-field input { font-family: inherit; font-size: 0.875rem; border: 1px solid var(--border-strong);
+                           border-radius: var(--radius); padding: 0.45rem 0.65rem; background: var(--bg-primary); }
+    .verify-check { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; font-size: 0.8125rem;
+                     padding: 0.5rem 0; border-top: 1px solid var(--border); }
+    .verify-check-label { display: flex; align-items: flex-start; gap: 0.45rem; cursor: pointer; flex: 1 1 260px; }
+    .verify-check-label input { margin-top: 0.15rem; }
+    .verify-lookup { color: var(--text-muted); text-decoration: underline; white-space: nowrap; font-size: 0.75rem; }
+    .verify-source { font-family: inherit; font-size: 0.8125rem; border: 1px solid var(--border-strong);
+                      border-radius: var(--radius); padding: 0.35rem 0.55rem; background: var(--bg-primary);
+                      flex: 1 1 220px; min-width: 0; }
+    .verify-exclusions { border-top: 2px solid var(--border-strong); margin-top: 0.4rem; padding-top: 0.75rem; }
+    .verify-exclusions .verify-check-label { font-size: 0.8125rem; color: var(--text-muted); }
+    .verify-status { font-size: 0.8125rem; font-weight: 600; margin: 0.7rem 0 0; }
+    .verify-missing-badge { color: #92400e; font-weight: 700; }
+
     /* Action buttons — solid black for primary, ghost outline for secondary/destructive.
        Destructive actions are distinguished by weight, not color. */
     .sub-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
@@ -527,6 +561,7 @@
           (hasCoords ? 'Geocoded from the submitted address. ' : '') +
           'Drag the pin to correct it — the coordinates update as you move it.' +
         '</p>' +
+        verificationHtml(row) +
       '</div>' +
       // Same inline editor as published cards, so a submission can be cleaned up
       // before approving rather than published and then fixed. Slug/lat/lng stay
@@ -534,13 +569,19 @@
       editFormHtml(row, { withPlacement: false, withMsg: false }) +
       '<div class="sub-actions" id="actions-' + row.id + '">' +
         '<button class="btn-edit">Edit</button>' +
-        '<button class="btn-approve">Approve</button>' +
+        '<button class="btn-approve" disabled>Approve</button>' +
         '<button class="btn-reject">Reject</button>' +
         '<span class="sub-action-msg" id="msg-' + row.id + '"></span>' +
       '</div>';
 
     wireScheduleCells(card);
     wireTypeToggle(card, row.id);
+    // Approve stays disabled until the verification checklist above is
+    // complete — this is a UI convenience only, the server enforces the same
+    // gate independently in verificationError() in api/admin.js.
+    wireVerification(card, row.id, function (complete) {
+      card.querySelector('.btn-approve').disabled = !complete;
+    });
     card.querySelector('.btn-edit').addEventListener('click',    () => toggleEdit(row.id));
     card.querySelector('.btn-save').addEventListener('click',    () => handleSave(row.id));
     card.querySelector('.btn-cancel').addEventListener('click',  () => toggleEdit(row.id, false));
@@ -556,10 +597,15 @@
     const lng  = document.getElementById('lng-'  + id).value.trim();
     if (!slug || !lat || !lng) { setCardMsg(id, 'Fill in slug, lat, and lng first.', '#111827'); return; }
     if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lng))) { setCardMsg(id, 'Lat and lng must be numbers.', '#111827'); return; }
+    const verify = readVerification(id);
+    if (!verify.complete) { setCardMsg(id, verify.message, '#111827'); return; }
 
     setCardBtns(id, true); setCardMsg(id, 'Approving…', '#6B7280');
     try {
-      const res = await postAction({ action: 'approve', id, slug, lat: parseFloat(lat), lng: parseFloat(lng) });
+      const res = await postAction(Object.assign(
+        { action: 'approve', id, slug, lat: parseFloat(lat), lng: parseFloat(lng) },
+        verify.payload
+      ));
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'HTTP ' + res.status); }
       // Tear the map down with the card: Leaflet keeps listeners alive, and a
       // stale entry would stop the map rebuilding if this row comes back to
@@ -573,8 +619,9 @@
       const publishedList = document.getElementById('published-list');
       const emptyState = publishedList.querySelector('.empty-state');
       if (emptyState) emptyState.remove();
-      const publishedRow = Object.assign({}, row, {
+      const publishedRow = Object.assign({}, row, verify.payload, {
         status: 'published', slug: slug, lat: parseFloat(lat), lng: parseFloat(lng),
+        verified_at: new Date().toISOString(),
       });
       publishedList.insertBefore(buildPublishedCard(publishedRow), publishedList.firstChild);
       adjustBadge('published-count-badge', 1);
@@ -629,7 +676,7 @@
       '<div class="sub-name">' + esc(row.name) + '</div>' +
       '<div class="sub-meta">' + metaHtml(row, 'published') + '</div>' +
 
-      editFormHtml(row, { withPlacement: true, withMsg: true }) +
+      editFormHtml(row, { withPlacement: true, withMsg: true, withVerification: true }) +
 
       '<div class="sub-actions" id="actions-' + row.id + '">' +
         '<button class="btn-edit">Edit</button>' +
@@ -640,6 +687,7 @@
 
     wireScheduleCells(card);
     wireTypeToggle(card, row.id);
+    wireVerification(card, row.id);
     card.querySelector('.btn-edit').addEventListener('click',      () => toggleEdit(row.id));
     card.querySelector('.btn-save').addEventListener('click',      () => handleSave(row.id));
     card.querySelector('.btn-cancel').addEventListener('click',    () => toggleEdit(row.id, false));
@@ -702,6 +750,7 @@
         efArea('Sign-up steps (one per line)', 'e-steps-' + row.id, esc(stepsText), false) +
         efArea('Card note', 'e-note-' + row.id, esc(row.card_note || ''), false) +
         efArea('Admin notes (not shown on site)', 'e-adminnotes-' + row.id, esc(row.admin_notes || ''), false) +
+        (opts.withVerification ? '<div class="edit-field full">' + verificationHtml(row) + '</div>' : '') +
       '</div>' +
       '<div class="edit-actions">' +
         '<button class="btn-save">Save changes</button>' +
@@ -709,6 +758,210 @@
         (opts.withMsg ? '<span class="sub-action-msg" id="msg-' + row.id + '"></span>' : '') +
       '</div>' +
     '</div>';
+  }
+
+  // ── Organization verification ──────────────────────────────────────────────
+  // Mirrors how-we-check.html sections 1-2: every listing is either a
+  // government/public body (one check) or a registered charity (four checks),
+  // or it isn't listed. Check keys here must match REQUIRED_CHARITY_CHECKS,
+  // GOVERNMENT_CHECK and EXCLUSIONS_CHECK in api/admin.js — that is what the
+  // server actually enforces; this UI only exists so an admin never has to
+  // fail that check by hand.
+  const CHARITY_CHECKS = [
+    { key: 'irs_exempt', label: 'Currently a 501(c)(3) in the IRS’s own database',
+      lookup: 'https://apps.irs.gov/app/eos/', lookupLabel: 'IRS search ↗' },
+    { key: 'irs_not_revoked', label: 'Exempt status has not been automatically revoked for failing to file',
+      lookup: 'https://apps.irs.gov/app/eos/', lookupLabel: 'IRS search ↗' },
+    { key: 'wa_charity_active', label: 'Registered with WA Secretary of State’s Charities Program, and active',
+      lookup: 'https://ccfs.sos.wa.gov/#/AdvancedSearch/Charity', lookupLabel: 'WA Charities search ↗' },
+    { key: 'form_990_on_file', label: 'Has filed at least one Form 990',
+      lookup: 'https://projects.propublica.org/nonprofits/', lookupLabel: 'ProPublica search ↗' },
+  ];
+  const GOVERNMENT_CHECK_DEF = { key: 'org_official_site',
+    label: 'Program is described on the body’s own official .gov (or district) site', lookup: null };
+  const EXCLUSIONS_CHECK_KEY = 'exclusions_confirmed';
+  const EXCLUSIONS_TEXT =
+    'None of these apply: an individual person instead of an organization, anything happening at ' +
+    'somebody’s home, anything one-on-one with an adult rather than part of a group, an organization ' +
+    'reachable only by a personal Gmail address or mobile number, or a sign-up link that doesn’t live ' +
+    'on the organization’s own website.';
+
+  function isCleanDomainClient(d) {
+    d = String(d || '').trim();
+    if (!d || /^[a-z]+:\/\//i.test(d) || d.indexOf('/') !== -1 || /^www\./i.test(d)) return false;
+    return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(d);
+  }
+
+  // row.verification may hold the older, differently-shaped research the
+  // weekly cloud task wrote (a flat object of sourced facts, not a checks
+  // array). That data is shown as reference only — it is not parsed into the
+  // form below, and completing the checklist and saving supersedes it.
+  function legacyVerificationHtml(row) {
+    const v = row.verification;
+    if (!v || typeof v !== 'object' || Array.isArray(v.checks)) return '';
+    let text;
+    try { text = JSON.stringify(v, null, 2); } catch (_) { text = String(v); }
+    return '<details class="verify-legacy"><summary>Earlier automated research on file (reference only)</summary>' +
+           '<pre>' + esc(text) + '</pre></details>';
+  }
+
+  function verifyCheckRow(def, checksByKey, id) {
+    const c = checksByKey[def.key] || {};
+    const checked = c.result === 'pass' ? ' checked' : '';
+    return '<div class="verify-check">' +
+      '<label class="verify-check-label"><input type="checkbox" id="v-chk-' + def.key + '-' + id + '"' + checked + '> ' +
+        def.label + '</label>' +
+      (def.lookup ? '<a href="' + def.lookup + '" target="_blank" rel="noopener" class="verify-lookup">' + def.lookupLabel + '</a>' : '') +
+      '<input type="text" id="v-src-' + def.key + '-' + id + '" class="verify-source" ' +
+        'placeholder="Source URL you checked" value="' + esc(c.source || '') + '" />' +
+    '</div>';
+  }
+
+  function verificationHtml(row) {
+    const id = row.id;
+    const tier = row.org_tier === 'government' || row.org_tier === 'charity' ? row.org_tier : '';
+    const checksByKey = {};
+    if (row.verification && Array.isArray(row.verification.checks)) {
+      row.verification.checks.forEach(function (c) { if (c && c.check) checksByKey[c.check] = c; });
+    }
+    return '<div class="verify-block" id="verify-' + id + '">' +
+      '<p class="verify-title">Organization verification</p>' +
+      (row.verified_at
+        ? '<p class="verify-existing">Verified ' + new Date(row.verified_at).toLocaleDateString() +
+          '. Changing anything below and saving replaces this record.</p>'
+        : '') +
+      legacyVerificationHtml(row) +
+      '<div class="verify-tier">' +
+        '<label><input type="radio" name="v-tier-' + id + '" id="v-tier-gov-' + id + '" value="government"' +
+          (tier === 'government' ? ' checked' : '') + '> Government / public body</label>' +
+        '<label><input type="radio" name="v-tier-' + id + '" id="v-tier-charity-' + id + '" value="charity"' +
+          (tier === 'charity' ? ' checked' : '') + '> Registered charity</label>' +
+      '</div>' +
+      '<div class="verify-grid">' +
+        '<div class="verify-field"><label for="v-legalname-' + id + '">Legal name</label>' +
+          '<input type="text" id="v-legalname-' + id + '" value="' + esc(row.org_legal_name || '') + '" /></div>' +
+        '<div class="verify-field"><label for="v-domain-' + id + '">Official domain (no https://, no www.)</label>' +
+          '<input type="text" id="v-domain-' + id + '" placeholder="e.g. earthcorps.org" value="' + esc(row.org_domain || '') + '" /></div>' +
+      '</div>' +
+      '<div class="verify-gov" id="verify-gov-' + id + '">' +
+        verifyCheckRow(GOVERNMENT_CHECK_DEF, checksByKey, id) +
+      '</div>' +
+      '<div class="verify-charity" id="verify-charity-' + id + '">' +
+        '<div class="verify-grid">' +
+          '<div class="verify-field"><label for="v-ein-' + id + '">EIN</label>' +
+            '<input type="text" id="v-ein-' + id + '" placeholder="12-3456789" value="' + esc(row.ein || '') + '" /></div>' +
+          '<div class="verify-field"><label for="v-wacharity-' + id + '">WA charity registration number</label>' +
+            '<input type="text" id="v-wacharity-' + id + '" value="' + esc(row.wa_charity_number || '') + '" /></div>' +
+        '</div>' +
+        CHARITY_CHECKS.map(function (def) { return verifyCheckRow(def, checksByKey, id); }).join('') +
+      '</div>' +
+      '<div class="verify-check verify-exclusions">' +
+        '<label class="verify-check-label"><input type="checkbox" id="v-chk-' + EXCLUSIONS_CHECK_KEY + '-' + id + '"' +
+          (checksByKey[EXCLUSIONS_CHECK_KEY] && checksByKey[EXCLUSIONS_CHECK_KEY].result === 'pass' ? ' checked' : '') +
+          '> ' + EXCLUSIONS_TEXT + '</label>' +
+      '</div>' +
+      '<p class="verify-status" id="verify-status-' + id + '"></p>' +
+    '</div>';
+  }
+
+  // Reads the verification block for a row back into { complete, message,
+  // payload }. Client-side mirror of verificationError() in api/admin.js —
+  // that copy is the actual gate; this one only drives the UI so the admin
+  // finds out what's missing before submitting, not after a 400 comes back.
+  // root defaults to document, but a pending card is a detached node the
+  // instant it is built (readVerification runs once during construction,
+  // before renderPending appends it) — document.getElementById can't see
+  // into a detached subtree, so that first call must be scoped to the card
+  // itself rather than the document, or it silently reads as "no block here".
+  function readVerification(id, root) {
+    root = root || document;
+    if (!root.querySelector('#v-tier-gov-' + id)) return { complete: true, payload: {} };
+    const val = function (fid) { const el = root.querySelector('#' + fid); return el ? el.value.trim() : ''; };
+    const isChecked = function (fid) { const el = root.querySelector('#' + fid); return !!(el && el.checked); };
+    const tier = isChecked('v-tier-charity-' + id) ? 'charity' : (isChecked('v-tier-gov-' + id) ? 'government' : '');
+    const org_legal_name = val('v-legalname-' + id);
+    const org_domain = val('v-domain-' + id);
+    const ein = val('v-ein-' + id);
+    const wa_charity_number = val('v-wacharity-' + id);
+
+    const allKeys = [EXCLUSIONS_CHECK_KEY, GOVERNMENT_CHECK_DEF.key].concat(CHARITY_CHECKS.map(function (c) { return c.key; }));
+    const checks = allKeys
+      .filter(function (k) { return root.querySelector('#v-chk-' + k + '-' + id); })
+      .map(function (k) {
+        return { check: k, result: isChecked('v-chk-' + k + '-' + id) ? 'pass' : 'fail', source: val('v-src-' + k + '-' + id) };
+      });
+
+    let message = null;
+    if (tier !== 'government' && tier !== 'charity') message = 'Choose government or charity.';
+    else if (!org_legal_name) message = 'Legal name is required.';
+    else if (!isCleanDomainClient(org_domain)) message = 'Official domain must be a bare domain, e.g. earthcorps.org.';
+    else if (!isChecked('v-chk-' + EXCLUSIONS_CHECK_KEY + '-' + id)) message = 'Confirm none of the exclusions apply.';
+    else if (tier === 'government' && !isChecked('v-chk-' + GOVERNMENT_CHECK_DEF.key + '-' + id)) {
+      message = 'Confirm: ' + GOVERNMENT_CHECK_DEF.label;
+    } else if (tier === 'charity') {
+      if (!ein) message = 'EIN is required.';
+      else if (!wa_charity_number) message = 'WA charity registration number is required.';
+      else {
+        const missing = CHARITY_CHECKS.find(function (c) { return !isChecked('v-chk-' + c.key + '-' + id); });
+        if (missing) message = 'Confirm: ' + missing.label;
+      }
+    }
+
+    return {
+      complete: !message,
+      message: message,
+      payload: {
+        org_tier: tier || null,
+        org_legal_name: org_legal_name || null,
+        org_domain: org_domain || null,
+        ein: tier === 'charity' ? (ein || null) : null,
+        wa_charity_number: tier === 'charity' ? (wa_charity_number || null) : null,
+        verification: { checks: checks },
+      },
+    };
+  }
+
+  // Toggles the government/charity sub-panels and keeps the status line and,
+  // for pending cards, the Approve button in sync as fields change.
+  function wireVerification(card, id, onChange) {
+    const govRadio = card.querySelector('#v-tier-gov-' + id);
+    if (!govRadio) return;
+    const chaRadio = card.querySelector('#v-tier-charity-' + id);
+    const govBox = card.querySelector('#verify-gov-' + id);
+    const chaBox = card.querySelector('#verify-charity-' + id);
+    const statusEl = card.querySelector('#verify-status-' + id);
+
+    // Switching tiers clears the other tier's checks rather than leaving them
+    // checked-but-hidden — otherwise a stray "org_official_site: pass" from an
+    // earlier government selection would ride along into a charity record,
+    // claiming a check was done that the current tier never asked for.
+    function clearGroup(box) {
+      if (!box) return;
+      box.querySelectorAll('input[type=checkbox]').forEach(function (cb) { cb.checked = false; });
+      box.querySelectorAll('.verify-source').forEach(function (inp) { inp.value = ''; });
+    }
+
+    function sync() {
+      const t = chaRadio.checked ? 'charity' : (govRadio.checked ? 'government' : '');
+      govBox.style.display = t === 'government' ? '' : 'none';
+      chaBox.style.display = t === 'charity' ? '' : 'none';
+      const result = readVerification(id, card);
+      if (statusEl) {
+        statusEl.textContent = result.complete ? 'Verification complete.' : result.message;
+        statusEl.style.color = result.complete ? '#166534' : 'var(--text-muted)';
+      }
+      if (onChange) onChange(result.complete);
+    }
+
+    govRadio.addEventListener('change', function () { clearGroup(chaBox); sync(); });
+    chaRadio.addEventListener('change', function () { clearGroup(govBox); sync(); });
+    // Radios are already wired above (with the clear-on-switch step first) —
+    // excluded here so a tier switch doesn't run sync() twice.
+    card.querySelectorAll('#verify-' + id + ' input:not([type=radio])').forEach(function (el) {
+      el.addEventListener('input', sync);
+      el.addEventListener('change', sync);
+    });
+    sync();
   }
 
   // ── Category picker ────────────────────────────────────────────────────────
@@ -870,6 +1123,19 @@
     set('section',          g('e-section-' + id));
     set('card_note',        orNull('e-note-' + id));
     set('admin_notes',      orNull('e-adminnotes-' + id));
+
+    // Only present on published cards (editFormHtml's withVerification option).
+    // Always sent in full when present, so what's on screen is exactly what's
+    // saved — this is the backfill path for the verification checklist.
+    if (document.getElementById('v-tier-gov-' + id)) {
+      const verify = readVerification(id);
+      payload.org_tier = verify.payload.org_tier;
+      payload.org_legal_name = verify.payload.org_legal_name;
+      payload.org_domain = verify.payload.org_domain;
+      payload.ein = verify.payload.ein;
+      payload.wa_charity_number = verify.payload.wa_charity_number;
+      payload.verification = verify.payload.verification;
+    }
 
     const ageMin = g('e-agemin-' + id);
     if (ageMin !== null) payload.age_min = ageMin ? parseInt(ageMin, 10) : null;
@@ -1164,6 +1430,7 @@
       cells.push('<span>Slug: ' + esc(row.slug || '—') + '</span>');
       cells.push('<span>Lat: ' + esc(row.lat != null ? row.lat : '—') + '</span>');
       cells.push('<span>Lng: ' + esc(row.lng != null ? row.lng : '—') + '</span>');
+      if (!row.verified_at) cells.push('<span class="verify-missing-badge">Not yet verified</span>');
     } else {
       cells.push('<span>Section: ' + esc(row.section || '—') + '</span>');
     }

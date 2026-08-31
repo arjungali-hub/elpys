@@ -11,6 +11,87 @@ const { geocodeAddress }     = require('../lib/geocode');
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// The org-verification gate. A listing cannot be published without a
+// completed verification record — enforced here, not only in admin.html,
+// so a stale tab or a hand-rolled request can't skip it.
+//
+// verification is stored as { checks: [{ check, result, source }, ...] }.
+// The four named charity checks below are what a passing verification.checks
+// array must contain for a charity; a government listing needs only
+// org_official_site. This is the shape the admin UI writes going forward —
+// existing rows the weekly research task already populated may have older,
+// differently-shaped verification data (a flat object of sourced facts, not
+// a checks array); that data isn't validated against this shape and isn't
+// touched by it, it is simply superseded once a human completes the checklist
+// through the panel and hits approve.
+const REQUIRED_CHARITY_CHECKS = ['irs_exempt', 'irs_not_revoked', 'wa_charity_active', 'form_990_on_file'];
+// Not named explicitly in the spec beyond "one checkbox" (government) and
+// "a final confirmation checkbox" (always) — named here so the same
+// server-side-enforcement principle applies to those two, not just the four
+// charity checks the spec did name. admin.html must use these exact keys.
+const GOVERNMENT_CHECK  = 'org_official_site';
+const EXCLUSIONS_CHECK  = 'exclusions_confirmed';
+
+// "earthcorps.org" passes; "https://earthcorps.org/volunteer" and
+// "www.earthcorps.org" do not — this rejects rather than cleans, so a
+// pasted URL is caught instead of silently mangled into something that
+// looks right but isn't what was checked.
+function isCleanDomain(domain) {
+  const d = String(domain || '').trim();
+  if (!d) return false;
+  if (/^[a-z]+:\/\//i.test(d)) return false;   // has a scheme
+  if (d.indexOf('/') !== -1) return false;      // has a path
+  if (/^www\./i.test(d)) return false;          // has a www. prefix
+  return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(d);
+}
+
+function hasPassingCheck(checks, name) {
+  return Array.isArray(checks) && checks.some(c => c && c.check === name && c.result === 'pass');
+}
+
+// Returns an error string naming the specific missing piece, or null when the
+// record is complete enough to publish. Deliberately specific rather than a
+// generic "Invalid request" — this message is what gets read at 11pm.
+function verificationError(body) {
+  const tier = body.org_tier;
+  if (tier !== 'government' && tier !== 'charity') {
+    return 'Cannot publish: org_tier must be "government" or "charity".';
+  }
+  if (!isCleanDomain(body.org_domain)) {
+    return 'Cannot publish: org_domain must be a bare registrable domain (e.g. earthcorps.org), with no scheme, path or www.';
+  }
+  if (!String(body.org_legal_name || '').trim()) {
+    return 'Cannot publish: org_legal_name is required.';
+  }
+  const verification = body.verification;
+  if (!verification || typeof verification !== 'object' || Array.isArray(verification) ||
+      !Array.isArray(verification.checks)) {
+    return 'Cannot publish: verification.checks is required.';
+  }
+  if (!hasPassingCheck(verification.checks, EXCLUSIONS_CHECK)) {
+    return 'Cannot publish: the categorical-exclusions confirmation has not been checked.';
+  }
+  if (tier === 'government') {
+    if (!hasPassingCheck(verification.checks, GOVERNMENT_CHECK)) {
+      return 'Cannot publish: "' + GOVERNMENT_CHECK + '" has not been confirmed.';
+    }
+  }
+  if (tier === 'charity') {
+    if (!String(body.ein || '').trim()) {
+      return 'Cannot publish: EIN is required for a registered charity.';
+    }
+    if (!String(body.wa_charity_number || '').trim()) {
+      return 'Cannot publish: WA charity registration number is required for a registered charity.';
+    }
+    for (const name of REQUIRED_CHARITY_CHECKS) {
+      if (!hasPassingCheck(verification.checks, name)) {
+        return 'Cannot publish: "' + name + '" has not been confirmed.';
+      }
+    }
+  }
+  return null;
+}
+
 function supabaseHeaders(extra) {
   return Object.assign({
     apikey:        SUPABASE_KEY,
@@ -132,6 +213,8 @@ module.exports = async function handler(req, res) {
       if (!slug || lat == null || lng == null) {
         return res.status(400).json({ error: 'slug, lat, and lng are required to approve' });
       }
+      const verr = verificationError(req.body);
+      if (verr) return res.status(400).json({ error: verr });
 
       const out = await patchRow({
         status: 'published',
@@ -139,6 +222,13 @@ module.exports = async function handler(req, res) {
         lat: parseFloat(lat),
         lng: parseFloat(lng),
         published_at: new Date().toISOString(),
+        org_tier: req.body.org_tier,
+        org_legal_name: req.body.org_legal_name,
+        ein: req.body.ein,
+        wa_charity_number: req.body.wa_charity_number,
+        org_domain: req.body.org_domain,
+        verification: req.body.verification,
+        verified_at: new Date().toISOString(),
       });
       if (!out.ok) return res.status(out.status).json(out.payload);
       return res.status(200).json({ ok: true });
@@ -148,7 +238,8 @@ module.exports = async function handler(req, res) {
       const EDITABLE = ['name','description','long_description','category','age_display','age_min',
                         'when','schedule','where','address','lat','lng','signup_link','signup_steps','section',
                         'card_note','signup_label','slug','admin_notes',
-                        'website','contact_email','contact_phone','opportunity_type','event_date'];
+                        'website','contact_email','contact_phone','opportunity_type','event_date',
+                        'org_tier','org_legal_name','ein','wa_charity_number','org_domain','verification'];
       const updates = {};
       for (const key of EDITABLE) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
