@@ -17,11 +17,19 @@
 // in vercel.json (script-src for the loader, connect-src for the events).
 // They are already listed there; if POSTHOG_HOST changes region, update both.
 
-// Project API key — public by design, meant to ship in client-side code.
-// Region confirmed as US cloud: this key resolves at us.i.posthog.com and
-// 404s at eu.i.posthog.com, so POSTHOG_HOST below is correct as-is.
 var POSTHOG_KEY  = 'phc_Djsocccc9gViK57QBT7abSeZptD5ubtdTrXURLQGbHRg';
-var POSTHOG_HOST = 'https://us.i.posthog.com';
+
+// NOTE ON REVERSE PROXY: PostHog traffic is routed through this site's own
+// /lantern path (see the vercel.json "rewrites" block), not directly to
+// posthog.com. This is deliberate: ad blockers maintain blocklists of known
+// analytics domains, and routing through our own origin avoids them,
+// meaningfully improving how much real usage we can see. Because of this,
+// the PostHog domains no longer need to be (and have been removed from) the
+// Content-Security-Policy in vercel.json — the loader script and event/config
+// requests are now same-origin. If POSTHOG_HOST is ever pointed back at
+// PostHog's domains directly (e.g. proxy removed), the CSP entries for
+// us.i.posthog.com and us-assets.i.posthog.com will need to be restored.
+var POSTHOG_HOST = '/lantern';
 
 // While the key is still the placeholder, load nothing. Initialising with it
 // would fetch the loader script and fire an event request on every page view,
@@ -35,6 +43,7 @@ if (POSTHOG_KEY.charAt(0) === '<') {
 
 posthog.init(POSTHOG_KEY, {
   api_host: POSTHOG_HOST,
+  ui_host: 'https://us.posthog.com',
   defaults: '2026-05-30',
   autocapture: false,
   disable_session_recording: true,
