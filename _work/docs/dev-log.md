@@ -7,6 +7,103 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-01 — The launch/SEO pass: noindex off, and everything that was missing behind it
+
+Full pre-marketing scan of the site. The headline is open issue #7: `noindex`
+was on all 14 pages, so the site was invisible to every search engine. That is
+now off on the nine public pages and, separately, tightened everywhere else.
+The rest of this entry is what the scan found once that was no longer the only
+thing in the way.
+
+- **`noindex` removed** from `/`, `/about`, `/map`, `/submit`, `/feedback`,
+  `/how-we-check`, `/privacy`, `/terms` and `/opportunities-detail`. Open issue
+  #7 is closed.
+- **`admin.html` and `admin-review.html` never had a robots tag at all.** The
+  two pages that manage every listing on the site were the only ones a crawler
+  was free to index — the launch `noindex` was on the *public* pages and had
+  simply never been added to these. Both now carry
+  `noindex, nofollow, noarchive`, as do account/login/signup/review/admin-login
+  (which had bare `noindex`).
+- **No page had a meta description, a canonical URL, or any og:/twitter: tag.**
+  Every one of the sixteen pages now has the full block. Until now a link to
+  Elpys pasted into a group chat rendered as a bare URL with no title, image or
+  blurb — which is the entire mechanism by which a directory like this spreads.
+- **`logos/elpys-og.png`** — a 1200×630 share card (torch mark, wordmark, the
+  homepage's own headline). Referenced by og:image and twitter:image site-wide.
+- **`robots.txt`** — did not exist; `/robots.txt` 404'd. Allows the public
+  pages, disallows the admin surface, the account pages, `/api/` and the
+  `/lantern/` analytics proxy, and points at the sitemap.
+- **`/sitemap.xml`** — did not exist either. Served by a new `api/sitemap.js`
+  via a rewrite, not checked in as a static file: the interesting half is the
+  listing detail URLs, which change whenever a submission is approved or a
+  one-time event's date passes. Its listing query deliberately mirrors the
+  public client's own filter in `supabase-client.js` (published, plus one-time
+  rows only while their date is still ahead) so the sitemap can never advertise
+  a URL the site itself has stopped serving. If `SUPABASE_URL` /
+  `SUPABASE_SERVICE_ROLE_KEY` are missing or Supabase errors, it logs and still
+  serves the eight static pages rather than 500ing.
+- **404 page.** An unmatched path returned Vercel's default 79-byte plain-text
+  body. There is now a `404.html` in the site's own design. It is *generated*
+  from `about.html`'s real `<header>`/`<footer>` rather than hand-copied — the
+  header is ~2KB of inline SVG wordmark and a hand copy would drift the first
+  time the logo changes.
+
+**Detail pages were going to be indexed as fifteen copies of one page.** One
+template serves every listing off `?slug=`, so the static head describes the
+template: same title, same description, same canonical for all of them.
+`setListingMeta()` now rewrites title/description/canonical/og from the row
+once it loads. Googlebot renders JS, so that is what gets indexed. Social-card
+crawlers (Slack, Discord, iMessage, WhatsApp, Facebook) do **not** run scripts,
+so a shared listing link still previews as the generic card — a known limit,
+recorded in the code, fixable only by serving that page from a function. Not
+worth doing before there is evidence listing links are what people share.
+
+Also: `setPlaceholder()` now appends `<meta name="robots" content="noindex">`.
+All three of its terminal states (no slug, unknown slug, database unreachable)
+are pages with no listing on them, and a removed listing would otherwise leave
+an indexed "Opportunity not found" page behind it.
+
+**Two colour tokens were failing WCAG AA, one of them after a fix that was
+recorded as having worked.** Measured with axe-core against the live homepage,
+not by eye:
+
+- `--subtle` was `#767D89`. The comment in `styles.css` said "~4.6:1" on white;
+  it actually measures **4.14:1**, under the 4.5:1 AA needs for body text. So
+  the August fix that raised it from `#9CA3AF` moved it in the right direction
+  and stopped short, and the comment recorded a number nobody had measured. Now
+  `#6D7583` — 4.64:1, verified.
+- `--muted` (`#6B7280`) passes on white at 4.83:1 but measures **4.39:1** on
+  `--surface`, which is exactly where `.filter-btn` puts it — 69 failing nodes
+  on the homepage, 60 of them the card labels and 9 the filter chips. Added
+  `--muted-on-surface` (`#5F6675`, 5.24:1 there) for muted-weight text on a
+  surface chip or panel; `--muted` itself is unchanged, so nothing that was
+  already passing moved.
+
+**No page had a `<main>` landmark or a skip link.** axe reported
+`landmark-one-main` plus `region` across 74 nodes — effectively all page
+content sat outside any landmark, and a keyboard user had no way past the
+header. Both added to the ten public pages. Purely additive, and checked first
+that `styles.css` contains no `body > …` child selectors, so a wrapper element
+cannot move anything.
+
+Smaller things found in passing:
+
+- `beta-banner.js` linked to `feedback.html?from=`, which only worked via the
+  `cleanUrls` 308. Now `/feedback?from=`, like every other link on the site.
+- `index.html`'s own logo links to `href="#"` rather than `/`. Left alone —
+  pre-existing, and on the homepage it is nearly a no-op — but it is
+  inconsistent with every other page.
+- `needs_browser_check` **does** exist on `Opportunities` now (timestamptz). The
+  26 Aug entry below says it does not; that was true then.
+
+Method note: the container running this had no network route to
+`elpys.vercel.app`, so the live-site half of the audit (axe-core runs, the
+page-by-page fetch matrix, the rendered check that 15 listings load and PostHog
+initialises) was done through the Chrome extension against the real production
+site, and the pre-commit verification through a local static server plus
+headless Chromium. Playwright could not reach production from this environment
+at all — worth knowing before anyone plans a check that assumes it can.
+
 ## 2026-09-01 — The gate-status panel was frozen at page-load, not live
 
 - Found in manual testing right after merging the publish-gate work: fill in

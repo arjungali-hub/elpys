@@ -5,12 +5,19 @@
   --surface:    #F3F4F6;
   --border:     #E5E7EB;
   --muted:      #6B7280;
+  /* --muted measures 4.83:1 on white, which passes, but only 4.39:1 on
+     --surface — under the 4.5:1 AA needs for body text. Anything that puts
+     muted-weight text on a --surface chip or panel takes this instead
+     (5.24:1 there, 5.76:1 on white). */
+  --muted-on-surface: #5F6675;
   /* Text tier. Was #9CA3AF, which measures 2.54:1 on white — below the 4.5:1
      WCAG AA needs for body text, and it was carrying the AGE/WHEN/WHERE labels
-     on every card. #767D89 measures ~4.6:1 and still reads lighter than
+     on every card. The #767D89 that replaced it was recorded here as "~4.6:1";
+     measured with axe-core against the live site it is 4.14:1, so it never
+     actually cleared AA. #6D7583 measures 4.64:1 and still reads lighter than
      --muted. Non-text uses (scrollbar, borders) take --subtle-ui instead so
      they keep the old lightness. */
-  --subtle:     #767D89;
+  --subtle:     #6D7583;
   --subtle-ui:  #9CA3AF;
   --body:       #111827;
   --accent:     #111827;
@@ -701,6 +708,27 @@ header {
   border-left: 2px solid var(--border);
 }
 
+/* ── Skip link ──
+   Off-screen until focused, then pinned to the top-left. Positioned rather
+   than display:none so it stays in the tab order — a hidden skip link is the
+   same as no skip link. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 1000;
+  background: var(--body);
+  color: var(--white);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.65rem 1.1rem;
+  border-radius: 0 0 var(--radius) 0;
+  text-decoration: none;
+}
+.skip-link:focus {
+  left: 0;
+}
+
 /* CTA button */
 .btn {
   display: inline-block;
@@ -736,7 +764,8 @@ header {
   border-radius: 20px;
   border: 1px solid transparent;
   background: var(--surface);
-  color: var(--muted);
+  /* Not --muted: on --surface that pair measures 4.39:1, just under AA. */
+  color: var(--muted-on-surface);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }

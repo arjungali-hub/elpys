@@ -1,0 +1,26 @@
+# Elpys — https://elpys.vercel.app
+#
+# The site is a public directory and every page listed in the sitemap is meant
+# to be found. The disallow rules below are the admin surface and the account
+# pages: nothing there is useful in a search result, and two of them are login
+# forms. They also carry `noindex, nofollow, noarchive` in their own <head>,
+# which is what actually keeps them out of an index — a Disallow only stops the
+# crawl, and a page that is linked from elsewhere can still be indexed without
+# being fetched. Both together is the belt-and-braces version.
+
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /admin-review
+Disallow: /review
+Disallow: /account
+Disallow: /login
+Disallow: /signup
+Disallow: /api/
+
+# The analytics reverse proxy (see vercel.json). Not content.
+Disallow: /lantern/
+
+Sitemap: https://elpys.vercel.app/sitemap.xml

@@ -2,6 +2,10 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
       "source": "/lantern/static/:path(.*)",
       "destination": "https://us-assets.i.posthog.com/static/:path"
     },

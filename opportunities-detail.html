@@ -4,8 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Elpys</title>
-  <!-- noindex: remove this tag when ready to launch publicly -->
-  <meta name="robots" content="noindex">
+  <!-- seo:generated — canonical/og/twitter block. Absolute URLs are hard-coded
+       to https://elpys.vercel.app; a custom domain means updating every one of
+       them (grep for "seo:generated"). -->
+  <meta name="description" content="Full details for a verified teen volunteer opportunity in the Bellevue area: what you'd do, when, where, and the exact steps to sign up.">
+  <link rel="canonical" href="https://elpys.vercel.app/opportunities-detail">
+  <meta name="theme-color" content="#111827">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpys">
+  <meta property="og:title" content="Volunteer opportunity — Elpys">
+  <meta property="og:description" content="Full details for a verified teen volunteer opportunity in the Bellevue area: what you'd do, when, where, and the exact steps to sign up.">
+  <meta property="og:url" content="https://elpys.vercel.app/opportunities-detail">
+  <meta property="og:image" content="https://elpys.vercel.app/logos/elpys-og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Elpys — verified volunteer opportunities for teens in Bellevue, WA">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Volunteer opportunity — Elpys">
+  <meta name="twitter:description" content="Full details for a verified teen volunteer opportunity in the Bellevue area: what you'd do, when, where, and the exact steps to sign up.">
+  <meta name="twitter:image" content="https://elpys.vercel.app/logos/elpys-og.png">
+  <meta name="twitter:image:alt" content="Elpys — verified volunteer opportunities for teens in Bellevue, WA">
   <link rel="icon" type="image/svg+xml" href="logos/elpys-favicon.svg">
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,6 +34,9 @@
   <script src="analytics.js"></script>
 </head>
 <body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
 
 <header>
   <div class="wrap">
@@ -28,6 +50,8 @@
   </div>
 </header>
 
+<main id="main-content">
+
 <div class="wrap">
   <section class="detail-section" id="detail-section">
     <a href="/" class="back-link">← Back to all opportunities</a>
@@ -37,6 +61,8 @@
     <div id="loading-msg" class="skel-detail skel-wave" aria-busy="true" style="margin-top:1rem;"></div>
   </section>
 </div>
+
+</main>
 
 <footer>
   <div class="wrap">
@@ -65,9 +91,61 @@
     // or the element keeps announcing itself as still loading.
     el.className = 'detail-placeholder';
     el.removeAttribute('aria-busy');
+    // Every terminal state here is a page with no listing on it: a missing
+    // slug, a slug that no longer resolves, or a database that didn't answer.
+    // None of the three should end up in a search index — a removed listing
+    // otherwise leaves an indexed "Opportunity not found" page behind it.
+    var robots = document.createElement('meta');
+    robots.name = 'robots';
+    robots.content = 'noindex';
+    document.head.appendChild(robots);
     el.innerHTML = '<strong class="detail-placeholder-title">' + esc(title) + '</strong>' +
       '<span>' + esc(detail) + '</span>' +
       '<a class="detail-placeholder-link" href="/">Browse all opportunities →</a>';
+  }
+
+  // Every listing is served by this one file with a different ?slug=. The
+  // static <head> therefore describes the template, not the listing, and every
+  // detail URL would otherwise share one title, one description and one
+  // canonical — which is how a search engine decides fifteen distinct pages are
+  // duplicates of each other. Rewrite them here once the row is known.
+  //
+  // Googlebot renders the page's JavaScript before reading the head, so the
+  // title, description and canonical set here are the ones it indexes.
+  //
+  // The social-card crawlers do NOT: Slack, Discord, iMessage, WhatsApp and
+  // Facebook read the HTML as served and never execute a script. A shared
+  // listing link therefore shows the generic template card, not the listing's
+  // own. Fixing that properly means serving the detail page from a function
+  // that injects the row's og:* server-side — worth doing if listing links
+  // turn out to be what people actually share, and not worth doing before
+  // then. Recorded here so it is a known limit rather than a surprise.
+  function setListingMeta(opp, slug) {
+    const url = 'https://elpys.vercel.app/opportunities-detail?slug=' +
+                encodeURIComponent(slug);
+
+    // The card blurb is the natural meta description. Trim it to the ~160
+    // characters a search result actually shows, on a word boundary.
+    let desc = String(opp.description || '').replace(/\s+/g, ' ').trim();
+    if (desc.length > 160) desc = desc.slice(0, 157).replace(/\s+\S*$/, '') + '…';
+    if (!desc) desc = 'A verified volunteer opportunity for teens in the Bellevue area.';
+
+    const title = opp.name + ' — Elpys';
+
+    const setMeta = (selector, attr, value) => {
+      const el = document.head.querySelector(selector);
+      if (el) el.setAttribute(attr, value);
+    };
+
+    setMeta('meta[name="description"]', 'content', desc);
+    setMeta('meta[property="og:title"]', 'content', title);
+    setMeta('meta[property="og:description"]', 'content', desc);
+    setMeta('meta[property="og:url"]', 'content', url);
+    setMeta('meta[name="twitter:title"]', 'content', title);
+    setMeta('meta[name="twitter:description"]', 'content', desc);
+
+    const canonical = document.head.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute('href', url);
   }
 
   // Skeleton first, so the page has its shape before the row arrives.
@@ -104,6 +182,7 @@
 
     // Update page title
     document.title = opp.name + ' — Elpys';
+    setListingMeta(opp, slug);
 
     // Build steps HTML
     const stepsHtml = opp._steps.length

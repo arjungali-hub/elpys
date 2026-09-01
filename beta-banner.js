@@ -7,7 +7,9 @@
     // ── Dismissible beta banner below the header ─────────────────────────────
     if (sessionStorage.getItem(DISMISSED_KEY)) return;
 
-    var feedbackHref = 'feedback.html?from=' + encodeURIComponent(location.href);
+    // Extensionless: cleanUrls is on, so 'feedback.html' only worked via a
+    // 308 redirect. One less hop, and it matches every other link on the site.
+    var feedbackHref = '/feedback?from=' + encodeURIComponent(location.href);
 
     var banner = document.createElement('div');
     banner.id = 'beta-banner';

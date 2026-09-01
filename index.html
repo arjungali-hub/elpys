@@ -4,8 +4,71 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Elpys — Bellevue Teen Volunteering</title>
-  <!-- noindex: remove this tag when ready to launch publicly -->
-  <meta name="robots" content="noindex">
+  <!-- seo:generated — canonical/og/twitter block. Absolute URLs are hard-coded
+       to https://elpys.vercel.app; a custom domain means updating every one of
+       them (grep for "seo:generated"). -->
+  <meta name="description" content="Verified volunteer opportunities for teens in Bellevue, WA. Every listing shows exactly how to sign up — no dead links, no guessing, and no adult required on-site.">
+  <link rel="canonical" href="https://elpys.vercel.app/">
+  <meta name="theme-color" content="#111827">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpys">
+  <meta property="og:title" content="Elpys — Volunteer opportunities for teens in Bellevue">
+  <meta property="og:description" content="Verified volunteer opportunities for teens in Bellevue, WA. Every listing shows exactly how to sign up — no dead links, no guessing, and no adult required on-site.">
+  <meta property="og:url" content="https://elpys.vercel.app/">
+  <meta property="og:image" content="https://elpys.vercel.app/logos/elpys-og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Elpys — verified volunteer opportunities for teens in Bellevue, WA">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Elpys — Volunteer opportunities for teens in Bellevue">
+  <meta name="twitter:description" content="Verified volunteer opportunities for teens in Bellevue, WA. Every listing shows exactly how to sign up — no dead links, no guessing, and no adult required on-site.">
+  <meta name="twitter:image" content="https://elpys.vercel.app/logos/elpys-og.png">
+  <meta name="twitter:image:alt" content="Elpys — verified volunteer opportunities for teens in Bellevue, WA">
+  <!-- Structured data. Two things only, both of which are true and checkable:
+       who runs this and what area it covers. No aggregate ratings, no invented
+       review counts, no opening hours — schema a search engine can contradict
+       is worse than none. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://elpys.vercel.app/#website",
+        "url": "https://elpys.vercel.app/",
+        "name": "Elpys",
+        "description": "Verified volunteer opportunities for teens in Bellevue, WA.",
+        "inLanguage": "en-US",
+        "publisher": { "@id": "https://elpys.vercel.app/#organization" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://elpys.vercel.app/#organization",
+        "name": "Elpys",
+        "url": "https://elpys.vercel.app/",
+        "logo": "https://elpys.vercel.app/logos/elpys-og.png",
+        "description": "A hand-checked directory of volunteer opportunities that teens in the Bellevue area can sign up for on their own.",
+        "areaServed": {
+          "@type": "City",
+          "name": "Bellevue",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Bellevue",
+            "addressRegion": "WA",
+            "addressCountry": "US"
+          }
+        },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "email": "elpysnotifications@gmail.com",
+          "availableLanguage": "English"
+        }
+      }
+    ]
+  }
+  </script>
   <link rel="icon" type="image/svg+xml" href="logos/elpys-favicon.svg">
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,6 +78,9 @@
   <script src="analytics.js"></script>
 </head>
 <body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
 
 <!-- ── Header ── -->
 <header>
@@ -28,6 +94,8 @@
     </div>
   </div>
 </header>
+
+<main id="main-content">
 
 <!-- ── Hero ── -->
 <section class="hero">
@@ -157,6 +225,8 @@
 </div>
 
 <!-- ── Footer ── -->
+</main>
+
 <footer>
   <div class="wrap">
     <div class="footer-inner">
