@@ -50,6 +50,27 @@ posthog.init(POSTHOG_KEY, {
   cookieless_mode: 'always',
   person_profiles: 'identified_only',
 
+  // disable_compression: request_batching's gzip path (posthog-js's own
+  // fflate-based gzip, not a browser Content-Encoding) was silently losing
+  // every custom event sent through it. Confirmed directly against
+  // production with CDP: a feedback_submitted/signup_link_clicked capture()
+  // call produces an ArrayBuffer body starting with the gzip magic bytes
+  // (1f 8b 08...), but neither the request headers nor the URL carry any
+  // compression signal (no Content-Encoding, no ?compression=gzip-js) —
+  // checked at the wire level via Network.requestWillBeSentExtraInfo, so
+  // this is what the browser actually sent, not something Vercel's rewrite
+  // stripped. PostHog's ingestion endpoint ACKs 200 "Ok" regardless (it
+  // queues for async processing), so the failure was invisible client-side.
+  // The automatic $pageview send goes out the same way (also unsignaled
+  // gzip) but reaches PostHog anyway — it uses the older, unbatched /e/
+  // endpoint, which appears to sniff gzip by magic bytes; the batched
+  // /i/v0/e/ endpoint that custom events go through does not, and silently
+  // drops what it can't parse. Disabling compression sends plain JSON
+  // instead (posthog-js's own fallback path when this flag is set), which
+  // sidesteps the missing signal entirely rather than trying to reproduce
+  // whatever signal the SDK isn't attaching correctly in this setup.
+  disable_compression: true,
+
   // The five below are NOT covered by autocapture: false. A dated `defaults`
   // value turns dead-click and rageclick capture on by itself, and heatmaps,
   // exception capture and performance capture fall back to whatever is toggled

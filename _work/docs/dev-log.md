@@ -7,6 +7,80 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-01 — Found why capture() events never reached PostHog
+
+- $pageview and $web_vitals were arriving fine; the explicit
+  posthog.capture() calls - feedback_submitted (feedback.html),
+  signup_link_clicked (analytics.js, site-wide click delegation), and
+  submission_form_submitted (submit.html) - had never once appeared in 30+
+  days, confirmed against PostHog's own data schema, not just "not seen
+  recently." The underlying data (feedback rows, opportunity submissions)
+  was landing in Supabase correctly throughout - purely an analytics-
+  visibility bug. No separate prior fix existed for any of the three before
+  this entry, despite a later message referencing one - checked git log
+  and origin/main directly before touching anything; this is the only fix.
+- Reproduced directly against production with CDP: injected a fetch/XHR
+  wrapper via Page.addScriptToEvaluateOnNewDocument (runs before any page
+  script, so it sees exactly what the real SDK sends, not a hand-built
+  request), navigated to /feedback, and called
+  window.posthog.capture('feedback_submitted', ...) directly from the
+  console - same function feedback.html calls, no Supabase row created.
+- The request body was an ArrayBuffer starting with 1f 8b 08 - the gzip
+  magic number. Neither the JS-visible request headers nor the raw wire
+  headers (via Network.requestWillBeSentExtraInfo, i.e. what the browser
+  actually sent, before Vercel ever sees it) carried a Content-Encoding
+  header, and the URL posthog-js itself constructed
+  (/lantern/i/v0/e/, no query string, confirmed at both the JS layer and
+  the wire) never got PostHog's ?compression=gzip-js query flag either.
+  So: a gzip'd body, with no signal anywhere that it's gzip'd.
+- PostHog's ingestion endpoint ACKs 200 {"status":"Ok"} immediately
+  regardless - it queues for async processing rather than validating the
+  body inline - which is exactly why this was invisible from the browser
+  for weeks: the network tab looked completely successful.
+- Confirmed the automatic $pageview send (via /lantern/e/, the older
+  unbatched endpoint) has the identical unsignaled-gzip body, yet it does
+  arrive. The working theory: /e/ sniffs gzip by magic bytes regardless of
+  headers; the batched /i/v0/e/ endpoint that request_batching routes
+  custom events through does not, and silently drops what it can't parse.
+  This matches a known class of PostHog issue (Content-Encoding/gzip
+  signal mismatches causing silent ingestion failures - see
+  PostHog/posthog-js#261 and PostHog/posthog#4816).
+- Checked Vercel's runtime logs for the request window - nothing. Expected:
+  /lantern/* is a static rewrite-to-external-destination, handled at
+  Vercel's edge/CDN layer, not a function invocation Vercel logs at that
+  level. Ruled out as a source of signal, not a dead end that needed
+  chasing further.
+- Fix: analytics.js now sets disable_compression: true in posthog.init().
+  Confirmed in the real array.js bundle Vercel is actually serving (pulled
+  directly from /lantern/static/array.js, not assumed from a different
+  version) that this flag exists and is the documented way to keep
+  posthog-js on its plain application/json fallback path instead of the
+  gzip one - sidesteps whatever is failing to attach the compression
+  signal in this setup, rather than trying to reproduce that signal
+  through a static Vercel rewrite (which can't inject response-dependent
+  headers or react to what the SDK negotiates). Costs a small amount of
+  bandwidth per event; not something a low-traffic teen-facing directory
+  needs to optimize for.
+- This is a single posthog.init() config change, not a per-call-site fix -
+  every posthog.capture() call in the codebase goes through the same
+  shared instance, so it covers feedback_submitted, signup_link_clicked
+  and submission_form_submitted identically without touching feedback.html,
+  the click delegation in analytics.js, or submit.html individually.
+  Confirmed submit.html:579 uses the same window.posthog.capture(...) call
+  pattern as the other two before relying on that.
+- The proxy itself was never the problem - confirmed the same missing-
+  signal body at the wire level, i.e. before Vercel's rewrite touches
+  anything. Did not need the planned direct-to-PostHog preview-deployment
+  bypass test to establish that; the wire-level evidence already ruled the
+  proxy in or out for both endpoints identically.
+- Verification still needed from Arjun: this session has no PostHog query
+  access (only the client-side capture key baked into analytics.js, which
+  can't read data back out), so confirming feedback_submitted and
+  signup_link_clicked now actually land in PostHog's data schema needs a
+  check from the PostHog dashboard after this deploys - the network tab
+  alone is exactly the thing that looked fine for 30 days while this bug
+  was live.
+
 ## 2026-09-01 — Fixed the loading-counter-shows-0 bug on admin.html
 
 - The three section-header count badges on admin.html (Pending, Published,
