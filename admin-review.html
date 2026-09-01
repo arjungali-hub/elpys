@@ -153,6 +153,30 @@
     .verify-status { font-size: 0.8125rem; font-weight: 600; margin: 0.7rem 0 0; }
     .verify-missing-badge { color: #92400e; font-weight: 700; }
 
+    /* Read-only gate-status report: the eight machine-checkable conditions
+       (org tier/domain/EIN/WA#/verified_at/IRS revocation check) the database
+       trigger actually enforces, shown separately from the editable checklist
+       above — a passing checklist doesn't mean these pass, and vice versa. */
+    .gate-block { border: 1px solid var(--border-strong); border-radius: var(--radius);
+                   background: var(--bg-secondary); padding: 1rem 1.1rem; margin-top: 0.85rem; }
+    .gate-title { font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+                   text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.6rem; }
+    .gate-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.5rem 1rem; margin-bottom: 0.75rem; }
+    .gate-fact { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.8125rem; }
+    .gate-fact span { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-subtle); }
+    .gate-checklist { list-style: none; padding: 0; margin: 0 0 0.85rem; border-top: 1px solid var(--border); }
+    .gate-cond { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8125rem;
+                  padding: 0.45rem 0; border-bottom: 1px solid var(--border); }
+    .gate-cond.pass { color: var(--text-muted); }
+    .gate-cond.fail { color: var(--text-main); font-weight: 600; }
+    .gate-cond-icon { flex: none; }
+    .gate-actions { display: flex; align-items: center; gap: 0.6rem; }
+    .btn-verify { font-family: inherit; font-size: 0.875rem; font-weight: 600; border-radius: var(--radius);
+                   padding: 0.5rem 1rem; cursor: pointer; color: var(--text-main); background: var(--bg-primary);
+                   border: 1px solid var(--text-main); transition: background-color 0.12s ease, color 0.12s ease, opacity 0.12s ease; }
+    .btn-verify:hover { background: var(--text-main); color: #fff; }
+    .btn-verify:disabled { opacity: 0.4; cursor: not-allowed; background: var(--bg-primary); color: var(--text-main); }
+
     /* Action buttons — solid black for primary, ghost outline for secondary/destructive.
        Destructive actions are distinguished by weight, not color. */
     .sub-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; margin-top: 1rem; }
@@ -369,6 +393,7 @@
         '</p>' +
         verificationHtml(row) +
       '</div>' +
+      gateStatusHtml(row) +
       // Same inline editor as published cards, so a submission can be cleaned up
       // before approving rather than published and then fixed. Slug/lat/lng stay
       // in the approve panel above so there is only one place to enter them.
@@ -382,11 +407,21 @@
 
     wireScheduleCells(card);
     wireTypeToggle(card, row.id);
-    // Approve stays disabled until the verification checklist above is
-    // complete — this is a UI convenience only, the server enforces the same
-    // gate independently in verificationError() in api/admin.js.
-    wireVerification(card, row.id, function (complete) {
-      card.querySelector('.btn-approve').disabled = !complete;
+    wireGateStatus(card, row);
+    // Approve stays disabled until BOTH gates are satisfied: the checklist
+    // above (a human attestation) and the eight machine-checkable conditions
+    // the database trigger enforces (org_tier/domain/EIN/WA#/verified_at/IRS
+    // check) — the two are independent, and this is a UI convenience only,
+    // the server enforces both again on the actual approve request.
+    wireVerification(card, row.id, function (checklistComplete) {
+      const verify = readVerification(row.id, card);
+      const gateOk = clientGateReasons(row, {
+        org_tier: verify.payload.org_tier,
+        org_domain: verify.payload.org_domain,
+        ein: verify.payload.ein,
+        wa_charity_number: verify.payload.wa_charity_number,
+      }).length === 0;
+      card.querySelector('.btn-approve').disabled = !(checklistComplete && gateOk);
     });
     card.querySelector('.btn-edit').addEventListener('click',    () => toggleEdit(row.id));
     card.querySelector('.btn-save').addEventListener('click',    () => handleSave(row.id));
@@ -406,13 +441,37 @@
     const verify = readVerification(id);
     if (!verify.complete) { setCardMsg(id, verify.message, '#111827'); return; }
 
-    setCardBtns(id, true); setCardMsg(id, 'Approving…', '#6B7280');
+    setCardBtns(id, true);
     try {
-      const res = await postAction(Object.assign(
-        { action: 'approve', id, slug, lat: parseFloat(lat), lng: parseFloat(lng) },
-        verify.payload
-      ));
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'HTTP ' + res.status); }
+      // approve only trusts the database for org_tier/domain/EIN/WA# — a
+      // hand-rolled request can't fake what's actually stored — so anything
+      // just typed into the verification panel has to be persisted via
+      // 'update' first. approve itself then only carries slug/lat/lng and
+      // the checklist (verification.checks), which it merges into the
+      // stored verification object rather than replacing it wholesale.
+      setCardMsg(id, 'Saving organization details…', '#6B7280');
+      const updateRes = await postAction({
+        action: 'update', id,
+        org_tier: verify.payload.org_tier,
+        org_legal_name: verify.payload.org_legal_name,
+        org_domain: verify.payload.org_domain,
+        ein: verify.payload.ein,
+        wa_charity_number: verify.payload.wa_charity_number,
+      });
+      if (!updateRes.ok) {
+        const e = await updateRes.json().catch(() => ({}));
+        throw new Error(e.message || e.error || 'HTTP ' + updateRes.status);
+      }
+
+      setCardMsg(id, 'Approving…', '#6B7280');
+      const res = await postAction({
+        action: 'approve', id, slug, lat: parseFloat(lat), lng: parseFloat(lng),
+        verification: verify.payload.verification,
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.message || e.error || 'HTTP ' + res.status);
+      }
       destroyApproveMap(id);
       setCardMsg(id, '✓ Approved. Taking you back to Published…', '#111827');
       setTimeout(function () { location.href = '/admin?view=edit'; }, 800);
@@ -421,15 +480,17 @@
 
   function handleReject(id) {
     confirmAction('Reject this submission?',
-      'It will be deleted permanently. This cannot be undone.',
-      'Delete', function () { doReject(id); });
+      'It moves out of the pending queue and off the public site permanently, but the record — including any ' +
+      'research already on file — is kept rather than deleted, so the same organization can’t be resubmitted ' +
+      'and approved by someone who never saw why it was rejected.',
+      'Reject', function () { doReject(id); });
   }
 
   async function doReject(id) {
-    setCardBtns(id, true); setCardMsg(id, 'Deleting…', '#6B7280');
+    setCardBtns(id, true); setCardMsg(id, 'Rejecting…', '#6B7280');
     try {
       const res = await postAction({ action: 'reject', id });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || e.error || 'HTTP ' + res.status); }
       destroyApproveMap(id);
       setCardMsg(id, '✓ Rejected. Taking you back…', '#111827');
       setTimeout(function () { location.href = '/admin?view=confirm'; }, 800);
@@ -447,6 +508,8 @@
       '<div class="sub-name">' + esc(row.name) + '</div>' +
       '<div class="sub-meta">' + metaHtml(row, 'published') + '</div>' +
 
+      gateStatusHtml(row) +
+
       editFormHtml(row, { withPlacement: true, withMsg: true, withVerification: true }) +
 
       '<div class="sub-actions" id="actions-' + row.id + '">' +
@@ -459,6 +522,7 @@
     wireScheduleCells(card);
     wireTypeToggle(card, row.id);
     wireVerification(card, row.id);
+    wireGateStatus(card, row);
     card.querySelector('.btn-edit').addEventListener('click',      () => toggleEdit(row.id));
     card.querySelector('.btn-save').addEventListener('click',      () => handleSave(row.id));
     card.querySelector('.btn-cancel').addEventListener('click',    () => toggleEdit(row.id, false));
@@ -764,6 +828,165 @@
       el.addEventListener('change', sync);
     });
     sync();
+  }
+
+  // ── Gate status (the eight machine-checkable conditions) ────────────────────
+  // Read-only report of what public.opportunity_publish_gate() in the database
+  // — the actual backstop — will check. This is separate from the checklist
+  // above (a human's own attestation) and separate from readVerification()'s
+  // completeness check: both gates have to pass, independently, for approve to
+  // actually succeed. Mirrors lib/verificationGate.js's gateReasons() by
+  // intent, not by shared code (this runs in the browser); if the two drift,
+  // the server is authoritative and the admin sees a 422 explaining why.
+  const GATE_MAX_AGE_DAYS = 365;
+  const GATE_VERIFY_REASONS = ['no_org_tier', 'invalid_org_tier', 'no_org_domain', 'no_ein', 'no_wa_registration', 'invalid_irs_check'];
+  const GATE_CONDITIONS = [
+    { reason: 'no_org_tier',        label: 'Organization tier recorded' },
+    { reason: 'no_org_domain',      label: 'Canonical organization domain recorded' },
+    { reason: 'not_verified',       label: 'Human-verified (Mark verified clicked)' },
+    { reason: 'stale_verification', label: 'Verification not stale (under a year old)' },
+    { reason: 'no_ein',             label: 'EIN recorded', tierScope: 'charity' },
+    { reason: 'no_wa_registration', label: 'WA charity registration, or a documented exemption', tierScope: 'charity' },
+    { reason: 'invalid_irs_check',  label: 'IRS auto-revocation check — not listed, from irs.gov, within a year', tierScope: 'charity' },
+  ];
+
+  function gateDaysAgo(dateLike, now) {
+    const t = new Date(dateLike).getTime();
+    if (!isFinite(t)) return null;
+    return (now.getTime() - t) / 86400000;
+  }
+
+  function gateIrsSourceOk(source) {
+    try {
+      const host = new URL(String(source)).hostname.toLowerCase();
+      return host === 'irs.gov' || host.endsWith('.irs.gov');
+    } catch (_) { return false; }
+  }
+
+  // fields overrides org_tier/org_domain/ein/wa_charity_number with live form
+  // values when called from inside the verification panel (those are edited
+  // there); verified_at and verification.irs_revocation_check/wa_charity
+  // always come from the fetched row, since nothing in this form edits them.
+  function clientGateReasons(row, fields) {
+    fields = fields || {};
+    const now = new Date();
+    const reasons = [];
+    const tier = 'org_tier' in fields ? fields.org_tier : row.org_tier;
+    const org_domain = 'org_domain' in fields ? fields.org_domain : row.org_domain;
+    const ein = 'ein' in fields ? fields.ein : row.ein;
+    const wa_charity_number = 'wa_charity_number' in fields ? fields.wa_charity_number : row.wa_charity_number;
+    const verification = (row.verification && typeof row.verification === 'object' && !Array.isArray(row.verification)) ? row.verification : {};
+
+    if (tier == null) reasons.push({ reason: 'no_org_tier', message: 'No organization tier recorded.' });
+    else if (tier !== 'government' && tier !== 'charity') reasons.push({ reason: 'invalid_org_tier', message: 'Invalid org tier.' });
+
+    if (!org_domain) reasons.push({ reason: 'no_org_domain', message: 'No canonical organization domain recorded.' });
+
+    if (!row.verified_at) {
+      reasons.push({ reason: 'not_verified', message: 'Not human-verified yet.' });
+    } else {
+      const age = gateDaysAgo(row.verified_at, now);
+      if (age == null || age > GATE_MAX_AGE_DAYS) {
+        reasons.push({ reason: 'stale_verification', message: 'Verification is stale (' + (age == null ? 'unknown age' : Math.floor(age) + ' days old') + ').' });
+      }
+    }
+
+    if (tier === 'charity') {
+      if (!ein) reasons.push({ reason: 'no_ein', message: 'Charity with no EIN recorded.' });
+
+      const waExempt = verification.wa_charity && verification.wa_charity.exempt === true;
+      if (!wa_charity_number && !waExempt) {
+        reasons.push({ reason: 'no_wa_registration', message: 'No Washington charity registration or documented exemption.' });
+      }
+
+      const irs = verification.irs_revocation_check;
+      if (!irs || typeof irs !== 'object') {
+        reasons.push({ reason: 'invalid_irs_check', message: 'No IRS auto-revocation check recorded.' });
+      } else {
+        const ircAge = gateDaysAgo(irs.checked_at, now);
+        if (ircAge == null) reasons.push({ reason: 'invalid_irs_check', message: 'IRS auto-revocation check has no valid checked_at date.' });
+        else if (ircAge > GATE_MAX_AGE_DAYS) reasons.push({ reason: 'invalid_irs_check', message: 'IRS auto-revocation check is stale (' + Math.floor(ircAge) + ' days old).' });
+        else if (!gateIrsSourceOk(irs.source)) reasons.push({ reason: 'invalid_irs_check', message: 'IRS check source must be an irs.gov URL (was: ' + (irs.source || 'none') + ').' });
+        else if (irs.result === 'listed_reinstated') reasons.push({ reason: 'invalid_irs_check', message: 'Listed as reinstated — needs a human look, cannot pass automatically.' });
+        else if (irs.result !== 'not_listed') reasons.push({ reason: 'invalid_irs_check', message: irs.result === 'listed_revoked' ? 'On the IRS automatic-revocation list.' : 'IRS check result not recognized.' });
+      }
+    }
+
+    return reasons;
+  }
+
+  function gateStatusHtml(row) {
+    const reasons = clientGateReasons(row);
+    const byReason = {};
+    reasons.forEach(function (r) { if (!byReason[r.reason]) byReason[r.reason] = r; });
+    const tier = row.org_tier;
+
+    const items = GATE_CONDITIONS
+      .filter(function (c) { return !c.tierScope || c.tierScope === tier; })
+      .map(function (c) {
+        const failing = byReason[c.reason];
+        return '<li class="gate-cond ' + (failing ? 'fail' : 'pass') + '">' +
+          '<span class="gate-cond-icon" aria-hidden="true">' + (failing ? '⛔' : '✅') + '</span>' +
+          '<span>' + esc(failing ? failing.message : c.label) + '</span>' +
+        '</li>';
+      }).join('');
+
+    const verifiable = reasons.every(function (r) { return GATE_VERIFY_REASONS.indexOf(r.reason) === -1; });
+
+    let researchHtml = '';
+    const verification = row.verification;
+    if (verification && typeof verification === 'object' && (verification.irs_revocation_check || verification.wa_charity)) {
+      let text;
+      try { text = JSON.stringify({ irs_revocation_check: verification.irs_revocation_check, wa_charity: verification.wa_charity }, null, 2); }
+      catch (_) { text = String(verification); }
+      researchHtml = '<details class="verify-legacy"><summary>Machine-checked research on file</summary>' +
+                     '<pre>' + esc(text) + '</pre></details>';
+    }
+
+    return '<div class="gate-block" id="gate-' + row.id + '" data-verifiable="' + verifiable + '">' +
+      '<p class="gate-title">Database publish gate</p>' +
+      '<div class="gate-facts">' +
+        '<div class="gate-fact"><span>Tier</span>' + esc(tier || '—') + '</div>' +
+        '<div class="gate-fact"><span>EIN</span>' + esc(row.ein || '—') + '</div>' +
+        '<div class="gate-fact"><span>WA charity #</span>' + esc(row.wa_charity_number || '—') + '</div>' +
+        '<div class="gate-fact"><span>Verified</span>' + (row.verified_at ? esc(new Date(row.verified_at).toLocaleString()) : 'Not yet') + '</div>' +
+      '</div>' +
+      researchHtml +
+      '<ul class="gate-checklist">' + items + '</ul>' +
+      '<div class="gate-actions">' +
+        '<button type="button" class="btn-verify"' + (verifiable ? '' : ' disabled') + '>Mark verified</button>' +
+        '<span class="sub-action-msg" id="gatemsg-' + row.id + '"></span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function wireGateStatus(card, row) {
+    const block = card.querySelector('#gate-' + row.id);
+    if (!block) return;
+    const btn = block.querySelector('.btn-verify');
+    if (btn) btn.addEventListener('click', function () { handleVerify(row.id); });
+  }
+
+  async function handleVerify(id) {
+    const btn = document.querySelector('#gate-' + id + ' .btn-verify');
+    const msgEl = document.getElementById('gatemsg-' + id);
+    if (btn) btn.disabled = true;
+    if (msgEl) { msgEl.textContent = 'Marking verified…'; msgEl.style.color = '#6B7280'; }
+    try {
+      const res = await postAction({ action: 'verify', id });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.message || e.error || 'HTTP ' + res.status);
+      }
+      if (msgEl) { msgEl.textContent = '✓ Verified.'; msgEl.style.color = '#111827'; }
+      // Reloading the row brings the gate block, the checklist, and the
+      // Approve button back in sync with the source of truth, rather than
+      // patching several bits of DOM by hand.
+      setTimeout(loadRow, 700);
+    } catch (err) {
+      if (msgEl) { msgEl.textContent = 'Error: ' + err.message; msgEl.style.color = '#111827'; }
+      if (btn) btn.disabled = false;
+    }
   }
 
   // ── Category picker ────────────────────────────────────────────────────────

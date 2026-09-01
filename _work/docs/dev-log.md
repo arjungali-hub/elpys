@@ -7,6 +7,230 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-01 — The organization publish gate, captured into the repo and unbroken
+
+- This entry documents a fix to a real production regression, not new work
+  from a blank slate. The publish gate's trigger and functions have been
+  live in the database since earlier the same day (diagnosed and applied
+  while investigating the tBUG / EIN 81-1719474 finding), but existed
+  nowhere in this repo - no migration, no dev-log entry - until this PR.
+  Capturing pre-existing, verified state into the repo, not creating it
+  fresh.
+
+### Two gates existed, and they disagreed - this was breaking approve in production
+
+- Gate A: api/admin.js's verificationError() (checks-array attestation:
+  exclusions_confirmed + tier-specific checkboxes). Gate B: the database
+  trigger, requiring irs_revocation_check/wa_charity machine-checkable
+  fields. api/admin.js's approve branch PATCHed
+  verification: req.body.verification, which REPLACES the jsonb column
+  wholesale - the panel only ever sends a checks array, so this silently
+  deleted irs_revocation_check on every approve, and Gate B then rejected
+  the write. Reproduced against the live database before touching anything,
+  in a rolled-back transaction, sending exactly the payload the panel sends
+  today: 'Cannot publish "TEST": No IRS auto-revocation check recorded.'
+  Approving any pending listing through the admin panel was broken in
+  production. This is now the first thing the test suite asserts against.
+
+### The fix
+
+- api/admin.js's approve action now fetches the row first (it didn't fetch
+  anything before), merges the panel's verification.checks into the EXISTING
+  stored verification object in JavaScript (PostgREST has no partial jsonb-
+  merge PATCH semantics), and gates against the row it actually fetched -
+  org_tier/org_domain/ein/wa_charity_number/verified_at are read from the
+  database, not the request body, falling back to the request only for
+  slug/lat/lng, which approve is legitimately setting in the same call. A
+  hand-rolled request can claim anything about an org; it can no longer make
+  approve believe it.
+- Both gates are enforced together, not as alternatives: gateReasons() in
+  the new lib/verificationGate.js returns reasons from BOTH the eight
+  machine-checkable conditions (Gate B) and the checklist attestation
+  (Gate A) - a passing checklist does not stand in for a real IRS check, and
+  a real IRS check does not stand in for a human having actually looked at
+  the categorical exclusions.
+- verified_at is no longer stamped inside approve. New action: 'verify',
+  gated on conditions 1-3 and 6-8 only (4 and 5 are about verified_at
+  itself), surfaced in admin-review.html as a 'Mark verified' button. This
+  is still the only place verified_at is ever set, and it is still only a
+  human clicking it - no automated path calls this action.
+- verification removed from EDITABLE in the update action (it was there;
+  removing it closes the same overwrite risk on a plain edit that broke
+  approve). org_tier/org_legal_name/ein/wa_charity_number/org_domain stay
+  editable there, which is how a correction actually reaches the row approve
+  will later read.
+- admin-review.html keeps the existing checkbox/checks-array panel exactly
+  as it was (per instruction not to invent a new visual language) and adds a
+  separate, read-only .gate-block: tier/EIN/WA#/verified_at, the machine-
+  checked research if present, a pass/fail line per one of the eight
+  conditions, and the Mark verified button. Approve's disabled state now
+  factors in both gates (the checklist AND a client-side mirror of the eight
+  conditions, using live form values for tier/domain/EIN/WA# blended with
+  the fetched row's verified_at/research), so the button doesn't invite a
+  click that's going to 422. A 422 from approve/verify now shows in the
+  existing sub-action-msg slot via e.message, not a generic 'HTTP 422'.
+- handleApprove now does two requests in sequence: 'update' first (so
+  org_tier/legal_name/domain/EIN/WA# edited in the panel actually land in
+  the database approve is about to read), then 'approve' (slug/lat/lng plus
+  the checklist). This is what makes 'gate against the stored row, not the
+  request' compatible with a single-click Approve button from the admin's
+  point of view.
+
+### Migration files (none existed before this PR)
+
+- supabase/migrations/20260901000000_opportunity_publish_gate.sql -
+  transcribes the trigger and both functions exactly as pulled fresh from
+  pg_get_functiondef()/pg_get_triggerdef() against the live database, not
+  retyped from memory. Idempotent (create or replace function; drop trigger
+  if exists before create). Behavior unchanged from what was already live -
+  this migration documents existing state, it does not alter it.
+- supabase/migrations/20260901000001_reject_soft_delete_columns.sql - a
+  genuinely new schema change (rejected_at, rejection_reason), kept in its
+  own file per the instruction to separate transcription from new work.
+
+### Reject is now a soft delete (item 9) - scoped to reject only, not delete
+
+- Row 97 (tBUG) was a pending submission that FAILED the accountability
+  check, and was hard-deleted anyway - the finding survived only because it
+  got written up in a dev-log entry, not in the database. Nothing stopped
+  the same org being resubmitted and approved by someone who never saw why
+  it was rejected the first time.
+- action: 'reject' now PATCHes status='rejected' + rejected_at + an optional
+  rejection_reason instead of DELETE. Confirmed before relying on it, not
+  assumed: the only RLS policy on Opportunities
+  ('Public can read published opportunities') grants anon SELECT where
+  status = 'published', and supabase-client.js's own query also filters
+  status=eq.published - a rejected row is invisible on both layers with
+  zero query changes, and equally absent from the admin pending queue,
+  which filters status=eq.pending. Verified directly with SQL (not just RLS
+  policy inspection): a scratch row moved to status='rejected' survived,
+  and was excluded from both the pending-queue and published-queue query
+  shapes.
+- action: 'delete' (published rows only, its own 'permanently' confirm
+  dialog) stays a hard delete on purpose - it is a distinct, deliberate
+  'gone' action an admin explicitly confirms, not the failed-the-check case
+  reject exists to preserve a record of. Scoped this way deliberately rather
+  than half-applying soft-delete everywhere; flagging the scoping choice
+  here rather than leaving it to be discovered.
+- No rejected-listings browsing UI was built - out of scope per the prompt's
+  own wording ("exclude rejected rows... from every public read path", not
+  "build a way to review them"). The data is preserved and directly
+  queryable; a browsing UI is a reasonable follow-up, not done here.
+
+### Required verification record (documented here, not in the protocol doc)
+
+claude/elpys-verification-protocol.md was named as where this belongs, but
+it isn't reachable from this checkout or from Drive - Cowork-local project
+knowledge this session has no access to, same limitation hit on 2026-09-01
+earlier the same day. Recording the shape here since this file is the one
+that actually syncs; move it into the real protocol doc when a Cowork
+session next touches it.
+
+    {
+      "checks": [
+        { "check": "exclusions_confirmed", "result": "pass", "source": "" },
+        { "check": "irs_exempt", "result": "pass", "source": "..." }
+      ],
+      "irs_revocation_check": {
+        "checked_at": "2026-09-01",
+        "source": "https://apps.irs.gov/pub/epostcard/data-download-revocation.zip",
+        "result": "not_listed"
+      },
+      "wa_charity": {
+        "checked_at": "2026-09-01",
+        "source": "https://ccfs.sos.wa.gov",
+        "result": "active",
+        "registration_number": "1103050",
+        "exempt": false
+      }
+    }
+
+- checks is the human attestation (Gate A) - a passing entry needs
+  result: 'pass' for exclusions_confirmed always, org_official_site for a
+  government tier, and all four of irs_exempt/irs_not_revoked/
+  wa_charity_active/form_990_on_file for a charity tier.
+- irs_revocation_check.result is one of not_listed | listed_revoked |
+  listed_reinstated. Only not_listed passes; listed_reinstated is
+  deliberately not an automatic pass even though it sounds like good news -
+  it needs a human look, same as listed_revoked.
+- irs_revocation_check.source must resolve to irs.gov or *.irs.gov by
+  hostname. Anything else fails closed, by name - this is the literal tBUG
+  fix, not just ProPublica but any third-party mirror.
+- wa_charity.exempt: true plus a documented RCW 19.09 note is the only way a
+  charity publishes without a WA registration number. Absence from the
+  registry with no exemption on file is a hard fail, not a todo.
+- Unknown extra keys (method, checked_by, provenance, registration_number,
+  etc.) are fine and expected - the weekly task and this panel both write
+  their own alongside the required keys, and none of it is rejected.
+
+### Independent corroboration of the eight charity records (item 8)
+
+Reachability was checked before planning around it, per the instruction: the
+Cowork cloud session that populated these records on 2026-09-01 hit
+connect_rejected/HTTP 403 trying to reach apps.irs.gov from its container.
+This session's environment reached it directly (HTTP 200, ~45MB), so the
+read was actually done rather than deferred again.
+
+Downloaded https://apps.irs.gov/pub/epostcard/data-download-revocation.zip
+once (file dated 2026-08-11 per its own Last-Modified), unzipped to a pipe-
+delimited, EIN-first, ~1.25M-line file, matched all nine EINs by exact
+9-digit prefix, then deleted the ~193MB of downloaded/unzipped files - none
+of it belongs in the repo.
+
+| Row | Org | EIN | Result |
+|---|---|---|---|
+| 91 | Bellevue Farmers Market | 20-0867594 | absent -> not_listed (agrees) |
+| 93 | EarthCorps | 91-1592071 | absent -> not_listed (agrees) |
+| 95 | KidVantage | 91-1617032 | absent -> not_listed (agrees) |
+| 98 | The Sophia Way | 45-4084539 | absent -> not_listed (agrees) |
+| 99 | Washington Trails Association | 91-0900134 | absent -> not_listed (agrees) |
+| 101 | Hopelink | 91-0982116 | absent -> not_listed (agrees) |
+| 102 | Jubilee REACH | 20-4074712 | absent -> not_listed (agrees) |
+| 104 | Renewal Food Bank | 46-1502418 | absent -> not_listed (agrees) |
+| CONTROL: tBUG | The Bellevue Urban Garden | 81-1719474 | PRESENT - revoked 15-MAY-2026, posted 11-AUG-2026, no reinstatement date |
+
+All eight charity records agreed with what was already stored (transcribed
+2026-09-01 from Arjun's direct browser confirmation). The control EIN came
+back revoked, as it must - that is what proves the file and the matching
+logic actually work, not just that an absent-EIN case was tested. Updated
+all eight rows' irs_revocation_check.source to the ZIP URL, .method to
+'automated_bulk_file', .checked_at to 2026-09-01, and dropped the
+provenance note - it had served its purpose once a first-party automated
+read confirmed the same finding. wa_charity and the top-level checks array
+(none of these eight rows have one yet) were untouched.
+
+### Tested
+
+- test/verification-gate.test.js - 40 checks against gateReasons() fixtures:
+  all eight machine-checkable conditions (positive and negative), the exact
+  tBUG shape (ProPublica source), listed_reinstated's distinct blocking
+  message, a 400-day-stale IRS check, government rows correctly passing
+  with ein/wa_charity_number both null, a documented WA exemption passing
+  without a registration number, AND the checklist-attestation reasons
+  (Gate A) confirmed as a genuinely separate, additional requirement - a
+  charity with a perfect machine gate but no checks array still blocks.
+  Plain node, no framework: node test/verification-gate.test.js.
+- Trigger tested with real SQL against the live database, twice, both on
+  scratch rows (999001, 999002) deleted immediately after, never left
+  behind: 13 checks covering all eight conditions individually, both tiers'
+  fully-compliant path, the WA exemption carve-out, and - named and run
+  explicitly as its own case - 'THE PRODUCTION BUG: checks-only
+  verification (old approve behavior) is rejected', which reproduces the
+  exact payload the panel sent before this fix and confirms the trigger
+  still (correctly) rejects it. Then 5 more for the reject soft-delete:
+  survives, excluded from both pending and published query shapes, fields
+  recorded, and the RLS policy expression itself confirmed to exclude it.
+  The published-row-edit regression (id 91, card_note round-tripped and
+  restored) re-asserted, since this PR rewrites the trigger's migration.
+  18/18 passed across both runs.
+- Not tested: the actual admin panel end-to-end (password-gated, per the
+  standing note that this can't be driven without the admin password) -
+  specifically, clicking through a real pending row's checklist, tier
+  toggle, Mark verified, and Approve in a browser. The gate logic itself
+  (both layers) is thoroughly tested; what's untested is the DOM wiring in
+  admin-review.html connecting UI state to those already-tested code paths.
+  Worth a manual pass before or shortly after merging.
+
 ## 2026-09-01 — The real reason: cookieless_mode had no matching project setting
 
 - The gzip-compression fix logged just above this entry was real, and stays,

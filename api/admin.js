@@ -7,90 +7,10 @@
 
 const { checkAdminPassword } = require('../lib/adminAuth');
 const { geocodeAddress }     = require('../lib/geocode');
+const { gateReasons, VERIFY_ACTION_REASONS } = require('../lib/verificationGate');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-// The org-verification gate. A listing cannot be published without a
-// completed verification record — enforced here, not only in admin.html,
-// so a stale tab or a hand-rolled request can't skip it.
-//
-// verification is stored as { checks: [{ check, result, source }, ...] }.
-// The four named charity checks below are what a passing verification.checks
-// array must contain for a charity; a government listing needs only
-// org_official_site. This is the shape the admin UI writes going forward —
-// existing rows the weekly research task already populated may have older,
-// differently-shaped verification data (a flat object of sourced facts, not
-// a checks array); that data isn't validated against this shape and isn't
-// touched by it, it is simply superseded once a human completes the checklist
-// through the panel and hits approve.
-const REQUIRED_CHARITY_CHECKS = ['irs_exempt', 'irs_not_revoked', 'wa_charity_active', 'form_990_on_file'];
-// Not named explicitly in the spec beyond "one checkbox" (government) and
-// "a final confirmation checkbox" (always) — named here so the same
-// server-side-enforcement principle applies to those two, not just the four
-// charity checks the spec did name. admin.html must use these exact keys.
-const GOVERNMENT_CHECK  = 'org_official_site';
-const EXCLUSIONS_CHECK  = 'exclusions_confirmed';
-
-// "earthcorps.org" passes; "https://earthcorps.org/volunteer" and
-// "www.earthcorps.org" do not — this rejects rather than cleans, so a
-// pasted URL is caught instead of silently mangled into something that
-// looks right but isn't what was checked.
-function isCleanDomain(domain) {
-  const d = String(domain || '').trim();
-  if (!d) return false;
-  if (/^[a-z]+:\/\//i.test(d)) return false;   // has a scheme
-  if (d.indexOf('/') !== -1) return false;      // has a path
-  if (/^www\./i.test(d)) return false;          // has a www. prefix
-  return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(d);
-}
-
-function hasPassingCheck(checks, name) {
-  return Array.isArray(checks) && checks.some(c => c && c.check === name && c.result === 'pass');
-}
-
-// Returns an error string naming the specific missing piece, or null when the
-// record is complete enough to publish. Deliberately specific rather than a
-// generic "Invalid request" — this message is what gets read at 11pm.
-function verificationError(body) {
-  const tier = body.org_tier;
-  if (tier !== 'government' && tier !== 'charity') {
-    return 'Cannot publish: org_tier must be "government" or "charity".';
-  }
-  if (!isCleanDomain(body.org_domain)) {
-    return 'Cannot publish: org_domain must be a bare registrable domain (e.g. earthcorps.org), with no scheme, path or www.';
-  }
-  if (!String(body.org_legal_name || '').trim()) {
-    return 'Cannot publish: org_legal_name is required.';
-  }
-  const verification = body.verification;
-  if (!verification || typeof verification !== 'object' || Array.isArray(verification) ||
-      !Array.isArray(verification.checks)) {
-    return 'Cannot publish: verification.checks is required.';
-  }
-  if (!hasPassingCheck(verification.checks, EXCLUSIONS_CHECK)) {
-    return 'Cannot publish: the categorical-exclusions confirmation has not been checked.';
-  }
-  if (tier === 'government') {
-    if (!hasPassingCheck(verification.checks, GOVERNMENT_CHECK)) {
-      return 'Cannot publish: "' + GOVERNMENT_CHECK + '" has not been confirmed.';
-    }
-  }
-  if (tier === 'charity') {
-    if (!String(body.ein || '').trim()) {
-      return 'Cannot publish: EIN is required for a registered charity.';
-    }
-    if (!String(body.wa_charity_number || '').trim()) {
-      return 'Cannot publish: WA charity registration number is required for a registered charity.';
-    }
-    for (const name of REQUIRED_CHARITY_CHECKS) {
-      if (!hasPassingCheck(verification.checks, name)) {
-        return 'Cannot publish: "' + name + '" has not been confirmed.';
-      }
-    }
-  }
-  return null;
-}
 
 function supabaseHeaders(extra) {
   return Object.assign({
@@ -208,13 +128,65 @@ module.exports = async function handler(req, res) {
       return { ok: true, row: parsed[0] };
     }
 
+    // approve and verify both have to gate against the row that is actually
+    // stored, not fields a request happens to include — trusting the request
+    // body is how a stale tab or a hand-rolled request could publish an
+    // unresearched org, and it is also how approve broke in the first place
+    // (see mergeVerification below).
+    async function fetchRow() {
+      const r = await fetch(
+        SUPABASE_URL + 'Opportunities?id=eq.' + encodeURIComponent(id) + '&select=*',
+        { headers: supabaseHeaders() }
+      );
+      if (!r.ok) return null;
+      const rows = await r.json().catch(() => null);
+      return Array.isArray(rows) && rows[0] ? rows[0] : null;
+    }
+
+    // PATCH replaces a jsonb column wholesale — PostgREST has no partial
+    // jsonb-merge semantics. The panel only ever sends verification.checks
+    // (a human's own attestation: "I looked, none of the exclusions apply").
+    // irs_revocation_check and wa_charity are a different claim — machine-
+    // checkable facts a research pass wrote — and sending req.body.verification
+    // straight through to patchRow silently deleted them, which is exactly
+    // what the database trigger (the real gate) then rejected the write for.
+    // Merge here instead: keep every existing top-level key of the stored
+    // verification object, and set or replace only `checks` from the request.
+    // Do not simplify this back to `verification: req.body.verification` —
+    // that regression is what this function exists to prevent.
+    function mergeVerification(storedVerification, requestVerification) {
+      const stored = (storedVerification && typeof storedVerification === 'object' && !Array.isArray(storedVerification))
+        ? storedVerification : {};
+      const merged = Object.assign({}, stored);
+      if (requestVerification && typeof requestVerification === 'object' && Array.isArray(requestVerification.checks)) {
+        merged.checks = requestVerification.checks;
+      }
+      return merged;
+    }
+
     if (action === 'approve') {
       const { lat, lng, slug } = req.body;
       if (!slug || lat == null || lng == null) {
         return res.status(400).json({ error: 'slug, lat, and lng are required to approve' });
       }
-      const verr = verificationError(req.body);
-      if (verr) return res.status(400).json({ error: verr });
+
+      const row = await fetchRow();
+      if (!row) return res.status(404).json({ error: 'No opportunity matched id ' + id + '.' });
+
+      // org_tier, org_domain, ein, wa_charity_number and verified_at are
+      // deliberately read from the stored row, not the request body — a
+      // hand-rolled request can claim anything about the org, but it can't
+      // rewrite what a prior 'update' call actually persisted. Correct those
+      // fields via 'update' first, then approve.
+      const mergedVerification = mergeVerification(row.verification, req.body.verification);
+      const reasons = gateReasons(Object.assign({}, row, { verification: mergedVerification }));
+      if (reasons.length) {
+        return res.status(422).json({
+          error: 'Cannot publish',
+          reasons,
+          message: reasons.map(r => r.message).join(' '),
+        });
+      }
 
       const out = await patchRow({
         status: 'published',
@@ -222,24 +194,47 @@ module.exports = async function handler(req, res) {
         lat: parseFloat(lat),
         lng: parseFloat(lng),
         published_at: new Date().toISOString(),
-        org_tier: req.body.org_tier,
-        org_legal_name: req.body.org_legal_name,
-        ein: req.body.ein,
-        wa_charity_number: req.body.wa_charity_number,
-        org_domain: req.body.org_domain,
-        verification: req.body.verification,
-        verified_at: new Date().toISOString(),
+        verification: mergedVerification,
       });
       if (!out.ok) return res.status(out.status).json(out.payload);
       return res.status(200).json({ ok: true });
     }
 
+    // Stamps verified_at — the one place it is ever set, and only once the
+    // row already stands on its own against the machine-checkable conditions
+    // (1-3 and 6-8; not 4/5, which are about verified_at itself — an action
+    // whose whole job is to set it can't be gated on it already being set).
+    // No automated task calls this; it is a human clicking "Mark verified".
+    if (action === 'verify') {
+      const row = await fetchRow();
+      if (!row) return res.status(404).json({ error: 'No opportunity matched id ' + id + '.' });
+
+      const reasons = gateReasons(row).filter(r => VERIFY_ACTION_REASONS.indexOf(r.reason) !== -1);
+      if (reasons.length) {
+        return res.status(422).json({
+          error: 'Cannot mark verified',
+          reasons,
+          message: reasons.map(r => r.message).join(' '),
+        });
+      }
+
+      const out = await patchRow({ verified_at: new Date().toISOString() });
+      if (!out.ok) return res.status(out.status).json(out.payload);
+      return res.status(200).json({ ok: true, verified_at: out.row.verified_at });
+    }
+
     if (action === 'update') {
+      // verification and verified_at are deliberately absent: verified_at is
+      // only ever set by the verify action above, and verification is only
+      // ever changed via approve's merge (for checks) or the weekly research
+      // task (for irs_revocation_check/wa_charity) — a free-text field here
+      // would let either be overwritten wholesale without going through
+      // either of those paths.
       const EDITABLE = ['name','description','long_description','category','age_display','age_min',
                         'when','schedule','where','address','lat','lng','signup_link','signup_steps','section',
                         'card_note','signup_label','slug','admin_notes',
                         'website','contact_email','contact_phone','opportunity_type','event_date',
-                        'org_tier','org_legal_name','ein','wa_charity_number','org_domain','verification'];
+                        'org_tier','org_legal_name','ein','wa_charity_number','org_domain'];
       const updates = {};
       for (const key of EDITABLE) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
@@ -305,7 +300,32 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    if (action === 'reject' || action === 'delete') {
+    // Soft delete: a rejected submission is exactly the record of an org that
+    // FAILED the accountability check — deleting it hard-deletes the finding
+    // along with it, and nothing then stops the same org being resubmitted
+    // and approved by someone who never saw why it was rejected the first
+    // time (this is what happened to row 97 / tBUG). status='rejected' is
+    // excluded from every public read path already: the anon RLS policy on
+    // Opportunities only grants SELECT where status = 'published', and
+    // supabase-client.js's own query filters on status=eq.published too — a
+    // rejected row is invisible to the public site and absent from the
+    // pending queue (which filters status=eq.pending) with no query changes
+    // needed anywhere.
+    if (action === 'reject') {
+      const out = await patchRow({
+        status: 'rejected',
+        rejected_at: new Date().toISOString(),
+        rejection_reason: typeof req.body.reason === 'string' ? req.body.reason.trim() || null : null,
+      });
+      if (!out.ok) return res.status(out.status).json(out.payload);
+      return res.status(200).json({ ok: true });
+    }
+
+    // 'delete' stays a hard delete — it is the deliberate "permanently gone"
+    // action on an already-published listing (its own confirm dialog says
+    // "permanently"), not the failed-the-check case reject exists to
+    // preserve a record of.
+    if (action === 'delete') {
       const r = await fetch(
         SUPABASE_URL + 'Opportunities?id=eq.' + encodeURIComponent(id),
         { method: 'DELETE', headers: supabaseHeaders() }
