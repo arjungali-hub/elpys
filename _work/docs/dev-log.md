@@ -7,6 +7,64 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-01 — The real reason: cookieless_mode had no matching project setting
+
+- The gzip-compression fix logged just above this entry was real, and stays,
+  but it was not what was actually breaking analytics. The true cause: this
+  site sets cookieless_mode: 'always' in posthog.init(), but the PostHog
+  project had cookieless_server_hash_mode: 0 (Disabled). Per PostHog's own
+  docs, cookieless mode has to be enabled on both sides - client config and
+  project setting - or cookieless events are silently ignored at ingestion.
+  Every single event this site has ever sent was cookieless, so every single
+  one was discarded, after the capture endpoint had already returned
+  200 {"status":"Ok"}. That is why the browser-side evidence (readable JSON,
+  correct event name, clean 200) from the compression fix looked completely
+  convincing and still didn't fix anything - the drop was happening a step
+  later than anything client-side testing could see.
+- Fixed on the PostHog side only, via the PostHog MCP: cookieless_server_hash_mode
+  0 -> 2 (Stateful) on project 577038. No code change, no redeploy needed for
+  this part. Verified in production: a capture() from the live site ingested
+  with a server-generated distinct_id (cookieless_aobIl84z9C7y6JLWQPv0iA) and
+  a server-assigned $session_id.
+- Correction to the record: the working assumption going into today - that
+  $pageview/$web_vitals were arriving fine and only the three custom events
+  were missing - was wrong. The project had exactly 5 events, ever: three
+  from http://127.0.0.1:8261/ dated 2026-08-26 (a local test server, with a
+  real UUID distinct_id, i.e. from before cookieless_mode existed in this
+  config) and two manual diagnostic POSTs. Not one event from elpys.vercel.app
+  had ever been ingested. August 2026 has no production analytics data at
+  all, and that has a cause now rather than being an unnoticed gap.
+- person_profiles changed from 'identified_only' to 'never', per PostHog's own
+  guidance for cookieless_mode: 'always' - a persistent distinct_id is
+  Personal Data under GDPR, which is exactly what cookieless mode exists to
+  avoid, so identify() should be a no-op here rather than something that
+  quietly works if ever added by accident. Audited first: grepped the whole
+  tree for posthog.identify, posthog.alias, setPersonProperties, posthog.people,
+  $set and $set_once - no real call sites, only the SDK's own stub-method list
+  inside the loader snippet and a comment describing the old behavior. Safe to
+  change.
+- GeoIP is permanently null under cookieless mode - PostHog strips the IP
+  before its enrichment transformations run, so geoip.country/city never get
+  filled in. Confirmed empirically: a non-cookieless control event resolved to
+  United States / Washington / Federal Way in the same minute, from the same
+  browser, while the cookieless event had $ip, $geoip_country_name,
+  $geoip_city_name and $geoip_subdivision_1_name all null. Any country/city
+  breakdown in Web Analytics will stay empty going forward. This is a known
+  PostHog limitation (posthog#48660), not a config mistake here - not
+  something to re-investigate later expecting a fix on our end.
+- The internal/test-user filter (cohort 516518, "Internal / Test users") has
+  0 members and will stay that way under cookieless tracking - cohorts are
+  person-based, and cookieless mode has no person profiles to put in one. The
+  filter is vacuous by design now, not a bug, and posthog.identify() calls
+  should not be added to try to make it work again - see the person_profiles
+  change above for why that would be counterproductive here.
+- Test events now sitting in the dataset, so they don't get mistaken for real
+  traffic later: claude_manual_fetch_test (x2), elpys_verify_event,
+  claude_proxy_control_*, claude_cookieless_postfix_*, plus the fetch/XHR-level
+  feedback_submitted / signup_link_clicked / claude_verify_* captures fired
+  while diagnosing the compression issue - all before the real fix, all
+  correctly absent from the project because of the bug this entry describes.
+
 ## 2026-09-01 — Found why capture() events never reached PostHog
 
 - $pageview and $web_vitals were arriving fine; the explicit

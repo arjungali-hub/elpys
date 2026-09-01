@@ -9,9 +9,11 @@
 //   - cookieless_mode: no cookies or persistent identifiers are set for
 //     analytics. Nothing here ties a pageview/event to a specific visitor
 //     across sessions.
-//   - person_profiles: 'identified_only': since this site never calls
-//     posthog.identify(...), no identified person profiles are created at
-//     all — everything stays anonymous, aggregate counts.
+//   - person_profiles: 'never': this site never calls posthog.identify(...),
+//     and cookieless_mode makes that a hard rule, not just current practice —
+//     a persistent distinct ID is Personal Data under GDPR and would undo the
+//     point of cookieless tracking. 'never' turns identify() into a no-op if
+//     one is ever added by accident, rather than quietly creating a profile.
 //
 // NOTE: PostHog's hosts also have to be allowed by the Content-Security-Policy
 // in vercel.json (script-src for the loader, connect-src for the events).
@@ -48,7 +50,7 @@ posthog.init(POSTHOG_KEY, {
   autocapture: false,
   disable_session_recording: true,
   cookieless_mode: 'always',
-  person_profiles: 'identified_only',
+  person_profiles: 'never',
 
   // disable_compression: request_batching's gzip path (posthog-js's own
   // fflate-based gzip, not a browser Content-Encoding) was silently losing
