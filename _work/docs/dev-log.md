@@ -7,6 +7,31 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-01 — The gate-status panel was frozen at page-load, not live
+
+- Found in manual testing right after merging the publish-gate work: fill in
+  the checklist panel on a pending row completely, and it correctly says
+  "Verification complete." — but the separate "Database publish gate" block
+  below it kept showing "No organization tier recorded", "No canonical
+  organization domain recorded", etc., as if nothing had been typed.
+- Cause: gateStatusHtml(row) rendered the facts+checklist markup once, from
+  the row exactly as fetched, and was never touched again. Approve's
+  disabled state WAS already being recomputed live from the form (via
+  clientGateReasons blended with live field values) - only the visible
+  panel telling the admin why was frozen. The two could disagree, which is
+  worse than either being wrong alone.
+- Split gateStatusHtml() into gateFactsAndChecklistHtml() (the part that
+  changes) and a thin wrapper around it, added refreshGateStatus() to
+  re-render just that inner block and the Mark verified button's disabled
+  state without tearing down and re-wiring the button itself, and called it
+  from the same wireVerification onChange callback that already drives
+  Approve - one source of live-blended field values now feeds both the
+  button and the panel that explains it.
+- Verified live: filled the government checklist path on a fresh pending
+  row, confirmed the panel now shows Tier: government and drops the
+  org_tier/org_domain failures the moment they're filled in, while
+  correctly staying blocked on "Not human-verified" (nothing in this form
+  sets that) until Mark verified is actually clicked. 9/9 checks passed.
 ## 2026-09-01 — The organization publish gate, captured into the repo and unbroken
 
 - This entry documents a fix to a real production regression, not new work

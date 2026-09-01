@@ -415,12 +415,19 @@
     // the server enforces both again on the actual approve request.
     wireVerification(card, row.id, function (checklistComplete) {
       const verify = readVerification(row.id, card);
-      const gateOk = clientGateReasons(row, {
+      const liveFields = {
         org_tier: verify.payload.org_tier,
         org_domain: verify.payload.org_domain,
         ein: verify.payload.ein,
         wa_charity_number: verify.payload.wa_charity_number,
-      }).length === 0;
+      };
+      // Keeps the visible "Database publish gate" panel showing what would
+      // actually happen if Approve were clicked right now, not the row as it
+      // was when the card was first built — without this it could say
+      // "No organization tier recorded" while the checklist above says
+      // "Verification complete", which is exactly the confusing mismatch
+      // this exists to prevent.
+      const gateOk = refreshGateStatus(card, row, liveFields);
       card.querySelector('.btn-approve').disabled = !(checklistComplete && gateOk);
     });
     card.querySelector('.btn-edit').addEventListener('click',    () => toggleEdit(row.id));
@@ -521,7 +528,18 @@
 
     wireScheduleCells(card);
     wireTypeToggle(card, row.id);
-    wireVerification(card, row.id);
+    // Same live-refresh as the pending card, so editing tier/domain/EIN/WA#
+    // in the backfill form updates the always-visible gate-status panel
+    // instead of leaving it showing the row as it was before the edit.
+    wireVerification(card, row.id, function () {
+      const verify = readVerification(row.id, card);
+      refreshGateStatus(card, row, {
+        org_tier: verify.payload.org_tier,
+        org_domain: verify.payload.org_domain,
+        ein: verify.payload.ein,
+        wa_charity_number: verify.payload.wa_charity_number,
+      });
+    });
     wireGateStatus(card, row);
     card.querySelector('.btn-edit').addEventListener('click',      () => toggleEdit(row.id));
     card.querySelector('.btn-save').addEventListener('click',      () => handleSave(row.id));
@@ -915,11 +933,21 @@
     return reasons;
   }
 
-  function gateStatusHtml(row) {
-    const reasons = clientGateReasons(row);
+  // Facts + checklist only (no outer .gate-block, no button) — split out so it
+  // can be re-rendered in place as the checklist form above it changes,
+  // without tearing down and re-wiring the Mark verified button each time.
+  // fields overrides tier/domain/EIN/WA# the same way clientGateReasons()
+  // does, and for the same reason: shows what would actually be evaluated if
+  // Approve were clicked right now, not what happened to be stored when the
+  // card was first built.
+  function gateFactsAndChecklistHtml(row, fields) {
+    fields = fields || {};
+    const reasons = clientGateReasons(row, fields);
     const byReason = {};
     reasons.forEach(function (r) { if (!byReason[r.reason]) byReason[r.reason] = r; });
-    const tier = row.org_tier;
+    const tier = 'org_tier' in fields ? fields.org_tier : row.org_tier;
+    const ein = 'ein' in fields ? fields.ein : row.ein;
+    const wa_charity_number = 'wa_charity_number' in fields ? fields.wa_charity_number : row.wa_charity_number;
 
     const items = GATE_CONDITIONS
       .filter(function (c) { return !c.tierScope || c.tierScope === tier; })
@@ -943,18 +971,27 @@
                      '<pre>' + esc(text) + '</pre></details>';
     }
 
-    return '<div class="gate-block" id="gate-' + row.id + '" data-verifiable="' + verifiable + '">' +
+    return {
+      verifiable: verifiable,
+      html:
+        '<div class="gate-facts">' +
+          '<div class="gate-fact"><span>Tier</span>' + esc(tier || '—') + '</div>' +
+          '<div class="gate-fact"><span>EIN</span>' + esc(ein || '—') + '</div>' +
+          '<div class="gate-fact"><span>WA charity #</span>' + esc(wa_charity_number || '—') + '</div>' +
+          '<div class="gate-fact"><span>Verified</span>' + (row.verified_at ? esc(new Date(row.verified_at).toLocaleString()) : 'Not yet') + '</div>' +
+        '</div>' +
+        researchHtml +
+        '<ul class="gate-checklist">' + items + '</ul>',
+    };
+  }
+
+  function gateStatusHtml(row) {
+    const body = gateFactsAndChecklistHtml(row);
+    return '<div class="gate-block" id="gate-' + row.id + '" data-verifiable="' + body.verifiable + '">' +
       '<p class="gate-title">Database publish gate</p>' +
-      '<div class="gate-facts">' +
-        '<div class="gate-fact"><span>Tier</span>' + esc(tier || '—') + '</div>' +
-        '<div class="gate-fact"><span>EIN</span>' + esc(row.ein || '—') + '</div>' +
-        '<div class="gate-fact"><span>WA charity #</span>' + esc(row.wa_charity_number || '—') + '</div>' +
-        '<div class="gate-fact"><span>Verified</span>' + (row.verified_at ? esc(new Date(row.verified_at).toLocaleString()) : 'Not yet') + '</div>' +
-      '</div>' +
-      researchHtml +
-      '<ul class="gate-checklist">' + items + '</ul>' +
+      '<div class="gate-body" id="gate-body-' + row.id + '">' + body.html + '</div>' +
       '<div class="gate-actions">' +
-        '<button type="button" class="btn-verify"' + (verifiable ? '' : ' disabled') + '>Mark verified</button>' +
+        '<button type="button" class="btn-verify"' + (body.verifiable ? '' : ' disabled') + '>Mark verified</button>' +
         '<span class="sub-action-msg" id="gatemsg-' + row.id + '"></span>' +
       '</div>' +
     '</div>';
@@ -965,6 +1002,23 @@
     if (!block) return;
     const btn = block.querySelector('.btn-verify');
     if (btn) btn.addEventListener('click', function () { handleVerify(row.id); });
+  }
+
+  // Called from the checklist form's own change handler (wireVerification's
+  // onChange) so the gate-status panel reflects what's actually in the form
+  // right now, not what the row looked like when the card was first built —
+  // the two showing different answers (checklist says "complete", gate block
+  // still says "No organization tier recorded") was confusing and wrong.
+  function refreshGateStatus(card, row, fields) {
+    const bodyEl = card.querySelector('#gate-body-' + row.id);
+    if (!bodyEl) return true;
+    const body = gateFactsAndChecklistHtml(row, fields);
+    bodyEl.innerHTML = body.html;
+    const block = card.querySelector('#gate-' + row.id);
+    if (block) block.dataset.verifiable = String(body.verifiable);
+    const btn = card.querySelector('#gate-' + row.id + ' .btn-verify');
+    if (btn) btn.disabled = !body.verifiable;
+    return body.verifiable;
   }
 
   async function handleVerify(id) {
