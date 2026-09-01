@@ -73,9 +73,12 @@ header {
 .header-inner {
   display: flex;
   align-items: center;
-  /* The split is done by margin-right:auto on .beta-badge, not by
+  /* The split is done by margin-right:auto on .site-name, not by
      space-between: only some pages carry the submit link, and with
-     space-between those pages spread every item evenly across the bar. */
+     space-between those pages spread every item evenly across the bar.
+     That rule used to live on .beta-badge; when the badge was removed at
+     launch it had to move here, or every nav link collapses against the
+     wordmark on the left. */
   justify-content: flex-start;
   gap: 1rem;
 }
@@ -315,22 +318,18 @@ header {
 .modal-btn-action.danger { background: #991B1B; }
 .modal-btn-action.danger:hover { background: #7F1D1D; opacity: 1; }
 
-/* ── Beta badge — remove once site launches ── */
-.beta-badge {
-  font-size: 0.5625rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  background: #E5E7EB;
-  color: #4B5563;
-  border-radius: 999px;
-  padding: 0.1rem 0.45rem;
-  /* Sits beside the wordmark and pushes everything after it to the right,
-     so the nav groups on the right on every page whatever links it has.
-     The 1rem flex gap already clears the logo's sparkle overhang. */
-  margin-right: auto;
-  flex-shrink: 0;
-}
+/* The beta badge that used to sit beside the wordmark was removed at launch.
+   It carried the margin-right:auto that splits the header into a left and a
+   right group, so that has to live on whatever is now last in the left group:
+   the wordmark normally, or the admin-mode label when one is present.
+   Scoped to .header-inner because admin.html, review.html and admin-review.html
+   have a .site-name inside their own header markup, which this must not touch. */
+.header-inner > .site-name { margin-right: auto; }
+/* supabase-auth.js inserts .admin-badge directly after .site-name, so when it
+   exists it becomes the last element of the left group and takes the spacer
+   over. Without this the admin label would be pushed across to the nav. */
+.header-inner > .admin-badge { margin-right: auto; }
+.header-inner > .site-name:has(+ .admin-badge) { margin-right: 0; }
 
 /* Signals that the header is in admin mode. Plain text, not a badge — it is a
    statement of what you are logged in as, not a label on the product. Takes the

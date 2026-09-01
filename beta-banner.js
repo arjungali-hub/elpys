@@ -1,10 +1,17 @@
-// Injects the beta banner and site-name badge on every public page.
-// Remove this script tag (and the styles in styles.css) once the site launches.
+// Injects the dismissible notice banner below the header on every public page.
+//
+// Filename, ids and the sessionStorage key still say "beta" for historical
+// reasons — this started life as a beta notice. It is not one any more: the
+// Beta badge beside the wordmark is gone and the copy no longer describes the
+// site as under test. The names are left alone deliberately, because renaming
+// the storage key would un-dismiss the banner for everyone mid-session for no
+// benefit, and the id is referenced from styles.css and the privacy policy's
+// description of what it stores.
 (function () {
   var DISMISSED_KEY = 'elpys-beta-banner-dismissed';
 
   function init() {
-    // ── Dismissible beta banner below the header ─────────────────────────────
+    // ── Dismissible notice banner below the header ───────────────────────────
     if (sessionStorage.getItem(DISMISSED_KEY)) return;
 
     // Extensionless: cleanUrls is on, so 'feedback.html' only worked via a
@@ -14,7 +21,7 @@
     var banner = document.createElement('div');
     banner.id = 'beta-banner';
     banner.innerHTML =
-      'Elpys is in beta — some features are still being tested. Found something broken? ' +
+      'Elpys is new and still growing. Spot something wrong, or something missing? ' +
       '<a href="' + feedbackHref + '">Let us know</a>.' +
       '<button id="beta-banner-close" aria-label="Dismiss">×</button>';
 

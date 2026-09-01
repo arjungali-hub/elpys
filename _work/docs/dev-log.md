@@ -7,6 +7,61 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-01 — Beta badge removed, notice banner rewritten
+
+Follow-up to the launch/SEO pass above, on Arjun's call: the site should stop
+presenting itself as something under test.
+
+- **The `Beta` badge beside the wordmark is gone** from all 14 pages that
+  carried it.
+- **The banner stays, with new copy.** Was "Elpys is in beta — some features are
+  still being tested. Found something broken? Let us know." Now "Elpys is new
+  and still growing. Spot something wrong, or something missing? Let us know."
+  Same dismiss behaviour, same link to `/feedback`.
+
+**Removing the badge nearly broke every header, and the reason is worth
+recording.** `.beta-badge` carried `margin-right: auto`, and that one
+declaration — not `justify-content` — is what split the header bar into a left
+group (the wordmark) and a right group (the nav). `.header-inner` is
+`justify-content: flex-start` on purpose, because only some pages carry the
+submit link and `space-between` would spread items unevenly across those pages.
+Delete the badge and every nav link collapses against the wordmark.
+
+The spacer therefore has to live on whatever is last in the left group:
+
+- `.header-inner > .site-name { margin-right: auto; }` — the normal case.
+  Scoped to `.header-inner` deliberately: `admin.html`, `review.html` and
+  `admin-review.html` each have a `.site-name` inside their own header markup,
+  and an unscoped rule would have moved things there too.
+- `.header-inner > .admin-badge { margin-right: auto; }` plus
+  `.header-inner > .site-name:has(+ .admin-badge) { margin-right: 0; }` —
+  `supabase-auth.js` inserts the admin-mode label directly after the wordmark,
+  so in an admin session *it* is last in the left group. Without this the
+  "Admin" label would have been flung across the bar to sit with the nav.
+
+Verified both states with a headless browser rather than by eye: as a visitor
+the wordmark sits at x=132 and the nav ends flush at the right edge; with
+`elpys_admin_pw` in sessionStorage the wordmark is at 132, "Admin" immediately
+after it at 215, and the admin nav group still flush right. That admin case is
+the one that would have shipped broken, because it only appears when logged in.
+
+Knock-on text changes, so "beta" doesn't survive only in the places nobody
+re-reads:
+
+- `terms.html` §11 retitled "Elpys is in beta, and it may change" → "Elpys may
+  change". Every sentence inside it is unchanged — the protective language about
+  features changing, breaking, being removed, and the site being unavailable is
+  the point of the section and none of it was touched.
+- `privacy.html` now calls it "The notice banner" rather than "The beta banner"
+  in the list of what is stored in the browser.
+
+**`beta-banner.js` keeps its filename, its `#beta-banner` id and its
+`elpys-beta-banner-dismissed` sessionStorage key.** Renaming the key would
+un-dismiss the banner for everyone mid-session for no benefit, and the id is
+referenced from `styles.css` and described in the privacy policy. A comment at
+the top of the file explains that the names are historical, so the next person
+doesn't read them as evidence the site still calls itself a beta.
+
 ## 2026-09-01 — The launch/SEO pass: noindex off, and everything that was missing behind it
 
 Full pre-marketing scan of the site. The headline is open issue #7: `noindex`

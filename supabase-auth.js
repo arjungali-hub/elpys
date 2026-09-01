@@ -64,8 +64,11 @@ function showModal(opts) {
     var inner = document.querySelector('.header-inner');
     if (inner) {
       // Mode indicator, next to the wordmark so it reads as state rather than
-      // as another nav item. Sits before .beta-badge, whose margin-right:auto
-      // is what splits the header into left and right groups.
+      // as another nav item. It is inserted directly after .site-name, which
+      // makes it the last element of the header's left group — styles.css
+      // hands the margin-right:auto that splits left from right over to it
+      // whenever it is present. (That spacer used to live on .beta-badge,
+      // which sat here until the badge was removed at launch.)
       var adminBadge = document.createElement('span');
       adminBadge.className   = 'admin-badge';
       adminBadge.textContent = 'Admin';
