@@ -7,6 +7,22 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-01 — Fixed the loading-counter-shows-0 bug on admin.html
+
+- The three section-header count badges on admin.html (Pending, Published,
+  Feedback) were hardcoded to the literal text "0" in the HTML and only
+  overwritten once the /api/admin fetch resolved. Every other counter on
+  the site (the nav badges right next to these same three, review.html's
+  three, index.html's "N opportunities found") starts empty and fills in on
+  load - these three were the only ones that looked like a real, wrong
+  answer ("0 pending", "0 feedback") for however long the fetch takes,
+  rather than simply blank.
+- Fix: start them empty like everywhere else. Confirmed with a delayed-
+  response test that they read as blank mid-load and the correct number
+  once the fetch lands, including the case where the real count actually
+  is zero (which should still show "0" once that's confirmed, just not
+  before the data arrives).
+
 ## 2026-08-31 — Split admin.html into a list page and a review page
 
 - Pending and published listings on admin.html used to render as full cards —
