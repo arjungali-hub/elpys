@@ -88,8 +88,8 @@ function showModal(opts) {
         return a;
       }
 
-      adminGroup.appendChild(makeAdminLink('Feedback',              '/admin/feedback'));
-      adminGroup.appendChild(makeAdminLink('Approve opportunities', '/admin/approve'));
+      adminGroup.appendChild(makeAdminLink('Feedback',              '/admin-feedback'));
+      adminGroup.appendChild(makeAdminLink('Approve opportunities', '/admin-approve'));
 
       // Data review carries a traffic light so the queue and the database's
       // health are visible without opening the page. Colour comes from the
@@ -138,7 +138,7 @@ function showModal(opts) {
       sub.className = 'header-admin-sub';
 
       var subEdit = document.createElement('a');
-      subEdit.href        = '/admin/edit';
+      subEdit.href        = '/admin-edit';
       subEdit.textContent = 'Edit opportunities';
       subEdit.className   = 'header-admin-link';
       sub.appendChild(subEdit);

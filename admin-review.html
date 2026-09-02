@@ -287,7 +287,7 @@
       document.title = row.name + ' — Elpys Admin';
       document.getElementById('page-subtitle').textContent =
         CURRENT_KIND === 'pending' ? 'Reviewing a pending submission' : 'Editing a published listing';
-      document.getElementById('back-link').href = CURRENT_KIND === 'pending' ? '/admin/approve' : '/admin/edit';
+      document.getElementById('back-link').href = CURRENT_KIND === 'pending' ? '/admin-approve' : '/admin-edit';
       document.getElementById('back-link').textContent =
         CURRENT_KIND === 'pending' ? '← Pending submissions' : '← Published listings';
 
@@ -485,7 +485,7 @@
       }
       destroyApproveMap(id);
       setCardMsg(id, '✓ Approved. Taking you back to Published…', '#111827');
-      setTimeout(function () { location.href = '/admin/edit'; }, 800);
+      setTimeout(function () { location.href = '/admin-edit'; }, 800);
     } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
   }
 
@@ -504,7 +504,7 @@
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || e.error || 'HTTP ' + res.status); }
       destroyApproveMap(id);
       setCardMsg(id, '✓ Rejected. Taking you back…', '#111827');
-      setTimeout(function () { location.href = '/admin/approve'; }, 800);
+      setTimeout(function () { location.href = '/admin-approve'; }, 800);
     } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
   }
 
@@ -566,7 +566,7 @@
       const res = await postAction({ action: 'unpublish', id });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       setCardMsg2(id, '✓ Unpublished. Taking you back…', '#111827');
-      setTimeout(function () { location.href = '/admin/approve'; }, 800);
+      setTimeout(function () { location.href = '/admin-approve'; }, 800);
     } catch (err) { setCardMsg2(id, 'Error: ' + err.message, '#111827'); setPublishedBtns(id, false); }
   }
 
@@ -582,7 +582,7 @@
       const res = await postAction({ action: 'delete', id });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       setCardMsg2(id, '✓ Deleted. Taking you back…', '#111827');
-      setTimeout(function () { location.href = '/admin/edit'; }, 800);
+      setTimeout(function () { location.href = '/admin-edit'; }, 800);
     } catch (err) { setCardMsg2(id, 'Error: ' + err.message, '#111827'); setPublishedBtns(id, false); }
   }
 

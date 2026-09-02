@@ -8,7 +8,7 @@
 // system exists at these URLs at all — was visible to anyone. This makes an
 // unauthenticated request 404 before any of that HTML ships.
 //
-// /admin/feedback, /admin/edit and /admin/approve are vercel.json rewrites
+// /admin-feedback, /admin-edit and /admin-approve are vercel.json rewrites
 // onto admin.html?view=... — same page, same shell, so they need the same
 // gate. Easy to miss (they were, once — a real regression caught during the
 // clean-URLs work that added them, before it shipped: those three paths
@@ -16,6 +16,14 @@
 // correctly 404'd). If a future rewrite adds another alias for a gated
 // page, it needs to go in this matcher too, or it silently bypasses this
 // whole file.
+//
+// They are flat (/admin-feedback), not nested (/admin/feedback), for a
+// reason that is not cosmetic: admin.html references styles.css and
+// loading.js RELATIVELY, so under a nested path the browser resolves them
+// against /admin/ and requests /admin/styles.css — which does not exist,
+// gets swallowed by the catch-all slug rewrite, and comes back as HTML.
+// The page then loads with no CSS and a "Loading is not defined"
+// ReferenceError. Verified on a preview deployment. Keep these flat.
 //
 // admin-login.html is deliberately NOT in the matcher. It has no admin data
 // on it at all, and gating it would make it impossible for anyone —
@@ -88,7 +96,7 @@ async function hasValidSession(request) {
 export const config = {
   matcher: [
     '/admin', '/admin.html',
-    '/admin/feedback', '/admin/edit', '/admin/approve',
+    '/admin-feedback', '/admin-edit', '/admin-approve',
     '/admin-review', '/admin-review.html',
     '/review', '/review.html',
   ],

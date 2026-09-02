@@ -181,17 +181,25 @@
   // button. Repeating them here just clutters the page, so a focused view keeps
   // only "Home".
   //
-  // vercel.json rewrites /admin/feedback, /admin/edit and /admin/approve to
+  // vercel.json rewrites /admin-feedback, /admin-edit and /admin-approve to
   // this file with ?view=... appended to the DESTINATION — but a rewrite is
   // server-side, so the browser's own address bar (and location.search)
-  // never carries that query string, only the clean "/admin/<view>" path it
+  // never carries that query string, only the clean "/admin-<view>" path it
   // actually navigated to. Reading location.search alone left VIEW always
   // null under the new clean paths, showing all three panels and the full
   // nav on every "focused" view — the same class of bug opportunities-
   // detail.html's slug reading had, missed here the first time round.
   // ?view= is still checked as a fallback for the same reason it is there.
-  const VIEW_PATH_MAP = { feedback: 'feedback', edit: 'edit', approve: 'confirm' };
-  const VIEW = VIEW_PATH_MAP[location.pathname.replace(/^\/admin\/?/, '')] ||
+  //
+  // Flat paths, not /admin/<view>: this page loads styles.css and loading.js
+  // relatively, and a nested path makes the browser resolve those against
+  // /admin/, which 404s into the catch-all slug rewrite. See middleware.js.
+  const VIEW_PATH_MAP = {
+    '/admin-feedback': 'feedback',
+    '/admin-edit':     'edit',
+    '/admin-approve':  'confirm',
+  };
+  const VIEW = VIEW_PATH_MAP[location.pathname.replace(/\/$/, '')] ||
     new URLSearchParams(location.search).get('view');
   if (VIEW) {
     const reviewLink = document.getElementById('hdr-review-link');
