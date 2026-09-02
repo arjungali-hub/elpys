@@ -7,6 +7,103 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-02 — Clean URLs: /bellevue-farmers-market, not /opportunities-detail?slug=…
+
+Two URL patterns were never clean. Individual listings lived at
+`/opportunities-detail?slug=X`; admin.html's three panels lived at
+`/admin?view=X`. Both are now real paths.
+
+### The reserved-name exclusion list — READ THIS BEFORE ADDING A TOP-LEVEL PAGE
+
+`vercel.json`'s last rewrite is a single-segment catch-all: any `/<one-segment>`
+that isn't a known name gets served as a listing detail page. Every reserved
+top-level name on the site is spelled out in a negative lookahead inside that
+rule — every page's clean URL, every root `.js`/`.css` asset, `robots.txt`,
+`sitemap.xml`, `favicon.ico`, `logos`, `api`, `index`, `404`.
+
+**Adding a new top-level static page without adding its name to that list will
+silently break it** — the catch-all swallows the request and serves the
+"Opportunity not found" page instead. This warning lives here rather than in
+`vercel.json` because Vercel's schema validation rejects unknown keys: a
+`"comment"` field on a rewrite object failed the *entire* config and the
+deployment errored outright (`rewrites[7] should NOT have additional property
+comment`). JSON has no comment syntax and Vercel tolerates no informal one.
+
+The exclusion list is exact-match (`(?:name|name2)$`), not prefix-match. That
+matters: a future listing slugged `admin-appreciation-day` must not collide
+with `admin`, and it doesn't.
+
+### Redirects, because 23 URLs are already indexed
+
+Search Console has the old `?slug=` URLs submitted via `/sitemap.xml`, and a
+weekly digest email already went out carrying them. Permanent (308) redirects
+cover `/opportunities-detail?slug=X`, `/opportunities-detail.html?slug=X`, and
+the legacy `/opportunities/detail.html?slug=X`, all landing on `/X`. The
+legacy rule was previously non-permanent and pointed at the old page; it now
+goes to the final URL and is permanent.
+
+### Four real bugs, all found by deploying to a preview — none by reading code
+
+1. **A rewrite destination ending in `.html` 404s** under `cleanUrls: true`.
+   Isolated by bisecting on live previews: `/:slug` → `/about` worked; the
+   identical rule → `/opportunities-detail.html` did not. All destinations are
+   extensionless now.
+2. **A redirect `source` ending in `.html` never matches** — cleanUrls' own
+   `.html`-stripping runs before `vercel.json`'s redirects are evaluated, so
+   the legacy `/opportunities/detail.html` rule had never once fired. Source
+   changed to `/opportunities/detail`.
+3. **The new admin paths bypassed the edge gate entirely.** `middleware.js`'s
+   matcher didn't list them, so `/admin-feedback`, `/admin-edit` and
+   `/admin-approve` returned 200 to a request with no session cookie while
+   `/admin` correctly 404'd — a real security regression introduced by this
+   change and caught before merge. Any future alias for a gated page must go
+   in that matcher.
+4. **Nested `/admin/...` paths broke the page outright.** admin.html loads
+   `styles.css` and `loading.js` *relatively*, so at `/admin/feedback` the
+   browser resolved them against `/admin/`, requested `/admin/styles.css`,
+   got HTML back from the catch-all rewrite, and rendered unstyled with
+   `ReferenceError: Loading is not defined`. Hence flat `/admin-feedback`,
+   a sibling of `/admin`, where every relative reference still resolves.
+
+### Client-side slug/view reading had to change too
+
+A rewrite is server-side: the `?slug=` and `?view=` on the *destination* never
+reach `location.search`. Both pages read their identifier from
+`location.pathname` now, with the query string kept as a fallback. Without this
+every listing would have shown "No opportunity specified" and every admin
+sub-view would have shown all three panels.
+
+### Known limitation, not fixed
+
+`/opportunities-detail?slug=X` redirects to `/X?slug=X`, not a bare `/X`.
+Vercel appends the original query string to any redirect destination that
+doesn't have one, and `preserveQueryParams` is a Bulk Redirects API field, not
+a `vercel.json` key — confirmed by a second failed deployment. Cosmetic only:
+the page reads the slug from the path, the canonical tag is correct
+regardless, and it only affects someone following an old indexed link, never
+the new links the site now generates.
+
+### Verified on production after merge
+
+All 15 real listing slugs 200. All 13 reserved pages and every root asset
+still resolve. All six gated admin paths 404 unauthenticated; `/admin-login`
+stays open. Logged in, each admin sub-view shows only its own panel and hides
+the section nav, while bare `/admin` shows all three plus the nav. Redirect
+chains resolve in 1–2 hops with no loops. Sitemap: 23 URLs, zero `?slug=`
+left. Homepage cards, hero mini-map pins and the map sidebar all link to
+clean URLs. An unknown slug still shows "Opportunity not found" with
+`noindex` — a soft 404, unchanged and out of scope. Zero console errors on
+any page checked.
+
+### Left alone deliberately
+
+`map.html?select=<slug>` (focuses a pin) and `/api/unsubscribe?id=…` (a token)
+are state and actions, not page identity — correct as query parameters.
+`api/send-digest.js` was already building `/opportunities-detail?slug=…`, not
+the broken `/opportunities/detail.html?slug=…` an earlier note claimed, so
+there was no pre-existing bug there to fix; it just moved to the new form
+with everything else.
+
 ## 2026-09-02 — admin.html/admin-review.html/review.html now 404 without a session
 
 Arjun asked for pages that "aren't supposed to be on the site anymore" —
