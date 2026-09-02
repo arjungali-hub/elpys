@@ -43,7 +43,7 @@ function safeUrl(value) {
   // A colon after a leading run of scheme-legal characters is a scheme.
   if (/^[a-z][a-z0-9+.\-]*:/i.test(url)) return '#';
 
-  // What's left must look like a path: "/about", "opportunities-detail?slug=x".
+  // What's left must look like a path: "/about", "/bellevue-farmers-market".
   // The character classes exclude whitespace and control characters, so
   // "java\nscript:alert(1)" cannot sneak through by breaking up the scheme.
   if (/^[\w\-./]+(\?[^\s<>"']*)?(#[^\s<>"']*)?$/.test(url)) return escHtml(url);
@@ -186,7 +186,7 @@ function _transformRow(row) {
     name:    row.name,
     tag:     normalizedCategory,
     slug:    slug,
-    link:    '/opportunities-detail?slug=' + slug,
+    link:    '/' + slug,
     address: row.address    || '',
     lat:     parseFloat(row.lat),
     lng:     parseFloat(row.lng),

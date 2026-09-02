@@ -120,8 +120,7 @@
   // turn out to be what people actually share, and not worth doing before
   // then. Recorded here so it is a known limit rather than a surprise.
   function setListingMeta(opp, slug) {
-    const url = 'https://elpys.vercel.app/opportunities-detail?slug=' +
-                encodeURIComponent(slug);
+    const url = 'https://elpys.vercel.app/' + encodeURIComponent(slug);
 
     // The card blurb is the natural meta description. Trim it to the ~160
     // characters a search result actually shows, on a word boundary.
@@ -154,7 +153,22 @@
   }());
 
   (async () => {
-    const slug = new URLSearchParams(window.location.search).get('slug');
+    // vercel.json rewrites a bare "/<slug>" to this file with ?slug=<slug>
+    // appended to the DESTINATION — but a rewrite is server-side, so the
+    // browser's own address bar (and window.location) never sees that query
+    // string, only the "/<slug>" it actually navigated to. The slug has to
+    // come from the path instead. "/opportunities-detail" itself (reached
+    // directly, or as the fallback when a slug was present but resolved to
+    // nothing worth keeping in the URL) has no listing of its own — that is
+    // the one path this file's rewrite exclusion list keeps out of the slug
+    // rewrite, so it is the one case with no slug to read.
+    // ?slug= is still checked as a fallback: cheap, and it means a link still
+    // holding the pre-migration query-string form works even if it somehow
+    // reaches this file without first passing through the redirect above.
+    const path = window.location.pathname.replace(/^\/+/, '');
+    const slug = (path && path !== 'opportunities-detail' && path !== 'opportunities-detail.html')
+      ? decodeURIComponent(path)
+      : new URLSearchParams(window.location.search).get('slug');
     const section = document.getElementById('detail-section');
 
     if (!slug) {

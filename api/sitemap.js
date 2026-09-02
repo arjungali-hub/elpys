@@ -82,7 +82,7 @@ module.exports = async function handler(req, res) {
     ),
     ...listings.map(row =>
       '  <url>\n' +
-      '    <loc>' + SITE + '/opportunities-detail?slug=' + xmlEscape(encodeURIComponent(row.slug)) + '</loc>\n' +
+      '    <loc>' + SITE + '/' + xmlEscape(encodeURIComponent(row.slug)) + '</loc>\n' +
       '    <lastmod>' + (row.published_at ? String(row.published_at).slice(0, 10) : today) + '</lastmod>\n' +
       '    <changefreq>weekly</changefreq>\n' +
       '    <priority>0.8</priority>\n' +

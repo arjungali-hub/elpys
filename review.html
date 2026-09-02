@@ -379,7 +379,7 @@
     const opp = flag.opportunity;
     if (!opp) return '<span title="opportunity ' + esc(flag.opportunity_id) + '">Unknown opportunity</span>';
     if (!opp.slug) return esc(opp.name || 'Untitled');
-    return '<a href="/opportunities-detail?slug=' + encodeURIComponent(opp.slug) + '" target="_blank" rel="noopener">' +
+    return '<a href="/' + encodeURIComponent(opp.slug) + '" target="_blank" rel="noopener">' +
            esc(opp.name || opp.slug) + '</a>';
   }
 

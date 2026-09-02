@@ -135,7 +135,7 @@ module.exports = async function handler(req, res) {
     const unsubUrl = siteUrl + '/api/unsubscribe?id=' + profile.id;
 
     const itemsHtml = matched.map(opp => {
-      const url = siteUrl + '/opportunities-detail?slug=' + encodeURIComponent(opp.slug || '');
+      const url = siteUrl + '/' + encodeURIComponent(opp.slug || '');
       const dateLine = (opp.opportunity_type === 'one_time' && opp.event_date)
         ? '<p style="font-size:0.8125rem;font-weight:700;color:#111827;margin:0 0 0.4rem;">' + esc(formatDigestDate(opp.event_date)) + '</p>'
         : '';
@@ -169,7 +169,7 @@ module.exports = async function handler(req, res) {
     const text =
       'New volunteer opportunities on Elpys\n\n' +
       matched.map(opp => {
-        const url = siteUrl + '/opportunities-detail?slug=' + encodeURIComponent(opp.slug || '');
+        const url = siteUrl + '/' + encodeURIComponent(opp.slug || '');
         const datePrefix = (opp.opportunity_type === 'one_time' && opp.event_date) ? formatDigestDate(opp.event_date) + '\n' : '';
         return opp.name + '\n' + datePrefix + (opp.description || '') + '\n' + url;
       }).join('\n\n') +
