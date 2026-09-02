@@ -99,6 +99,7 @@ export const config = {
     '/admin-feedback', '/admin-edit', '/admin-approve',
     '/admin-review', '/admin-review.html',
     '/review', '/review.html',
+    '/analytics-review', '/analytics-review.html',
   ],
 };
 

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics Review — Elpys</title>
+  <!-- seo:generated — canonical/og/twitter block. Absolute URLs are hard-coded
+       to https://elpys.vercel.app; a custom domain means updating every one of
+       them (grep for "seo:generated"). -->
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <link rel="icon" type="image/svg+xml" href="logos/elpys-favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Same token remap review.html uses, for the same reason: tokens, reset,
+       type scale, .wrap and the wordmark all come from styles.css, so these
+       admin screens stay in step with the public site automatically. */
+    :root {
+      --bg-primary:    var(--white);
+      --bg-secondary:  var(--off);
+      --bg-surface:    var(--surface);
+      --border-strong: #D1D5DB;
+      --text-main:     var(--body);
+      --text-muted:    var(--muted);
+      --text-subtle:   var(--subtle);
+    }
+    body { padding-bottom: 4rem; }
+    .wrap { max-width: 900px; }
+    .page-head { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap;
+                 padding-top: 2.25rem; margin-bottom: 0.2rem; }
+    .page-title { display: flex; align-items: baseline; gap: 0.85rem;
+                  font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+                  font-size: 1.5rem; font-weight: 700; letter-spacing: 0;
+                  color: #2b2420; line-height: 1; }
+    .page-title .site-name { font-size: 1em; }
+    .page-head a, .page-head button { font-size: 0.875rem; color: var(--muted); text-decoration: none;
+                  background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
+    .page-head a:hover, .page-head button:hover { color: var(--body); }
+    .subtitle { color: var(--muted); font-size: 0.9375rem; margin-bottom: 2rem; max-width: 62ch; }
+
+    .status-panel { display: flex; align-items: flex-start; gap: 0.65rem;
+      background: var(--bg-primary); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 0.9rem 1.1rem; margin-bottom: 1.75rem;
+      max-width: 62ch; }
+    .status-panel .status-dot { width: 10px; height: 10px; border-radius: 50%;
+      margin-top: 0.3rem; flex-shrink: 0; }
+    .status-panel-label { font-size: 0.9375rem; font-weight: 700; margin-bottom: 0.15rem; }
+    .status-panel-detail { font-size: 0.8125rem; color: var(--text-muted); line-height: 1.5; }
+    .status-panel-meta { font-size: 0.75rem; color: var(--text-subtle); margin-top: 0.35rem; }
+
+    .supa-status { font-size: 0.75rem; color: var(--text-muted); display: inline-flex; align-items: center;
+      gap: 0.35rem; border: 1px solid var(--border); background: var(--bg-primary);
+      border-radius: 999px; padding: 0.1rem 0.55rem; white-space: nowrap; }
+    .supa-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--subtle-ui); flex-shrink: 0; }
+    .supa-status.is-active .supa-dot { background: var(--dot-green); }
+    .supa-status.is-paused { color: var(--text-main); border-color: var(--dot-yellow); }
+    .supa-status.is-paused .supa-dot { background: var(--dot-yellow); }
+
+    /* Login — identical to review.html's, since the two share a session key. */
+    #login-panel { max-width: 340px; }
+    .login-row { display: flex; gap: 0.5rem; }
+    input[type=password] {
+      font-family: inherit; font-size: 0.875rem; color: var(--text-main); background: var(--bg-primary);
+      border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.45rem 0.6rem; width: 100%;
+    }
+    input:focus { outline: 2px solid var(--text-main); outline-offset: 1px; }
+    .btn-primary { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: var(--bg-primary);
+      background: var(--text-main); border: none; border-radius: var(--radius); padding: 0.45rem 1rem; cursor: pointer; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .msg { font-size: 0.8125rem; margin-top: 0.5rem; color: var(--text-muted); min-height: 1.1em; }
+
+    .section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--text-muted); margin: 2rem 0 0.75rem; display: flex; align-items: baseline; gap: 0.5rem; }
+    .empty-state { font-size: 0.875rem; color: var(--text-muted); background: var(--bg-primary);
+      border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 1.25rem; }
+
+    /* ── Most recent review ─────────────────────────────────────────────── */
+    .review-period { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 0.15rem; }
+    .review-generated { font-size: 0.75rem; color: var(--text-subtle); margin-bottom: 1rem; }
+
+    /* The narrative is the thing an admin actually comes here to read, so it
+       gets real visual weight rather than sitting under the numbers as one
+       more paragraph. */
+    .narrative { font-size: 1rem; line-height: 1.65; color: var(--text-main);
+      background: var(--bg-surface); border-left: 3px solid var(--text-main);
+      border-radius: var(--radius); padding: 1.1rem 1.3rem; margin-bottom: 1.75rem;
+      white-space: pre-wrap; }
+
+    .metric-group { background: var(--bg-primary); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.15rem 1.35rem; margin-bottom: 0.85rem; }
+    .metric-group-title { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .stat-row { display: flex; gap: 2.25rem; flex-wrap: wrap; }
+    .stat { min-width: 0; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem; }
+    .stat-note { font-size: 0.75rem; color: var(--text-subtle); margin-top: 0.6rem; }
+    /* A metric that is supposed to fire and reads zero is the whole reason
+       this page exists — it must not render identically to a healthy stat. */
+    .stat.is-zero .stat-value { color: #991B1B; }
+    .stat.is-zero .stat-label { color: #991B1B; }
+
+    .top-pages { list-style: none; padding: 0; margin: 0; }
+    .top-pages li { display: flex; justify-content: space-between; gap: 1rem;
+      font-size: 0.875rem; padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+    .top-pages li:last-child { border-bottom: none; }
+    .top-pages .path { color: var(--text-main); word-break: break-all; }
+    .top-pages .views { color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+    .notes-list { margin: 0.4rem 0 0; padding-left: 1.15rem; }
+    .notes-list li { font-size: 0.875rem; color: #444; margin-bottom: 0.3rem; line-height: 1.5; }
+
+    /* History — same "compact past record" role as review.html's .resolved-row */
+    .history-row { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 0.7rem 0.9rem; margin-bottom: 0.5rem; font-size: 0.875rem; }
+    .history-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+    .history-period { font-weight: 600; }
+    .history-when { font-size: 0.75rem; color: var(--text-subtle); white-space: nowrap; }
+    .history-excerpt { font-size: 0.8125rem; color: #444; margin-top: 0.3rem; line-height: 1.5; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="page-head">
+    <h1 class="page-title"><span class="site-name"><svg class="site-name-sparkles" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 129" aria-hidden="true"><g fill="#d9662f"><path d="M11 21 C11 27.3 11 27.3 17.3 30 C11 32.7 11 32.7 11 39 C11 32.7 11 32.7 4.7 30 C11 27.3 11 27.3 11 21 Z"/><path d="M189 17 C189 23.3 189 23.3 195.3 26 C189 28.7 189 28.7 189 35 C189 28.7 189 28.7 182.7 26 C189 23.3 189 23.3 189 17 Z"/></g><g fill="#e8935f"><path d="M8 73.8 C8 78.1 8 78.1 12.3 80 C8 81.9 8 81.9 8 86.2 C8 81.9 8 81.9 3.7 80 C8 78.1 8 78.1 8 73.8 Z"/><path d="M192 69.8 C192 74.1 192 74.1 196.3 76 C192 77.9 192 77.9 192 82.2 C192 77.9 192 77.9 187.7 76 C192 74.1 192 74.1 192 69.8 Z"/><path d="M70 111.8 C70 116.1 70 116.1 74.3 118 C70 119.9 70 119.9 70 124.2 C70 119.9 70 119.9 65.7 118 C70 116.1 70 116.1 70 111.8 Z"/><path d="M133 112.8 C133 117.1 133 117.1 137.3 119 C133 120.9 133 120.9 133 125.2 C133 120.9 133 120.9 128.7 119 C133 117.1 133 117.1 133 112.8 Z"/></g></svg>e<span class="site-name-l">l<svg class="site-name-flame" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 34" aria-hidden="true"><path d="M15 34 C9 30 7.5 23 10 17 C11.2 20.5 13.5 20.5 13.5 17 C15.5 20.5 19 23 16.5 28 C20 25.5 21 19.5 17.5 13.5 C22 17 23.5 24 20 30 C18 32.5 16 34 15 34 Z" fill="#d9662f"/><path d="M15 30 C12 28 11 24.5 12.4 21.5 C13 23.3 14.2 23.3 14.2 21.5 C15.2 23.3 17 24.5 15.6 27 C17.4 25.7 18 22.5 16.2 19.5 C18.5 21.3 19.2 25 17.4 28 C16.4 29.3 15.5 30 15 30 Z" fill="#f2a03d"/></svg><svg class="site-name-torch-base" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 12" aria-hidden="true"><path d="M3 0 L17 0 L14.5 6 L5.5 6 Z" fill="#2b2420"/><rect x="4.5" y="6" width="11" height="3.2" rx="1.6" fill="#2b2420"/></svg></span>pys</span> Analytics review</h1>
+    <a href="/">← Home</a>
+    <a href="/admin">← Admin</a>
+    <span id="supabase-status" class="supa-status" hidden></span>
+  </div>
+  <p class="subtitle">Monthly traffic, performance and sign-up figures, written by the scheduled analytics task. Read-only — nothing here changes any data.</p>
+
+  <div id="status-panel" class="status-panel" hidden>
+    <span class="status-dot" id="status-panel-dot" aria-hidden="true"></span>
+    <div>
+      <p class="status-panel-label" id="status-panel-label"></p>
+      <p class="status-panel-detail" id="status-panel-detail"></p>
+      <p class="status-panel-meta" id="status-panel-meta" hidden></p>
+    </div>
+  </div>
+
+  <!-- Hidden from the start when a password is already stored, same as
+       review.html: the load begins immediately in that case, and showing a
+       password box you never have to touch reads as being asked to log in
+       again. Revealed if the stored password turns out to be wrong. -->
+  <div id="login-panel">
+    <div class="login-row">
+      <input type="password" id="password-input" placeholder="Admin password" autocomplete="current-password" />
+      <button class="btn-primary" id="login-btn">Load</button>
+    </div>
+    <div class="msg" id="login-msg"></div>
+  </div>
+
+  <div id="loading-panel" style="display:none;">
+    <div class="skel-stack skel-wave" id="loading-skeleton" aria-busy="true"></div>
+  </div>
+
+  <div id="content" style="display:none;">
+    <div id="latest"></div>
+    <div id="history-section" hidden>
+      <div class="section-title">Earlier reviews <span class="count" id="history-count"></span></div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="loading.js"></script>
+<script>
+  const API = '/api/analytics-review';
+  let _password = '';
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  function fmtDate(v) {
+    if (!v) return '—';
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) +
+           ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+
+  // period_start/period_end are DATE columns ("2026-08-01"). new Date() on a
+  // bare date string parses as UTC midnight, which in a negative-offset zone
+  // renders as the previous day — so these are formatted from the parts
+  // rather than through the local-time conversion.
+  function fmtDayUTC(v, withYear) {
+    if (!v) return '—';
+    const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const d = m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    return d.toLocaleDateString('en-US', Object.assign(
+      { month: 'short', day: 'numeric', timeZone: 'UTC' },
+      withYear ? { year: 'numeric' } : {}
+    ));
+  }
+
+  // "Aug 1 – Sep 1, 2026" — one readable range, not two ISO strings. The year
+  // only appears once unless the range straddles two.
+  function fmtPeriod(start, end) {
+    const sy = String(start || '').slice(0, 4);
+    const ey = String(end   || '').slice(0, 4);
+    return fmtDayUTC(start, sy !== ey) + ' – ' + fmtDayUTC(end, true);
+  }
+
+  // null/undefined => "—", never "0%" or "NaN%": a prior period of zero is not
+  // a 0% change, it is a comparison that cannot be made.
+  function fmtPct(v) {
+    if (v == null || v === '' || !isFinite(Number(v))) return '—';
+    const n = Number(v);
+    // A real minus sign, not a hyphen — matches the rest of the site's typography.
+    return (n > 0 ? '+' : n < 0 ? '\u2212' : '') + Math.abs(n).toFixed(1) + '%';
+  }
+
+  function fmtNum(v) {
+    if (v == null || !isFinite(Number(v))) return '—';
+    return Number(v).toLocaleString();
+  }
+
+  function showLoginMsg(msg, type) {
+    const el = document.getElementById('login-msg');
+    el.textContent = msg;
+    el.style.color = type === 'error' ? '#111827' : '#6B7280';
+  }
+
+  function renderStatusPanel(status, taskRun) {
+    const panel = document.getElementById('status-panel');
+    if (!status) { panel.hidden = true; return; }
+    document.getElementById('status-panel-dot').className = 'status-dot is-' + status.dot;
+    document.getElementById('status-panel-label').textContent = status.label || '';
+    document.getElementById('status-panel-detail').textContent = status.detail || '';
+
+    const meta = document.getElementById('status-panel-meta');
+    if (taskRun && taskRun.lastRunAt) {
+      meta.textContent = 'Last run ' + fmtDate(taskRun.lastRunAt) +
+        (taskRun.note ? ' — ' + taskRun.note : '');
+      meta.hidden = false;
+    } else {
+      meta.hidden = true;
+    }
+    panel.hidden = false;
+  }
+
+  function renderSupabaseStatus(status) {
+    const el = document.getElementById('supabase-status');
+    const state = (status && status.state) || 'unknown';
+    const label = state === 'active' ? 'Active'
+                : state === 'paused' ? 'Paused'
+                : state === 'error'  ? 'Error'
+                : 'Unknown';
+    el.className = 'supa-status' + (state === 'active' ? ' is-active' : state === 'paused' ? ' is-paused' : '');
+    el.innerHTML = '<span class="supa-dot"></span>Supabase: ' + esc(label);
+    if (status && status.detail) el.title = status.detail;
+    el.hidden = false;
+  }
+
+  // ── Auth ───────────────────────────────────────────────────────────────────
+  // Shares the session key with admin.html and review.html, so logging in on
+  // any one of them carries over to the others.
+  const loginPanel   = () => document.getElementById('login-panel');
+  const loadingPanel = () => document.getElementById('loading-panel');
+
+  function showAutoLoading() {
+    loginPanel().style.display   = 'none';
+    loadingPanel().style.display = 'block';
+    var skel = document.getElementById('loading-skeleton');
+    // Loading.cards takes (count, label) POSITIONALLY — passing an options
+    // object makes the loop condition (i < {}) false and renders nothing.
+    if (skel && window.Loading) skel.innerHTML = Loading.cards(3, 'Loading analytics review');
+  }
+
+  function revealLogin() {
+    loadingPanel().style.display = 'none';
+    loginPanel().style.display   = 'block';
+  }
+
+  (function () {
+    const stored = sessionStorage.getItem('elpys_admin_pw');
+    if (stored) { _password = stored; showAutoLoading(); loadAll(); }
+  }());
+
+  document.getElementById('login-btn').addEventListener('click', () => loadAll());
+  document.getElementById('password-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') loadAll();
+  });
+
+  async function loadAll() {
+    if (!_password) _password = document.getElementById('password-input').value;
+    if (!_password) { showLoginMsg('Enter a password.', 'error'); return; }
+
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true;
+    btn.textContent = 'Loading…';
+
+    try {
+      const res = await fetch(API, { headers: { 'x-admin-password': _password } });
+      if (res.status === 401) {
+        _password = '';
+        sessionStorage.removeItem('elpys_admin_pw');
+        revealLogin();
+        showLoginMsg('Incorrect password.', 'error');
+        return;
+      }
+      if (res.status === 429) {
+        revealLogin();
+        const e = await res.json().catch(() => ({}));
+        showLoginMsg(e.error || 'Too many attempts. Please wait and try again.', 'error');
+        return;
+      }
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        console.error('Load failed — full response:', e);
+        throw new Error([e.error || 'HTTP ' + res.status, e.message, e.details].filter(Boolean).join(' — '));
+      }
+
+      const { reviews, taskRun, supabase, status } = await res.json();
+      sessionStorage.setItem('elpys_admin_pw', _password);
+      loginPanel().style.display   = 'none';
+      loadingPanel().style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+      renderSupabaseStatus(supabase);
+      renderStatusPanel(status, taskRun);
+
+      if (supabase && supabase.state !== 'active') {
+        document.getElementById('latest').innerHTML =
+          '<div class="empty-state">Could not reach Supabase (' + esc(supabase.state) + ')' +
+          (supabase.detail ? ': ' + esc(supabase.detail) : '') +
+          '. No review can load until the project is running again.</div>';
+        return;
+      }
+
+      // Never run: the status panel above already says so and says when the
+      // first run is due. Nothing else to show, so nothing else renders.
+      if (!taskRun) {
+        document.getElementById('latest').innerHTML = '';
+        return;
+      }
+
+      renderReviews(Array.isArray(reviews) ? reviews : []);
+    } catch (err) {
+      revealLogin();
+      showLoginMsg('Error: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Load';
+    }
+  }
+
+  // ── Rendering ──────────────────────────────────────────────────────────────
+  function renderReviews(reviews) {
+    const latest = document.getElementById('latest');
+
+    if (reviews.length === 0) {
+      // The task ran but wrote no review row. Shouldn't happen given the
+      // task's own contract, but the page must not simply render blank.
+      latest.innerHTML = '<div class="empty-state">The analytics task has run, but no review has been ' +
+        'recorded yet. If this persists past the next scheduled run, check the task\'s own logs.</div>';
+      return;
+    }
+
+    latest.innerHTML = renderLatest(reviews[0]);
+
+    const rest = reviews.slice(1);
+    if (rest.length) {
+      document.getElementById('history-count').textContent = '(' + rest.length + ')';
+      document.getElementById('history-list').innerHTML = rest.map(renderHistoryRow).join('');
+      document.getElementById('history-section').hidden = false;
+    }
+  }
+
+  function renderLatest(row) {
+    const m = (row && row.metrics) || {};
+    const pv = m.pageviews || {};
+    const sc = m.signup_link_clicked || {};
+    const wv = m.web_vitals || {};
+    const topPages = Array.isArray(m.top_pages) ? m.top_pages : [];
+    const notes = Array.isArray(m.notes) ? m.notes.filter(n => String(n || '').trim()) : [];
+
+    let html =
+      '<p class="review-period">' + esc(fmtPeriod(row.period_start, row.period_end)) + '</p>' +
+      '<p class="review-generated">Recorded ' + esc(fmtDate(row.created_at)) +
+        (row.generated_by ? ' by ' + esc(row.generated_by) : '') + '</p>';
+
+    if (String(row.narrative || '').trim()) {
+      html += '<div class="narrative">' + esc(row.narrative) + '</div>';
+    }
+
+    // Pageviews
+    html +=
+      '<div class="metric-group">' +
+        '<p class="metric-group-title">Pageviews</p>' +
+        '<div class="stat-row">' +
+          stat(fmtNum(pv.total), 'This period') +
+          stat(fmtNum(pv.prior_period_total), 'Prior period') +
+          stat(fmtPct(pv.pct_change), 'Change') +
+        '</div>' +
+      '</div>';
+
+    // Top pages
+    if (topPages.length) {
+      html +=
+        '<div class="metric-group">' +
+          '<p class="metric-group-title">Top pages</p>' +
+          '<ol class="top-pages">' +
+            topPages.map(p =>
+              '<li><span class="path">' + esc(p && p.path) + '</span>' +
+              '<span class="views">' + esc(fmtNum(p && p.views)) + '</span></li>'
+            ).join('') +
+          '</ol>' +
+        '</div>';
+    }
+
+    // Web vitals
+    html +=
+      '<div class="metric-group">' +
+        '<p class="metric-group-title">Web vitals — good</p>' +
+        '<div class="stat-row">' +
+          stat(fmtPctPlain(wv.lcp_good_pct), 'LCP') +
+          stat(fmtPctPlain(wv.inp_good_pct), 'INP') +
+          stat(fmtPctPlain(wv.cls_good_pct), 'CLS') +
+        '</div>' +
+        (wv.sample_size != null
+          ? '<p class="stat-note">based on ' + esc(fmtNum(wv.sample_size)) + ' events</p>'
+          : '') +
+      '</div>';
+
+    // Sign-up link clicks — zero is styled as a problem, deliberately.
+    const scZero = Number(sc.total) === 0;
+    html +=
+      '<div class="metric-group">' +
+        '<p class="metric-group-title">Sign-up link clicks</p>' +
+        '<div class="stat-row">' +
+          stat(fmtNum(sc.total), 'This period', scZero) +
+          stat(fmtNum(sc.prior_period_total), 'Prior period') +
+          stat(fmtPct(sc.pct_change), 'Change') +
+        '</div>' +
+        (scZero
+          ? '<p class="stat-note" style="color:#991B1B;">No sign-up link clicks were recorded this period. ' +
+            'If the site had traffic, check that the signup_link_clicked event is still firing.</p>'
+          : '') +
+      '</div>';
+
+    // Notes — genuinely a list of independent caveats, so a real <ul>.
+    if (notes.length) {
+      html +=
+        '<div class="metric-group">' +
+          '<p class="metric-group-title">Notes</p>' +
+          '<ul class="notes-list">' +
+            notes.map(n => '<li>' + esc(n) + '</li>').join('') +
+          '</ul>' +
+        '</div>';
+    }
+
+    return html;
+  }
+
+  // Web-vitals percentages are already "percent good" — no +/- sign, which
+  // would read as a change rather than a level.
+  function fmtPctPlain(v) {
+    if (v == null || !isFinite(Number(v))) return '—';
+    return Number(v).toFixed(1) + '%';
+  }
+
+  function stat(value, label, isZero) {
+    return '<div class="stat' + (isZero ? ' is-zero' : '') + '">' +
+      '<div class="stat-value">' + esc(value) + '</div>' +
+      '<div class="stat-label">' + esc(label) + '</div>' +
+    '</div>';
+  }
+
+  function renderHistoryRow(row) {
+    const narrative = String((row && row.narrative) || '').replace(/\s+/g, ' ').trim();
+    const excerpt = narrative.length > 120 ? narrative.slice(0, 120).replace(/\s+\S*$/, '') + '…' : narrative;
+    return '<div class="history-row">' +
+      '<div class="history-head">' +
+        '<span class="history-period">' + esc(fmtPeriod(row.period_start, row.period_end)) + '</span>' +
+        '<span class="history-when">' + esc(fmtDate(row.created_at)) + '</span>' +
+      '</div>' +
+      (excerpt ? '<p class="history-excerpt">' + esc(excerpt) + '</p>' : '') +
+    '</div>';
+  }
+</script>
+
+</body>
+</html>

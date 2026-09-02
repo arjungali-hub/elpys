@@ -123,6 +123,32 @@ function showModal(opts) {
         })
         .catch(function () { /* dot stays neutral */ });
 
+      // Analytics review carries its own independent traffic light, for the
+      // same reason Data review does: the monthly analytics task can stop
+      // running silently — no error, no failure row, just a last_run_at that
+      // quietly stops moving — and this dot is the only place that surfaces
+      // before someone thinks to go looking.
+      var analyticsLink = makeAdminLink('Analytics review', '/analytics-review');
+      var analyticsDot  = document.createElement('span');
+      analyticsDot.className = 'status-dot is-unknown';
+      analyticsDot.setAttribute('aria-hidden', 'true');
+      analyticsLink.appendChild(analyticsDot);
+      adminGroup.appendChild(analyticsLink);
+
+      fetch('/api/analytics-review?summary=1', { headers: { 'x-admin-password': adminPw } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.status) return;
+          analyticsDot.className = 'status-dot is-' + d.status.dot;
+          var atext = d.status.label + (d.status.detail ? ' — ' + d.status.detail : '') +
+            ' (see Analytics review for details)';
+          analyticsLink.title = atext;
+          analyticsDot.removeAttribute('aria-hidden');
+          analyticsDot.setAttribute('role', 'img');
+          analyticsDot.setAttribute('aria-label', 'Analytics review status: ' + atext);
+        })
+        .catch(function () { /* dot stays neutral */ });
+
       var adminLogoutBtn = document.createElement('button');
       adminLogoutBtn.textContent = 'Log out';
       adminLogoutBtn.className   = 'header-logout-btn';
