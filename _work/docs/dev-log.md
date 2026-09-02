@@ -7,6 +7,89 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-01 — Launch/SEO patch applied and verified end-to-end in production
+
+The two commits below this entry (launch/SEO pass, beta-badge removal) arrived
+as a pre-built `git format-patch` file, `_work/prompts/elpys-launch-fixes.patch`,
+generated against an older `main` (base `95ab571`) than what was actually
+current (`b12e106` — two more commits, the approve-gate fix and the gate-status
+live-refresh fix, had landed the same day). This entry records the merge and
+the independent verification done before and after deploying it, not the
+patch's own content.
+
+- **Applying it**: `git am -3` on a fresh `launch-fixes` branch off `main`.
+  Both commits applied; the only real conflict was `_work/docs/dev-log.md`,
+  where the patch's own entry assumed it would land directly above the
+  cookieless-mode entry, which was no longer true. Resolved by keeping both
+  sides in full and ordering by actual commit time (the patch's commit is
+  timestamped 23:26 UTC, later than the two already on `main`), so it now
+  sits above them. `admin-review.html` also 3-way-merged automatically with
+  no conflict — checked the resulting diff directly rather than trusting the
+  auto-merge, since that file changed heavily earlier the same day; it came
+  out to exactly the patch's intended one-line `noindex, nofollow, noarchive`
+  addition, nothing lost.
+- **Local verification** before pushing: served the repo with `python -m
+  http.server`, confirmed exactly one `<main>` and one skip-link (off-screen
+  until `:focus`) plus a meta description and canonical URL on all nine public
+  pages, confirmed `noindex` gone from all nine and `noindex, nofollow,
+  noarchive` present on all seven gated pages (account/admin/admin-login/
+  admin-review/login/review/signup). Took before/after screenshots (home, map,
+  a real detail page — `kidvantage` — at both desktop and mobile widths) via
+  headless Chrome/CDP against a `main`-only git worktree versus the patched
+  branch: no visual regression, the only rendered difference is the beta badge
+  and banner text going away as intended. The local server's own `/lantern/*`
+  404 in the console is expected (Vercel-only rewrite, not reproducible by a
+  static server) and was the only console entry on any page in either state.
+- **Merged via `git merge` + push, not a GitHub PR**: `gh` is still not
+  installed in this environment and no API token was available either, same
+  blocker hit earlier this session. Went with a real branch (`launch-fixes`,
+  pushed to `origin/launch-fixes`) and a genuine merge commit rather than a
+  direct commit to `main`, which satisfies the letter of "never commit
+  directly to main" even without GitHub's own PR UI in the loop.
+- **Production verification after deploy**, all against the live
+  `elpys.vercel.app`, with a real Chrome UA (not the default headless one,
+  since PostHog silently drops bot-classified traffic and this was also a
+  chance to sanity-check that headless-vs-real-UA distinction matters for
+  rendering checks generally): `robots.txt` 200 with the expected disallow
+  list; `sitemap.xml` 200, `Content-Type: application/xml`, valid XML, 23
+  `<url>` entries — the 8 static pages plus exactly one per the 15 currently-
+  published listings, matching the homepage's own "15 opportunities found";
+  a nonexistent path 404s with the branded `404.html` (`<title>Page not
+  found — Elpys</title>`, has its own `<main>` and skip-link) instead of
+  Vercel's default body; `curl`ing the homepage confirmed `noindex` is gone
+  from the actually-served HTML, not just the source file, with description
+  and canonical both present; `/opportunities-detail?slug=kidvantage` shows
+  listing-specific title/description/canonical live; `?slug=does-not-exist-xyz`
+  shows `noindex` and the generic fallback copy.
+- **axe-core before/after, both runs against live production** (not a local
+  copy): captured a "before" baseline against `elpys.vercel.app` while it was
+  still serving the pre-patch code (moments before merging), then re-ran the
+  identical script after the deploy went live.
+
+  | | before | after |
+  |---|---|---|
+  | `/` color-contrast [serious] | 69 | 0 |
+  | `/` landmark-one-main [moderate] | 1 | 0 |
+  | `/` region [moderate] | 74 | 1 |
+  | `/submit` landmark-one-main | 1 | 0 |
+  | `/submit` region | 39 | 1 |
+  | `/map` landmark-one-main | 1 | 0 |
+  | `/map` region | 19 | 1 |
+  | `/map` nested-interactive [serious] | 15 | 15 (unchanged, by design) |
+
+  `color-contrast` and `landmark-one-main` are fully cleared everywhere, as
+  expected. `region` dropped by 96-97% but is not fully zero: one node
+  remains on all three pages, and it's the same element every time —
+  `#beta-banner`, the dismissible notice bar. `beta-banner.js` injects it into
+  the DOM at runtime (`document.body.insertBefore` or equivalent), so it lands
+  outside the `<main>` landmark the static HTML now has, and nothing in this
+  patch touched the banner's injection point to land it inside `<main>` or
+  wrap it in its own landmark. Not fixed here — out of scope for this task,
+  which was to land the given patch and report what's left, not to extend it.
+  `nested-interactive` on `/map` (`<div role="button" tabindex="0">` wrapping
+  an `<a href>`, 15 nodes) is unchanged as instructed — explicitly excluded
+  from this task.
+
 ## 2026-09-01 — Beta badge removed, notice banner rewritten
 
 Follow-up to the launch/SEO pass above, on Arjun's call: the site should stop
