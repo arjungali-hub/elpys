@@ -238,8 +238,14 @@
 
     const meta = document.getElementById('status-panel-meta');
     if (taskRun && taskRun.lastRunAt) {
+      // The note is only appended when the detail line above isn't already
+      // showing it — for a failed or degraded run the note IS the detail, and
+      // printing it twice reads as a rendering fault. An 'ok' run can still
+      // carry a note, which is the case this keeps.
+      const dup = taskRun.note && status && status.detail &&
+        String(status.detail).indexOf(taskRun.note) !== -1;
       meta.textContent = 'Last run ' + fmtDate(taskRun.lastRunAt) +
-        (taskRun.note ? ' — ' + taskRun.note : '');
+        (taskRun.note && !dup ? ' — ' + taskRun.note : '');
       meta.hidden = false;
     } else {
       meta.hidden = true;
