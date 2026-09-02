@@ -30,7 +30,6 @@
       "destination": "/admin.html?view=confirm"
     },
     {
-      "comment": "WARNING: every reserved top-level name on this site (every page's clean URL, every root .js/.css asset, robots.txt, sitemap.xml, favicon.ico, logos, api, index, 404) is listed in the negative-lookahead below. Adding a new top-level static page WITHOUT adding its name here will silently break it: this catch-all rewrite will swallow that page's requests and serve the opportunities-detail 'not found' page instead. Add new reserved names to the (?!...) list before shipping a new root-level page.",
       "source": "/:slug((?!(?:api|admin-login|admin-review|admin|review|login|signup|submit|feedback|how-we-check|map|opportunities-detail|privacy|terms|about|account|index|404|analytics\\.js|beta-banner\\.js|loading\\.js|middleware\\.js|mini-map\\.js|supabase-auth\\.js|supabase-client\\.js|styles\\.css|robots\\.txt|sitemap\\.xml|favicon\\.ico|logos)$)[^/]+)",
       "destination": "/opportunities-detail.html?slug=:slug"
     }
