@@ -7,6 +7,56 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-02 — Verified the map list-row patch against live production
+
+Independent verification of the patch below, not a rewrite of it — landed as
+given via `git am` on a fresh `map-a11y` branch off `main` at `4aedd5e`, no
+conflicts, diff matched the patch description exactly. Merged via a real
+branch + merge commit (`gh` is still not installed in this environment, same
+as the last two merges), pushed, then checked against `https://elpys.vercel.app/map`
+itself — a local static server can't render this page at all, since Leaflet
+and supabase-js both load from CDNs and the sidebar never builds.
+
+- **axe-core, real desktop UA, full page**: 0 violations, sidebar confirmed
+  populated (15 rows) before running. `nested-interactive` (15, serious)
+  is gone; so is the last `region` violation from the previous entry —
+  `#beta-banner` still carries `role="region"` from the prior fix and
+  nothing here touched it.
+- **`role="button"` count is 17, not 0** — checked what they actually are
+  before treating that as a problem: all 17 are Leaflet's own markup (15
+  map-pin `<img>` markers, one per opportunity, plus its 2 zoom controls),
+  none inside `.map-list-item`. Third-party library internals, unrelated to
+  this patch and out of scope.
+- **15 `.map-list-show` buttons confirmed**, one per row.
+- **Tab order confirmed with real keyboard events** (not scripted `.focus()`,
+  which doesn't trigger `:focus-visible` the way an actual Tab press does):
+  focused the first row's link via Tab from a neutral start, one more Tab
+  landed on that row's "Show on map" button. Both elements matched
+  `:focus-visible` and showed `outline-style: auto` — a real, visible focus
+  ring, not suppressed by any site CSS.
+- **Keyboard activation: Space confirmed working** on the button — route
+  status updated, active-row highlight moved, map panned. **Enter could not
+  be verified through this CDP tooling** — `Input.dispatchKeyEvent` for
+  Enter did not produce a click on the focused button. Before flagging that
+  as a defect, checked whether it reproduces on a completely unrelated,
+  pre-existing native `<button>` this patch never touched
+  (`#beta-banner-close`): it does — Enter fails to trigger a click there
+  too. That means this is a synthetic-input limitation of headless Chrome's
+  CDP (a documented Puppeteer/Playwright-adjacent quirk: native
+  keyboard-activation default actions don't always replay through
+  `Input.dispatchKeyEvent`), not something this patch broke. Per the
+  instruction to fix only what verification actually catches, nothing was
+  changed here — a real keyboard and a real browser do not share this
+  limitation.
+- **Single-select-once confirmed**: clicked a row's description text
+  (neither the link nor the button) and watched `#route-status` and the
+  active-row highlight — updated once, to that row, not twice. The
+  `closest('a, button')` guard is doing its job.
+- **390px width checked** alongside desktop: the button renders at a
+  measured 24px tall at both widths (matches the CSS's `min-height: 24px`
+  intent for WCAG 2.5.8), sits under the description without crowding the
+  organisation name, confirmed by screenshot at both widths.
+
 ## 2026-09-02 — The map list rows are no longer buttons wrapping links
 
 The last accessibility failure from the pre-marketing scan. `/map`'s sidebar
