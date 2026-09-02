@@ -7,6 +7,98 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-02 — Analytics review page, and old URLs now redirect genuinely clean
+
+### The page
+
+New admin-only `/analytics-review`, backed by a new `/api/analytics-review`,
+reading the monthly PostHog figures the Cowork scheduled task writes to
+`analytics_reviews` plus its `task_runs` heartbeat
+(`task_name = 'analytics_review_monthly'`). Nothing in this repo writes either
+table. Built as a sibling of `/review` — same `restBase()`, same
+`probeSupabase()`, same `{dot,label,detail}` status shape, same login flow and
+session key — so the two admin utility screens stay recognisably the same
+thing.
+
+Shows: status block, then the most recent review (period as one readable
+range, the narrative in a bordered block with real visual weight since it is
+the thing you actually come here to read, pageviews, top pages, web vitals
+with sample size, sign-up clicks, notes), then a compact history list.
+
+The overdue threshold (45 days = 30-day cadence + 15 grace) matters more than
+it looks: a cron that silently stops writes no error and no failure row. The
+only symptom is `last_run_at` quietly not moving, so that threshold is the
+single thing that can ever surface it.
+
+### Three corrections to the task description, all load-bearing
+
+1. **`vercel.json` had to change, despite the task saying not to touch it.**
+   That instruction was written before this morning's clean-URLs work added a
+   catch-all slug rewrite. `analytics-review` MUST be in that rewrite's
+   reserved-name exclusion list or the new page is swallowed and served as an
+   opportunity-detail page. This is exactly the gotcha written up in the entry
+   below — hit for real the first time, one task later. Following the
+   instruction literally would have shipped a page that 404s.
+2. **`middleware.js` had to change too.** Every other admin page 404s without
+   a session; a brand-new admin surface left publicly loadable would have
+   quietly undone that.
+3. **`Loading.cards` takes `(count, label)` positionally**, not the options
+   object the task showed. An object makes the loop condition `i < {}` false
+   and renders an empty skeleton — silent, not an error.
+
+### Old URLs now redirect to genuinely clean ones
+
+Arjun pushed back on the previous entry's "known limitation" and was right to.
+`/opportunities-detail?slug=wta` was landing on `/wta?slug=wta` — right page,
+pointless leftover parameter on a URL whose whole purpose was to be clean. The
+earlier conclusion that this was unfixable was wrong: it ruled out ONE
+approach (`preserveQueryParams`, which really is a Bulk Redirects API field
+and not a `vercel.json` key) and stopped there. `middleware.js` already runs on
+those paths and builds its own `Location` header, so it can simply omit the
+query.
+
+Both redirect families moved out of `vercel.json`'s `redirects[]` — now empty
+and removed entirely — into `middleware.js`. Ordering is deliberate: the
+listing redirects run BEFORE the auth gate (they are public pages and must
+never be gated), the `/admin?view=` redirect runs AFTER it (so a signed-out
+stranger gets the 404 rather than a redirect confirming `/admin-feedback`
+exists).
+
+**Loop hazard, flagged in the file:** `/opportunities-detail` is also the
+internal destination of the catch-all slug rewrite. This is only safe because
+middleware matches the ORIGINAL request path, not the rewritten one — if it
+matched rewritten paths, `/earthcorps` would redirect to itself forever.
+Verified explicitly; re-test that if the matcher is ever touched.
+
+### Tested on a preview deployment, then re-verified on production
+
+All six page states driven for real, with test rows inserted into Supabase and
+deleted afterwards (confirmed zero rows left, and the two pre-existing
+`task_runs` rows untouched):
+
+- **Never run** (today's real state) — grey dot, "The first monthly review
+  runs October 1, 2026." The date is computed, not hardcoded; the task text
+  said Sept 1 was correct, but Sept 1 had already passed by the time this
+  shipped, so a hardcoded string would have been wrong on day one.
+- **Running on schedule** — green, full render: 1,234 pageviews, +12.2%,
+  8 top pages, vitals with "based on 340 events", 2 notes, 1 history row.
+- **Overdue** (50 days, status ok) — yellow, not green. This is the case the
+  threshold exists for.
+- **Last run failed** — red, note surfaced.
+- **Last run degraded** — yellow, note surfaced.
+- **Ran but wrote nothing** — dashed empty-state box, not a blank page.
+- `pct_change: null` renders "—", never "0%" or "NaN%". Zero sign-up clicks
+  render in error red with an explanatory line, deliberately not styled like a
+  healthy stat. Empty `notes` array omits the section entirely.
+- 375px: no horizontal overflow (`scrollWidth` equals viewport), content wraps.
+- Auth: 401 without/with a wrong password, 405 on POST, page 404s unauthenticated
+  with the branded 404 (confirmed by title — a 404 alone would not have
+  distinguished "gated" from "swallowed by the slug rewrite").
+- Injected admin nav carries the new link with its own independent dot, neutral
+  (not green) when the task has never run.
+- One redundancy caught and fixed mid-test: the status panel printed the task
+  note twice, once as the detail and again in the meta line.
+
 ## 2026-09-02 — Clean URLs: /bellevue-farmers-market, not /opportunities-detail?slug=…
 
 Two URL patterns were never clean. Individual listings lived at
