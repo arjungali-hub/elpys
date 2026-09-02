@@ -1,6 +1,6 @@
 // The password prompt behind the whole admin surface. checkAdminPassword
 // compares in constant time and rate limits guesses per IP — see lib/adminAuth.js.
-const { checkAdminPassword } = require('../lib/adminAuth');
+const { checkAdminPassword, adminSessionCookie } = require('../lib/adminAuth');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -14,6 +14,11 @@ module.exports = async function handler(req, res) {
     const body = denied.status === 401 ? { error: 'Incorrect password' } : denied.body;
     return res.status(denied.status).json(body);
   }
+
+  // Lets middleware.js serve admin.html/admin-review.html/review.html to this
+  // browser instead of 404ing them — see adminSessionCookie's own comment.
+  const cookie = adminSessionCookie();
+  if (cookie) res.setHeader('Set-Cookie', cookie);
 
   return res.status(200).json({ ok: true });
 };

@@ -19,7 +19,7 @@ function restBase(url) {
   return u;
 }
 
-const { checkAdminPassword } = require('../lib/adminAuth');
+const { checkAdminPassword, adminSessionCookie } = require('../lib/adminAuth');
 
 const SUPABASE_URL = restBase(process.env.SUPABASE_URL);
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -200,6 +200,11 @@ async function handleReview(req, res) {
 
   const denied = checkAdminPassword(req, req.headers['x-admin-password']);
   if (denied) return res.status(denied.status).json(denied.body);
+
+  // See adminSessionCookie's comment in lib/adminAuth.js — keeps
+  // middleware.js letting review.html through for an active admin session.
+  const cookie = adminSessionCookie();
+  if (cookie) res.setHeader('Set-Cookie', cookie);
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error('/api/review misconfigured: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set');

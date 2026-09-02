@@ -5,7 +5,7 @@
 //   SUPABASE_SERVICE_ROLE_KEY  the service_role secret from Supabase → Settings → API
 //   ADMIN_PASSWORD             any secret string you choose
 
-const { checkAdminPassword } = require('../lib/adminAuth');
+const { checkAdminPassword, adminSessionCookie } = require('../lib/adminAuth');
 const { geocodeAddress }     = require('../lib/geocode');
 const { gateReasons, VERIFY_ACTION_REASONS } = require('../lib/verificationGate');
 
@@ -27,6 +27,12 @@ module.exports = async function handler(req, res) {
 
   const denied = checkAdminPassword(req, req.headers['x-admin-password']);
   if (denied) return res.status(denied.status).json(denied.body);
+
+  // Refreshed on every successful call (not just the inline login), so an
+  // active admin session keeps middleware.js letting the page through — see
+  // adminSessionCookie's own comment in lib/adminAuth.js.
+  const cookie = adminSessionCookie();
+  if (cookie) res.setHeader('Set-Cookie', cookie);
 
   // ── GET — return pending + published ────────────────────────────────────────
   if (req.method === 'GET') {
