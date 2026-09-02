@@ -20,6 +20,8 @@
 
     var banner = document.createElement('div');
     banner.id = 'beta-banner';
+    banner.setAttribute('role', 'region');
+    banner.setAttribute('aria-label', 'Site notice');
     banner.innerHTML =
       'Elpys is new and still growing. Spot something wrong, or something missing? ' +
       '<a href="' + feedbackHref + '">Let us know</a>.' +

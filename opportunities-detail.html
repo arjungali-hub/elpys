@@ -125,7 +125,7 @@
 
     // The card blurb is the natural meta description. Trim it to the ~160
     // characters a search result actually shows, on a word boundary.
-    let desc = String(opp.description || '').replace(/\s+/g, ' ').trim();
+    let desc = String(opp.desc || opp._detailDesc || '').replace(/\s+/g, ' ').trim();
     if (desc.length > 160) desc = desc.slice(0, 157).replace(/\s+\S*$/, '') + '…';
     if (!desc) desc = 'A verified volunteer opportunity for teens in the Bellevue area.';
 
