@@ -1143,6 +1143,35 @@ footer a {
   line-height: 1.4;
   color: var(--muted);
 }
+/* The row stopped being a button (see map.html), so selecting an opportunity
+   needs a control of its own. Deliberately quiet — it sits under the
+   description and must not compete with the organisation name, which is the
+   thing people are scanning for. --muted-on-surface, not --muted: on --surface
+   that pair measures 5.24:1, where --muted would be 4.39:1 and fail AA.
+   min-height clears the 24px WCAG 2.5.8 target size, which 11px text and
+   0.2rem of padding would not on their own. */
+.map-list-show {
+  align-self: flex-start;
+  margin-top: 0.3rem;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--muted-on-surface);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.map-list-show:hover {
+  background: var(--border);
+  color: var(--body);
+}
 .map-list-live-note {
   font-size: 0.75rem;
   color: var(--muted);

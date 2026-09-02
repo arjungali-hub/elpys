@@ -7,6 +7,62 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-02 — The map list rows are no longer buttons wrapping links
+
+The last accessibility failure from the pre-marketing scan. `/map`'s sidebar
+rows were `<div role="button" tabindex="0">` containing an `<a>` to the
+listing's detail page — a control inside a control, which axe reports as
+`nested-interactive`, serious, one node per row (15).
+
+**This was not a lint nit.** A screen reader announces the row as a button and
+will not step inside it, so the link to the listing's own page was unreachable.
+That link was the *only* route from the map to a listing's details, so for those
+users there was no route at all. Arjun asked for the clean fix rather than the
+cheap one.
+
+- The row is a plain `<div>` again: no `role`, no `tabindex`, no `aria-label`.
+- Selecting an opportunity is now a real `<button class="map-list-show">Show on
+  map</button>`, appended inside each row. Real button, so Enter and Space work
+  without a `keydown` handler, and it is in the tab order beside the link
+  instead of competing with it.
+- The row keeps its click listener, purely as a mouse convenience. What makes
+  that acceptable now is that it is no longer the only way to do anything —
+  nothing is announced as interactive that cannot be operated, and nothing
+  operable is announced only as decoration. The listener's guard widened from
+  `closest('a')` to `closest('a, button')`, or the button's click would bubble
+  up and select twice.
+- The old `keydown` handler is gone entirely. Enter/Space on the row used to be
+  the only keyboard route in; the button provides both correctly.
+
+**The button's accessible name is `"Show on map: " + name`, not `"Show <name> on
+the map"`,** which is what the row's old `aria-label` said. Fifteen buttons all
+reading "Show on map" are useless in a screen reader's element list, so the name
+has to carry the organisation — but WCAG 2.5.3 (Label in Name) requires the
+accessible name to *contain* the visible label, because speech-input users say
+what they can see. "Show EarthCorps on the map" does not contain "Show on map";
+"Show on map: EarthCorps" does.
+
+`#route-status` gained `role="status"`. Pressing the new button pans the map,
+which is invisible to a screen reader, and that line ("Selected EarthCorps.
+Enter a starting place and show the route.") was the only feedback available and
+was announcing nothing. Without this the fix would pass the linter while still
+leaving those users with no idea the button had done anything.
+
+Styling: `.map-list-show` uses `--muted-on-surface`, not `--muted` — on
+`--surface` that pair measures 5.24:1 where `--muted` is 4.39:1 and fails AA
+(the same trap the filter chips were in). `min-height: 24px` clears WCAG 2.5.8
+target size, which 11px text plus 0.15rem of padding would not on its own.
+
+**Verified before committing, on the live site rather than in theory.** The
+container this was written in cannot render `/map` locally — Leaflet and
+supabase-js both come from CDNs it cannot reach, so the sidebar never builds.
+Instead the exact post-fix markup was applied to the real page through the
+browser (attributes stripped, button appended with the same class and
+`aria-label`, the new CSS injected) and axe re-run against it: **15
+`nested-interactive` violations → 0, whole page clean.** Checked at the same
+time that the button computes to 24px tall, `rgb(95,102,117)` on
+`rgb(243,244,246)`, and that the first row's tab order is link then button.
+
 ## 2026-09-01 — Fixed the meta-description field name and the last axe region violation
 
 Two follow-ups from the launch/SEO pass, both flagged directly by Arjun rather

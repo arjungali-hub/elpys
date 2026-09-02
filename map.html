@@ -62,7 +62,10 @@
         <input id="route-origin" name="origin" type="search" autocomplete="street-address" placeholder="e.g. Bellevue High School or 98004" />
         <button type="submit">Show route</button>
       </div>
-      <p class="route-status" id="route-status">Choose an opportunity, then search from your starting place.</p>
+      <!-- role="status" so the outcome of "Show on map" is announced. Selecting
+           an opportunity pans the map, which is invisible to a screen reader;
+           this line is the only feedback those users get, and it was silent. -->
+      <p class="route-status" id="route-status" role="status">Choose an opportunity, then search from your starting place.</p>
     </form>
     <div class="map-layout">
       <div class="map-sidebar" id="map-sidebar"></div>
@@ -333,27 +336,47 @@
       const wrap = document.createElement('div');
       wrap.className = 'map-list-item-wrap';
 
-      // role="button" + tabindex rather than a real <button>: the item contains
-      // an <a> to the detail page, which can't be nested inside a button.
+      // A plain div, NOT role="button". It used to be one, wrapping the <a> to
+      // the detail page — a control inside a control, which axe reports as
+      // nested-interactive (serious, one per row). That is not a lint nit: a
+      // screen reader announces the row as a button and cannot step inside it,
+      // so the link to the listing's own page was unreachable. Every route to
+      // the details was through that link, so those users had none.
+      //
+      // The row keeps its click handler purely as a mouse convenience. What
+      // makes that safe now is that it is no longer the only way to do
+      // anything: the name is a real link, and selecting on the map is a real
+      // <button> below. Nothing is announced as interactive that cannot be
+      // operated, and nothing operable is announced only as decoration.
       const item = document.createElement('div');
       item.className = 'map-list-item';
-      item.setAttribute('role', 'button');
-      item.setAttribute('tabindex', '0');
-      item.setAttribute('aria-label', 'Show ' + opp.name + ' on the map');
       item.innerHTML =
         '<a class="map-list-name" href="' + safeUrl(opp.link) + '">' + escHtml(opp.name) + '</a>' +
         '<span class="map-list-desc">' + escHtml(opp.desc) + '</span>';
+
+      const showBtn = document.createElement('button');
+      showBtn.type = 'button';
+      showBtn.className = 'map-list-show';
+      showBtn.textContent = 'Show on map';
+      // Fifteen buttons all reading "Show on map" are useless in a screen
+      // reader's element list, so the accessible name carries the organisation.
+      // It keeps the visible text as a literal prefix rather than replacing it:
+      // WCAG 2.5.3 (Label in Name) requires the accessible name to contain the
+      // visible label, which a rewrite like "Show EarthCorps on the map" would
+      // not — and speech-input users say what they see.
+      showBtn.setAttribute('aria-label', 'Show on map: ' + opp.name);
+      showBtn.addEventListener('click', () => selectOpportunity(opp, item));
+      item.appendChild(showBtn);
+
       item.addEventListener('click', e => {
-        if (!e.target.closest('a')) selectOpportunity(opp, item);
+        // The link and the button both handle themselves; without this guard
+        // the button's click would bubble up here and select twice.
+        if (!e.target.closest('a, button')) selectOpportunity(opp, item);
       });
-      item.addEventListener('keydown', e => {
-        // Enter/Space select, matching the click. The inner link keeps its own
-        // Enter behaviour — when it has focus, it is the event's target.
-        if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('a')) {
-          e.preventDefault();
-          selectOpportunity(opp, item);
-        }
-      });
+
+      // No keydown handler any more. Enter/Space on the row used to be the only
+      // keyboard route; the <button> gives both for free, correctly, and the
+      // link is now in the tab order too.
       wrap.appendChild(item);
 
       if (opp.approx && opp.liveUrl) {
