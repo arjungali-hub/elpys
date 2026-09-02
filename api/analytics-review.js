@@ -173,12 +173,13 @@ function computeStatus(supabase, taskRun, now) {
     };
   }
 
+  // Deliberately does not repeat the run date: the page prints the exact
+  // timestamp on its own line directly below this one, and saying it twice in
+  // two different formats reads as a rendering mistake.
   return {
     dot: 'green',
     label: 'Running on schedule',
-    detail: 'Last run ' + new Date(taskRun.lastRunAt).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
-    }) + '.',
+    detail: 'The monthly analytics task reported success on its last run.',
   };
 }
 

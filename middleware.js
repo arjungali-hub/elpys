@@ -93,6 +93,28 @@ async function hasValidSession(request) {
   return constantTimeStringEqual(expected, sig);
 }
 
+// Old-URL redirects handled HERE rather than in vercel.json's redirects[],
+// because Vercel re-appends the incoming query string to any redirect
+// destination that doesn't already carry one. That turned
+// /opportunities-detail?slug=wta into /wta?slug=wta — right page, but a
+// leftover parameter hanging off a URL whose whole point was to be clean.
+// `preserveQueryParams` is a Bulk Redirects API field, not a vercel.json key
+// (confirmed by a failed deployment), so there is no way to switch that off
+// in the config file. Middleware builds the Location header itself, so it can
+// simply not include the query.
+//
+// SAFETY: these are matched on the ORIGINAL request path. /opportunities-detail
+// is also the internal destination of the catch-all slug rewrite, so if
+// middleware ran on rewritten paths this would redirect /earthcorps to itself
+// forever. Verified on a preview deployment that it does not — but if this
+// file's matcher is ever changed, re-test /earthcorps for a redirect loop
+// before shipping.
+const ADMIN_VIEW_REDIRECTS = {
+  feedback: '/admin-feedback',
+  edit:     '/admin-edit',
+  confirm:  '/admin-approve',
+};
+
 export const config = {
   matcher: [
     '/admin', '/admin.html',
@@ -100,19 +122,54 @@ export const config = {
     '/admin-review', '/admin-review.html',
     '/review', '/review.html',
     '/analytics-review', '/analytics-review.html',
+    // Public — present only for the query-stripping redirect below, never gated.
+    '/opportunities-detail', '/opportunities-detail.html',
+    '/opportunities/detail', '/opportunities/detail.html',
   ],
 };
 
 export default async function middleware(request) {
-  if (await hasValidSession(request)) return;
+  const url = new URL(request.url);
+  const path = url.pathname.replace(/\.html$/, '').replace(/\/$/, '') || '/';
 
-  // Same 404 page every other unmatched URL on the site gets — self-fetched
-  // from this deployment rather than duplicated here, so it can't drift from
-  // 404.html (which is itself generated from about.html's header/footer for
-  // the same reason).
-  const notFound = await fetch(new URL('/404.html', request.url));
-  return new Response(await notFound.text(), {
-    status: 404,
-    headers: { 'content-type': 'text/html; charset=utf-8' },
-  });
+  // ── Public: old listing URLs → clean /<slug>, query dropped ───────────────
+  // Deliberately before the auth gate: these are public pages and must never
+  // be gated.
+  if (path === '/opportunities-detail' || path === '/opportunities/detail') {
+    const slug = url.searchParams.get('slug');
+    if (slug) {
+      return Response.redirect(new URL('/' + encodeURIComponent(slug), url.origin), 308);
+    }
+    // No slug. The legacy /opportunities/detail path has no page of its own,
+    // so send it to the real one; bare /opportunities-detail IS a real page
+    // (its own "no opportunity specified" state), so let it through.
+    if (path === '/opportunities/detail') {
+      return Response.redirect(new URL('/opportunities-detail', url.origin), 308);
+    }
+    return;
+  }
+
+  // ── Admin surface: gate first ─────────────────────────────────────────────
+  if (!(await hasValidSession(request))) {
+    // Same 404 page every other unmatched URL on the site gets — self-fetched
+    // from this deployment rather than duplicated here, so it can't drift from
+    // 404.html (which is itself generated from about.html's header/footer for
+    // the same reason).
+    const notFound = await fetch(new URL('/404.html', request.url));
+    return new Response(await notFound.text(), {
+      status: 404,
+      headers: { 'content-type': 'text/html; charset=utf-8' },
+    });
+  }
+
+  // ── Signed in: old /admin?view=X → clean /admin-X, query dropped ──────────
+  // After the gate on purpose. Redirecting first would confirm to a signed-out
+  // stranger that /admin-feedback exists; this way they just get the 404.
+  if (path === '/admin') {
+    const view = url.searchParams.get('view');
+    const target = view && Object.prototype.hasOwnProperty.call(ADMIN_VIEW_REDIRECTS, view)
+      ? ADMIN_VIEW_REDIRECTS[view]
+      : null;
+    if (target) return Response.redirect(new URL(target, url.origin), 308);
+  }
 }
