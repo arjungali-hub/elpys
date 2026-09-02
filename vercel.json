@@ -31,7 +31,7 @@
     },
     {
       "source": "/:slug([^/]+)",
-      "destination": "/opportunities-detail.html"
+      "destination": "/opportunities-detail?slug=:slug"
     }
   ],
   "headers": [
