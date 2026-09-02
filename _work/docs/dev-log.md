@@ -7,6 +7,40 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-01 — Fixed the meta-description field name and the last axe region violation
+
+Two follow-ups from the launch/SEO pass, both flagged directly by Arjun rather
+than found in another audit.
+
+- **`setListingMeta()` in `opportunities-detail.html` was reading
+  `opp.description`, which has never been a real field.**
+  `_transformRow()` in `supabase-client.js` exposes the short blurb as `desc`
+  and the long body as `_detailDesc` — `opp.description` was always
+  `undefined`, so every single listing silently fell back to the generic
+  line ("A verified volunteer opportunity for teens in the Bellevue area.")
+  regardless of what the row actually said. This is exactly the duplicate-
+  content problem `setListingMeta()` exists to prevent, and it was failing
+  on 100% of listings since the pass that introduced it. Changed to
+  `opp.desc || opp._detailDesc || ''`. Verified live against
+  `/opportunities-detail?slug=earthcorps` (real UA, post-deploy): the meta
+  description is now EarthCorps's own blurb ("Remove invasive plants and
+  restore forests and parks across the Puget Sound region…"), not the
+  generic fallback.
+- **`#beta-banner` was the one remaining axe `region` violation** noted in
+  the entry below — injected by `beta-banner.js` between `</header>` and
+  `<main>`, in no landmark. Added `role="region"` and
+  `aria-label="Site notice"` at creation time rather than moving the banner
+  inside `<main>`: the skip link targets `#main-content`, and moving the
+  banner in would land a keyboard user on the dismiss button instead of the
+  page's real content. Confirmed the banner still sits between `<header>`
+  and `<main>` after the change (unmoved, just labelled), and re-ran axe's
+  `region` rule against both a local copy and live production afterward —
+  zero violations either way, down from the 1-per-page left after the
+  previous entry.
+- Both changes verified locally (headless Chrome/CDP) before push, then
+  independently re-verified against live `elpys.vercel.app` after merge and
+  deploy — not assumed from the local pass.
+
 ## 2026-09-01 — Launch/SEO patch applied and verified end-to-end in production
 
 The two commits below this entry (launch/SEO pass, beta-badge removal) arrived
