@@ -7,6 +7,71 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-02 — admin.html/admin-review.html/review.html now 404 without a session
+
+Arjun asked for pages that "aren't supposed to be on the site anymore" —
+turned out to mean admin.html, and by extension admin-review.html and
+review.html, which required the admin password to see any real DATA, but
+whose page shell (and the fact that an admin system exists at those URLs at
+all) was reachable by anyone.
+
+- New `middleware.js` (Vercel Edge Middleware) 404s all three for any request
+  without a valid signed session cookie — real 404, self-fetched from
+  `/404.html` so it can't drift from the one every other unmatched URL gets,
+  before any of the real page's HTML ships.
+- `admin-login.html` is deliberately NOT gated. It has no admin data on it —
+  just a password box — and gating it would make it impossible for anyone,
+  including Arjun, to ever obtain the cookie that unlocks the other three.
+  This is the one door that has to stay open so the others can close.
+- New `adminSessionCookie()` in `lib/adminAuth.js`, HMAC-SHA256 over an
+  expiry timestamp keyed on `ADMIN_PASSWORD` — no new secret needed, and the
+  password itself is never placed in the cookie. Set on every successful
+  password check in `api/admin-login.js`, `api/admin.js` and `api/review.js`
+  (12-hour sliding window, refreshed on each authenticated call). Verified
+  independently in `middleware.js` using Web Crypto, since the Edge runtime
+  has no access to Node's `crypto` module — the two implementations must be
+  changed together if either ever is.
+- `checkAdminPassword()`'s existing contract is completely unchanged, and
+  `api/send-digest.js` (out of scope, per standing instruction, and untouched
+  here) also imports it — only new, additive exports were added to
+  `lib/adminAuth.js`.
+- **Real workflow change, not just a cosmetic one**: admin.html and
+  review.html each used to have their own inline password form, reachable by
+  going straight there. Now a fresh browser session hitting `/admin` or
+  `/review` directly gets a 404, not that inline form — Arjun has to visit
+  `/admin-login` first to get the cookie, then `/admin`, `/admin-review` and
+  `/review` all become reachable. Flagged and tested explicitly rather than
+  discovered as a surprise.
+- A bug in `middleware.js` can only ever make these three pages 404 or (if
+  the check were ever loosened wrong) publicly loadable again — it doesn't
+  touch `checkAdminPassword` or the data endpoints, so it can't by itself
+  expose admin data. Losing the file is a visibility regression, not a
+  security one.
+
+**Tested on a Vercel preview deployment before touching production**, not
+reasoned about from the code alone, because a mistake here risks locking
+Arjun out of his own admin panel. Preview URLs are behind Vercel's own SSO
+wall by project setting (`ssoProtection: preview`, unrelated to this
+change), which blocks automated testing — temporarily disabled it via the
+Vercel API, ran the full suite below against the preview, then restored it
+to exactly its original scope (`preview`) immediately after, confirmed by
+re-checking that the preview 302s to Vercel's login again and production is
+unaffected either way.
+
+- Fresh session, no cookie: `/admin`, `/admin.html` (redirects to `/admin`
+  first via cleanUrls, then 404s), `/admin-review`, `/review` and their
+  `.html` forms all 404 with the real branded page
+  (`<title>Page not found — Elpys</title>`). `/admin-login` and
+  `/admin-login.html` load normally (200).
+- Logged in for real at `/admin-login` (Arjun's password, used in-memory for
+  this one CDP session only, never written to any file or this log):
+  `/api/admin-login` returned 200, then `/admin` returned 200 with real data
+  (Pending 1, Published 15, Feedback 1) instead of 404, and `/admin-review?id=1`
+  and `/review` both returned 200 with their real titles too.
+- Repeated the identical sequence against `elpys.vercel.app` itself after
+  merging and deploying — same results, plus confirmed the public site
+  (`/`, `/map`, `/submit`, `/feedback`, `/about`) is completely unaffected.
+
 ## 2026-09-02 — Verified the pre-freeze sweep patch against live production
 
 Independent verification of the patch below, landed as given via `git am` on a
