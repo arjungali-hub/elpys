@@ -81,10 +81,30 @@ const PUBLIC_COLUMNS = [
   'schedule', 'opportunity_type', 'event_date',
 ].join(',');
 
-let _oppCache = null;
+// Caches the in-flight PROMISE, not the resolved rows.
+//
+// Caching the result only helps callers that arrive after the first fetch has
+// finished. The homepage has two that arrive in the same tick — renderCards()
+// and renderAllMiniMap(), both fired from the one DOMContentLoaded handler — so
+// both saw a null cache and both issued the request. Every homepage visit made
+// two identical 37KB queries instead of one, for the whole life of this file.
+// Confirmed against production, not theorised: two entries in
+// performance.getEntriesByType('resource') for the REST endpoint.
+//
+// A rejected promise must not be cached, or one failed load would poison every
+// later retry for the life of the page — hence the reset in the catch.
+let _oppPromise = null;
 
 async function fetchOpportunities() {
-  if (_oppCache) return _oppCache;
+  if (_oppPromise) return _oppPromise;
+  _oppPromise = _fetchOpportunitiesUncached().catch(err => {
+    _oppPromise = null;
+    throw err;
+  });
+  return _oppPromise;
+}
+
+async function _fetchOpportunitiesUncached() {
 
   // "recurring rows, OR one-time rows whose date hasn't passed" — a published
   // one-time row with a past date is expected to stay in the database and
@@ -104,8 +124,7 @@ async function fetchOpportunities() {
   if (!res.ok) throw new Error('Could not load opportunities (' + res.status + ')');
 
   const rows = await res.json();
-  _oppCache = rows.map(_transformRow);
-  return _oppCache;
+  return rows.map(_transformRow);
 }
 
 // Local (not UTC) today as YYYY-MM-DD, so the auto-hide cutoff matches the

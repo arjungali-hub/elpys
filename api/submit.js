@@ -48,6 +48,18 @@ const ipStore = new Map();
 const RATE_MAX    = 10;
 const RATE_WIN_MS = 60 * 60 * 1000; // 1 hour
 
+// Entries were never removed once their window expired, so this Map grew by one
+// entry per unique IP for the whole life of a warm instance — unbounded, on a
+// 128MB function. It also made the privacy policy's "held in server memory for
+// at most one hour" untrue: the window expired, the record did not. Sweeping on
+// each request fixes both. O(n) per request is irrelevant at a size this stays
+// small precisely because of the sweep.
+function pruneExpired(store, windowMs, now) {
+  for (const [key, rec] of store) {
+    if (now - rec.windowStart >= windowMs) store.delete(key);
+  }
+}
+
 function supabaseHeaders(extra) {
   return Object.assign({
     apikey:        SUPABASE_KEY,
@@ -172,6 +184,7 @@ async function handleSubmit(req, res) {
   // ── 3. Rate limiting by IP ────────────────────────────────────────────────
   const ip  = (String(req.headers['x-forwarded-for'] || '')).split(',')[0].trim() || 'unknown';
   const now = Date.now();
+  pruneExpired(ipStore, RATE_WIN_MS, now);
   const rec = ipStore.get(ip);
   if (rec && now - rec.windowStart < RATE_WIN_MS) {
     if (rec.count >= RATE_MAX) {

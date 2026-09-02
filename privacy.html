@@ -87,7 +87,7 @@
   <section class="legal-section">
     <a href="/" class="back-link">← Back to all opportunities</a>
     <h1>Privacy Policy</h1>
-    <p class="legal-updated">Last updated August 26, 2026</p>
+    <p class="legal-updated">Last updated September 2, 2026</p>
 
     <div class="legal-body">
       <div>
@@ -191,7 +191,8 @@
         <ul>
           <li>Page views (which page, when).</li>
           <li>Two specific actions: clicking a listing's sign-up button, and successfully submitting the opportunity form or the feedback form. The event records only that the action happened — never what you typed.</li>
-          <li>Basic page-performance measurements (how fast pages load), and technical details your browser sends with any web request, such as the browser and device type and an approximate city-level location derived from your IP address. PostHog receives your IP address to make that estimate; it is not stored against a profile, because no profile exists.</li>
+          <li>Basic page-performance measurements (how fast pages load), and technical details your browser sends with any web request, such as the browser and device type.</li>
+          <li><strong>No location, not even an approximate one.</strong> Because our analytics runs in a cookieless mode, your IP address is discarded before any step that could turn it into a location, so the country and city fields are permanently empty. We could not tell you what city our visitors are in even if we wanted to.</li>
         </ul>
         <p>It is deliberately configured for privacy: no cookies or persistent identifiers, no session or screen recording, no blanket click tracking, and no identified user profiles — so nothing here can be tied to your account, your email, or a previous visit. Using the filters, the age box, or the map is not tracked. We can see that a page was viewed 40 times; we cannot see that <em>you</em> viewed it.</p>
         <p>If your browser sends a Global Privacy Control or Do Not Track signal, we honor it. We don't sell or share personal information in any case, so there's nothing for it to switch off — but we won't override it either.</p>
@@ -206,7 +207,7 @@
           <tr><td><strong>Vercel</strong></td><td>Hosts the website and runs its server functions.</td><td>Standard server-log data, including your IP address and browser type.</td></tr>
           <tr><td><strong>Cloudflare</strong></td><td>Turnstile, the "are you a real person" check on our forms.</td><td>Your IP address, browser information, and a temporary verification token, when you submit a form.</td></tr>
           <tr><td><strong>Google</strong></td><td>Sends the weekly digest through Gmail, and serves the site's web font.</td><td>Your email address, for the digest. For the font, your IP address and browser, on any page.</td></tr>
-          <tr><td><strong>PostHog</strong></td><td>The anonymous analytics in section 5.</td><td>Anonymous page views and events, plus your IP address for a city-level estimate.</td></tr>
+          <tr><td><strong>PostHog</strong></td><td>The anonymous analytics in section 5.</td><td>Anonymous page views and events. Your IP address reaches them with the request, as it must for any web request, but it is discarded before processing and no location is derived from it.</td></tr>
           <tr><td><strong>OpenStreetMap</strong></td><td>Supplies the map tiles, and the Nominatim geocoder behind the map's "starting place" box.</td><td>Your IP address when the map loads, and the starting place you type, if you use that box.</td></tr>
           <tr><td><strong>Project OSRM</strong></td><td>Calculates the driving route drawn on the map.</td><td>Your IP address and the start and end coordinates of the route.</td></tr>
           <tr><td><strong>jsDelivr and unpkg</strong></td><td>Content-delivery networks that serve two open-source code libraries the site uses.</td><td>Your IP address and browser, on the pages that load them.</td></tr>

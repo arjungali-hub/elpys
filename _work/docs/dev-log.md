@@ -7,6 +7,91 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-02 — Pre-freeze sweep: a privacy-policy overclaim, two unbounded Maps, and a double fetch on every homepage view
+
+Readiness pass ahead of feature freeze and marketing, aimed at what changes when
+strangers arrive rather than at correctness. Three fixes, all verified.
+
+**The privacy policy claimed analytics it does not collect.** Section 5 said
+PostHog derives "an approximate city-level location derived from your IP
+address," and the section 6 processor table repeated it. It does not. The
+2026-09-01 cookieless fix made GeoIP permanently null (PostHog strips the IP
+before its enrichment transformations run), and this was checked against the
+real dataset rather than taken from that entry: across 71 production events from
+`elpys.vercel.app` in the last three days — 48 `$pageview`, 18 `$web_vitals`,
+3 `signup_link_clicked`, 1 `feedback_submitted` — `$ip`, `$geoip_city_name` and
+`$geoip_country_name` are non-null on exactly **zero**.
+
+Over-disclosure is not the usual privacy failure, and it is not a breach. It is
+still worth fixing, because the whole point of this configuration is that the
+site collects less than people expect, and the policy was talking it back out
+again. A parent or a school reading section 5 would have concluded Elpys
+geolocates its visitors. Section 5 now states plainly that no location is
+recorded and why; the processor table says the IP arrives with the request, as
+it must for any web request, and is discarded before processing. "Last updated"
+moved to September 2 — this changes what users are told is collected, so it is a
+substantive edit, unlike the earlier banner rename.
+
+**Two rate-limit Maps grew without bound, and one made the policy untrue.**
+`ipStore` in `api/submit.js` and `api/feedback.js`, and `attempts` in
+`lib/adminAuth.js`, only ever added entries. Nothing removed one when its window
+expired — `adminAuth` deleted on a *successful* login and that was all. On a warm
+instance that is one entry per unique IP forever, on a 128MB function.
+
+The second-order problem is the interesting one: privacy.html section 7 states
+that rate-limiting IPs "are held in server memory for at most one hour." The
+*window* expired after an hour; the *record* did not. The published retention
+promise was wrong by construction. `pruneExpired(store, windowMs, now)` now
+sweeps on each request in all three, which fixes the growth and makes that
+sentence true at the same time. O(n) per request is irrelevant on a Map that
+stays small precisely because of the sweep.
+
+Verified: 11 bad admin attempts still lock out with 429; a correct password on a
+clean IP still returns null and clears the counter; the sweep keeps a 60-second-
+old record and drops a 2-hour-old one.
+
+**Every homepage view made two identical 37KB Supabase queries.**
+`fetchOpportunities()` cached the resolved rows, which only helps callers that
+arrive after the first request finishes. The homepage has two that arrive in the
+same tick — `renderCards()` and `renderAllMiniMap()`, both fired from the one
+`DOMContentLoaded` handler — so both saw a null cache and both issued the
+request. Confirmed on production before changing anything: two entries in
+`performance.getEntriesByType('resource')` for the REST endpoint.
+
+It now caches the in-flight **promise**, so concurrent callers share one request.
+The rejected case is reset rather than cached, or a single failed load would
+poison every retry for the life of the page. Tested by running the real file in
+a VM with a stubbed fetch: two same-tick callers produce 1 network call and the
+same array identity; a later call still 1; and after a forced 503 the retry
+succeeds on call 2 rather than replaying the rejection.
+
+**Not fixed, flagged for a decision: the weekly digest will time out.**
+`api/send-digest.js` sends sequentially — `for (const profile of profiles)` with
+`await sendEmail(...)` inside — under the `maxDuration: 10` that `vercel.json`
+applies to `api/*.js`. The Nodemailer transport is pooled (`pool: true`, created
+at module scope), so connections are reused and each send is a few hundred
+milliseconds rather than a full SMTP handshake, which puts the ceiling somewhere
+around 20–40 recipients before the function is killed mid-loop.
+
+There is 1 subscriber today, so nothing is broken. What makes it worth recording
+now is the failure shape: it does not error visibly, it stops partway. Some
+recipients get that week's digest, the rest silently do not, and the next run has
+no memory of where it stopped, so the same tail can miss repeatedly. Gmail's own
+~500 recipients/day cap sits far beyond the timeout and is not the binding
+constraint.
+
+Options, for whoever picks one: raise `maxDuration` to 60 (Hobby's limit, buys
+roughly 5×, same shape of failure); send with bounded concurrency through the
+existing pool; or chunk across runs with a cursor. The trigger to act is
+subscriber count passing ~20, which is worth watching rather than assuming.
+
+**Capacity checked, no other ceiling near.** 37KB uncompressed per listings
+query, gzipped on the wire, against Supabase's 5GB monthly egress: hundreds of
+thousands of page views of headroom, and the double-fetch fix doubles it.
+Database 11MB of 500MB. PostHog free tier 1M events/month against roughly two
+events per view. Vercel Hobby bandwidth is not close. Supabase's 7-day inactivity
+pause becomes *less* likely once traffic arrives, not more.
+
 ## 2026-09-02 — Verified the map list-row patch against live production
 
 Independent verification of the patch below, not a rewrite of it — landed as
