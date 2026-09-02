@@ -8,6 +8,15 @@
 // system exists at these URLs at all — was visible to anyone. This makes an
 // unauthenticated request 404 before any of that HTML ships.
 //
+// /admin/feedback, /admin/edit and /admin/approve are vercel.json rewrites
+// onto admin.html?view=... — same page, same shell, so they need the same
+// gate. Easy to miss (they were, once — a real regression caught during the
+// clean-URLs work that added them, before it shipped: those three paths
+// 200'd for a request with no session cookie at all, while /admin itself
+// correctly 404'd). If a future rewrite adds another alias for a gated
+// page, it needs to go in this matcher too, or it silently bypasses this
+// whole file.
+//
 // admin-login.html is deliberately NOT in the matcher. It has no admin data
 // on it at all, and gating it would make it impossible for anyone —
 // including the real admin — to ever obtain the session cookie this
@@ -79,6 +88,7 @@ async function hasValidSession(request) {
 export const config = {
   matcher: [
     '/admin', '/admin.html',
+    '/admin/feedback', '/admin/edit', '/admin/approve',
     '/admin-review', '/admin-review.html',
     '/review', '/review.html',
   ],
