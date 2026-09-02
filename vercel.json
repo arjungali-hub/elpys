@@ -72,8 +72,7 @@
       "source": "/opportunities-detail",
       "has": [{ "type": "query", "key": "slug" }],
       "destination": "/:slug",
-      "permanent": true,
-      "preserveQueryParams": false
+      "permanent": true
     },
     {
       "source": "/admin",
