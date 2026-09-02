@@ -7,6 +7,52 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-02 — Verified the pre-freeze sweep patch against live production
+
+Independent verification of the patch below, landed as given via `git am` on a
+fresh `pre-freeze-sweep` branch off `main` at `8988b57`, no conflicts, diff
+matched the patch description exactly. Merged via branch + merge commit (`gh`
+still not installed) and pushed.
+
+- **The double-fetch fix, measured, not assumed**: real desktop UA against
+  `https://elpys.vercel.app/`, checked
+  `performance.getEntriesByType('resource').filter(e =>
+  e.name.includes('supabase.co/rest')).length` directly — **1**, not 2. All 15
+  cards rendered, all 15 hero mini-map pins drew. Checked `/map` (15 sidebar
+  rows, 15 pins) and `/opportunities-detail?slug=earthcorps` (correct title)
+  too, since both call the same `fetchOpportunities()` — also 1 request each,
+  nothing came back empty.
+- **Rejection-reset path**: blocked the Supabase host at the network layer,
+  loaded the homepage — `.load-error` showed with "Opportunities couldn't be
+  loaded", 0 cards, exactly as the pre-existing error path is supposed to
+  render. Unblocked and reloaded: recovered cleanly, 15 cards, and still only
+  1 request — a failed load did not poison the next one.
+- **`/privacy`**: "Last updated September 2, 2026" confirmed; the new "No
+  location, not even an approximate one" bullet is present; the old
+  "approximate city-level location derived from your IP address" claim is
+  gone from both section 5 and the PostHog row in section 6's table.
+- **Feedback form**: could not be submitted through automation — Cloudflare
+  Turnstile did not auto-solve under headless Chrome (expected; not something
+  to work around) and this session has no route to a human clicking the
+  checkbox. Arjun submitted a real test message directly; confirmed it landed
+  by logging into `/admin` (see below) and seeing Feedback (1). Not a gap in
+  `pruneExpired()`'s coverage — Turnstile validation runs before the
+  rate-limit code in `api/feedback.js`, so this only ever exercises "does a
+  real submission still reach the database," which it does.
+- **Admin login**: Arjun provided the password directly in chat for this one
+  check; used it only in-memory for a single CDP session, never written to
+  any file, this log, or saved anywhere persistent. `/api/admin-login`
+  returned 200, `sessionStorage` got the token, and `/admin` loaded real data
+  (Pending 1, Published 15, Feedback 1) — confirms `lib/adminAuth.js`'s
+  pruned `attempts` Map didn't break the login it gates.
+- One naming note, not a defect: the `pruneExpired` comment copy-pasted into
+  all three files says "the privacy policy's 'held in server memory for at
+  most one hour' claim" — true for `api/submit.js` and `api/feedback.js`
+  (`RATE_WIN_MS` is 1 hour in both) but `lib/adminAuth.js`'s `WINDOW_MS` is 15
+  minutes, so the comment overstates that one file's own window. Cosmetic,
+  inside a comment, not something verification is meant to catch or this task
+  asked to fix — left alone.
+
 ## 2026-09-02 — Pre-freeze sweep: a privacy-policy overclaim, two unbounded Maps, and a double fetch on every homepage view
 
 Readiness pass ahead of feature freeze and marketing, aimed at what changes when
