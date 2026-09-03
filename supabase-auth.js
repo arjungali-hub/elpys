@@ -200,15 +200,16 @@ function showModal(opts) {
       });
 
       // ── Row assignment ────────────────────────────────────────────────
-      // Row 1: Approve opportunities, Feedback, Edit opportunities, Log out.
-      // Row 2: Data review, Analytics review, Submit an opportunity, Send
-      // digest now. Both rows use identical .header-admin-link /
-      // .header-logout-btn styling — no size or weight difference between
-      // them. Log out is the one element that has stayed in row 1 across
-      // every reshuffle of this nav; treat that as fixed unless told
-      // otherwise, since it's been called out by name twice now.
+      // Row 1: Approve opportunities, Submit an opportunity, Edit
+      // opportunities, Log out. Row 2: Data review, Analytics review,
+      // Feedback, Send digest now. Both rows use identical
+      // .header-admin-link / .header-logout-btn styling — no size or weight
+      // difference between them. Log out is the one element that has stayed
+      // in row 1 across every reshuffle of this nav; treat that as fixed
+      // unless told otherwise, since it's been called out by name more than
+      // once now.
       adminGroup.appendChild(approveLink);
-      adminGroup.appendChild(feedbackLink);
+      adminGroup.appendChild(subSubmit);
       adminGroup.appendChild(subEdit);
       adminGroup.appendChild(adminLogoutBtn);
       inner.appendChild(adminGroup);
@@ -217,7 +218,7 @@ function showModal(opts) {
       sub.className = 'header-admin-sub';
       sub.appendChild(reviewLink);
       sub.appendChild(analyticsLink);
-      sub.appendChild(subSubmit);
+      sub.appendChild(feedbackLink);
       sub.appendChild(digestBtn);
       sub.appendChild(digestMsg);
       inner.parentElement.appendChild(sub);
