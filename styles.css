@@ -690,6 +690,16 @@ header {
   align-items: baseline;
   line-height: 1.5;
 }
+.steps li span:last-child {
+  /* A step's text is data-driven and can contain a long unbroken URL (e.g. a
+     Google Form link). Without this, that URL's min-content width forces the
+     whole .detail-right column past its 300px flex-basis (flex-shrink: 0),
+     squeezing .detail-main down to almost nothing. `anywhere`, not
+     `break-word`, because only `anywhere` actually shrinks the min-content
+     contribution — `break-word` looks the same once wrapped but still
+     reports the unbroken width to the flex layout. */
+  overflow-wrap: anywhere;
+}
 .steps li .n {
   font-size: 0.75rem;
   font-weight: 700;
