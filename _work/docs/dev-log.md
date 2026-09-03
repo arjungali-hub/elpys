@@ -7,6 +7,19 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-02 — Admin nav: Feedback and Submit an opportunity swapped
+
+Fourth request against this nav's row layout today. Row 1: Approve
+opportunities, Submit an opportunity, Edit opportunities, Log out. Row 2:
+Data review, Analytics review, Feedback, Send digest now. Log out still
+hasn't moved.
+
+The row-assignment restructure from the previous entry did what it was for:
+this was a four-line edit (swap which container `feedbackLink` and
+`subSubmit` get appended to), not a rewrite. Verified the same way as each
+prior pass — all 8 hrefs resolve to the right pages, both status dots still
+color correctly in their row.
+
 ## 2026-09-02 — Admin nav row swap: Data/Analytics review down, Feedback/Edit up
 
 Third change to this nav's row layout today, requested directly: swap Data
