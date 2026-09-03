@@ -167,6 +167,28 @@ header {
   padding-top: 0.75rem;
   margin-top: 0.5rem;
 }
+/* Row 2 of the admin nav (Edit opportunities / Submit an opportunity / Send
+   digest now) — deliberately bigger than row 1's .header-admin-link. Row 1 is
+   navigation to other pages plus session status; these three are the actual
+   work an admin comes to the header to do, so they carry more visual weight.
+   Same weight/padding language as the site's own .btn, sized for a header
+   rather than a full CTA. */
+.header-admin-link-lg,
+.header-logout-btn-lg {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--body);
+  background: transparent;
+  border: 1.5px solid var(--body);
+  border-radius: var(--radius);
+  padding: 0.45rem 1rem;
+  text-decoration: none;
+  white-space: nowrap;
+  font-family: inherit;
+  cursor: pointer;
+}
+.header-admin-link-lg:hover,
+.header-logout-btn-lg:hover { background: var(--off); }
 /* Traffic light on the Data review link.
    red    — the database looks about to pause; act now
    yellow — flags waiting on a human, or the project is already paused
@@ -217,6 +239,11 @@ header {
   .header-logout-btn {
     font-size: 0.75rem;
     padding: 0.28rem 0.6rem;
+  }
+  .header-admin-link-lg,
+  .header-logout-btn-lg {
+    font-size: 0.8125rem;
+    padding: 0.4rem 0.85rem;
   }
   .header-admin-sub { flex-wrap: wrap; row-gap: 0.5rem; }
 }

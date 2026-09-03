@@ -160,19 +160,25 @@ function showModal(opts) {
       inner.appendChild(adminGroup);
 
       // ── Row 2: edit opportunities + submit link + digest button ─────────
+      // Deliberately bigger than row 1 (.header-admin-link-lg /
+      // .header-logout-btn-lg, not the row-1 classes): these three are the
+      // actual work an admin comes here to do, versus row 1's four, which are
+      // navigation to other pages plus session status. Same visual language
+      // as elsewhere on the site (.btn's weight/padding), just sized for the
+      // header rather than a full CTA.
       var sub = document.createElement('div');
       sub.className = 'header-admin-sub';
 
       var subEdit = document.createElement('a');
       subEdit.href        = '/admin-edit';
       subEdit.textContent = 'Edit opportunities';
-      subEdit.className   = 'header-admin-link';
+      subEdit.className   = 'header-admin-link-lg';
       sub.appendChild(subEdit);
 
       var subSubmit = document.createElement('a');
       subSubmit.href      = '/submit';
       subSubmit.textContent = 'Submit an opportunity';
-      subSubmit.className   = 'header-admin-link';
+      subSubmit.className   = 'header-admin-link-lg';
       sub.appendChild(subSubmit);
 
       var digestMsg = document.createElement('span');
@@ -180,7 +186,7 @@ function showModal(opts) {
 
       var digestBtn = document.createElement('button');
       digestBtn.textContent = 'Send digest now';
-      digestBtn.className   = 'header-logout-btn';
+      digestBtn.className   = 'header-logout-btn-lg';
       digestBtn.addEventListener('click', function () {
         digestBtn.disabled    = true;
         digestBtn.textContent = 'Sending…';
