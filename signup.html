@@ -82,7 +82,8 @@
 
           <div class="field">
             <label for="su-password">Password</label>
-            <input type="password" id="su-password" name="password" required placeholder="At least 8 characters" autocomplete="new-password">
+            <input type="password" id="su-password" name="password" required autocomplete="new-password">
+            <p class="consent-note">Must be at least 8 characters, with a lowercase letter, an uppercase letter, and a number.</p>
           </div>
 
           <div class="field">
@@ -155,6 +156,21 @@
   var btn       = document.getElementById('submit-btn');
   var statusEl  = document.getElementById('form-status');
 
+  // Supabase's weak_password error carries a machine-readable `reasons` array
+  // rather than requiring us to parse its message text (which otherwise spells
+  // out the literal character sets, e.g. "abcdefghijklmnopqrstuvwxyz"). Returns
+  // null for anything that isn't a weak-password error, so callers fall back
+  // to showing the original message unchanged.
+  function friendlyPasswordError(err) {
+    if (!err || err.code !== 'weak_password' || !Array.isArray(err.reasons)) return null;
+    var parts = [];
+    if (err.reasons.indexOf('length') !== -1)     parts.push('be at least 8 characters');
+    if (err.reasons.indexOf('characters') !== -1) parts.push('include a lowercase letter, an uppercase letter, and a number');
+    if (err.reasons.indexOf('pwned') !== -1)      parts.push("not be a password that's appeared in a known data breach");
+    if (!parts.length) return null;
+    return 'Password must ' + parts.join(' and ') + '.';
+  }
+
   function showStatus(msg, type) {
     statusEl.textContent    = msg;
     statusEl.className      = 'form-status ' + type;
@@ -225,7 +241,8 @@
       });
 
       if (result.error) {
-        showStatus(result.error.message || result.error.error_description || 'Sign-up failed (code ' + result.error.status + '). Check that email sign-ins are enabled in your Supabase project.', 'error');
+        var friendly = friendlyPasswordError(result.error);
+        showStatus(friendly || result.error.message || result.error.error_description || 'Sign-up failed (code ' + result.error.status + '). Check that email sign-ins are enabled in your Supabase project.', 'error');
         Loading.clearBusy(btn);
         return;
       }
