@@ -88,7 +88,7 @@ function showModal(opts) {
         return a;
       }
 
-      adminGroup.appendChild(makeAdminLink('Feedback',              '/admin-feedback'));
+      var feedbackLink = makeAdminLink('Feedback', '/admin-feedback');
       adminGroup.appendChild(makeAdminLink('Approve opportunities', '/admin-approve'));
 
       // Data review carries a traffic light so the queue and the database's
@@ -159,26 +159,32 @@ function showModal(opts) {
       adminGroup.appendChild(adminLogoutBtn);
       inner.appendChild(adminGroup);
 
-      // ── Row 2: edit opportunities + submit link + digest button ─────────
-      // Deliberately bigger than row 1 (.header-admin-link-lg /
-      // .header-logout-btn-lg, not the row-1 classes): these three are the
-      // actual work an admin comes here to do, versus row 1's four, which are
-      // navigation to other pages plus session status. Same visual language
-      // as elsewhere on the site (.btn's weight/padding), just sized for the
-      // header rather than a full CTA.
+      // ── Row 2: 4 buttons, same style as row 1 ────────────────────────────
+      // Both rows use the identical .header-admin-link / .header-logout-btn
+      // styling on purpose — no size or weight difference between them.
+      // Feedback lands here rather than row 1 to make the rows 4-and-4:
+      // tested all four ways of moving exactly one of row 1's original items
+      // down (Log out has to stay put, so it can't be the one that moves,
+      // and a straight swap always cancels back to the original 4/3 split).
+      // Row 2's three original items are inherently the longest labels on
+      // this nav, so every option left row 2 wider regardless of which item
+      // moved — moving Feedback (the shortest candidate) got the two rows
+      // closest: a 37px gap at 1400px, versus up to 196px for the worst
+      // option. Not a true tie, but as close as this label set allows.
       var sub = document.createElement('div');
       sub.className = 'header-admin-sub';
+      sub.appendChild(feedbackLink);
 
       var subEdit = document.createElement('a');
       subEdit.href        = '/admin-edit';
       subEdit.textContent = 'Edit opportunities';
-      subEdit.className   = 'header-admin-link-lg';
+      subEdit.className   = 'header-admin-link';
       sub.appendChild(subEdit);
 
       var subSubmit = document.createElement('a');
       subSubmit.href      = '/submit';
       subSubmit.textContent = 'Submit an opportunity';
-      subSubmit.className   = 'header-admin-link-lg';
+      subSubmit.className   = 'header-admin-link';
       sub.appendChild(subSubmit);
 
       var digestMsg = document.createElement('span');
@@ -186,7 +192,7 @@ function showModal(opts) {
 
       var digestBtn = document.createElement('button');
       digestBtn.textContent = 'Send digest now';
-      digestBtn.className   = 'header-logout-btn-lg';
+      digestBtn.className   = 'header-logout-btn';
       digestBtn.addEventListener('click', function () {
         digestBtn.disabled    = true;
         digestBtn.textContent = 'Sending…';
