@@ -4,7 +4,8 @@
 // GET (and OPTIONS) only, no POST — nothing on that page edits anything.
 //
 // The rows come from a Cowork scheduled task ("Elpys Monthly Analytics
-// Review") that runs on the 1st of each month, pulls PostHog traffic/vitals/
+// Review") that runs on the first Monday of each month (not the 1st — those
+// are the same date only four times a year), pulls PostHog traffic/vitals/
 // signup-click figures, writes one analytics_reviews row, and upserts a
 // task_runs heartbeat under task_name = 'analytics_review_monthly'. Nothing
 // in this repo writes either table; this endpoint only reads them.
@@ -115,12 +116,26 @@ async function fetchTaskRun() {
   };
 }
 
-// First of the month after today, in UTC — the task's own schedule. Computed
-// rather than hardcoded so the "never run" copy doesn't rot the moment the
-// date it names has passed.
+// The first Monday of the given UTC month (0-indexed). Not the 1st — the
+// task runs on the first Monday, and got this wrong once already: an earlier
+// version of this function assumed the 1st, which is a different date in
+// most months (September 2026's 1st is a Tuesday; its first Monday is the 7th).
+function firstMondayOf(year, month) {
+  const d = new Date(Date.UTC(year, month, 1));
+  const dayOfWeek = d.getUTCDay(); // 0=Sun..6=Sat
+  d.setUTCDate(1 + ((8 - dayOfWeek) % 7)); // 8-dayOfWeek mod 7 lands on Monday=1
+  return d;
+}
+
+// The next first-Monday-of-a-month strictly after now, in UTC — the task's
+// own schedule. Computed rather than hardcoded so the "never run" copy
+// doesn't rot the moment the date it names has passed.
 function nextRunLabel(now) {
   const d = now instanceof Date ? now : new Date();
-  const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+  let next = firstMondayOf(d.getUTCFullYear(), d.getUTCMonth());
+  if (next.getTime() <= d.getTime()) {
+    next = firstMondayOf(d.getUTCFullYear(), d.getUTCMonth() + 1);
+  }
   return next.toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
   });
