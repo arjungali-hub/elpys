@@ -7,6 +7,45 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-02 — Admin nav follow-up: no bold, 4-and-4 instead of 5-and-3
+
+Arjun looked at the previous entry's result and asked for two changes: drop
+the bold/bigger styling on row 2 (all 8 buttons should look identical again),
+and rebalance the rows to 4-and-4 rather than 5-and-3, with Log out staying
+exactly where it was.
+
+Removed `.header-admin-link-lg` / `.header-logout-btn-lg` entirely — row 2's
+three items are back on the plain `.header-admin-link` / `.header-logout-btn`
+every other nav item on the site uses.
+
+For the split: Log out can't move, and any two-way swap between the rows
+cancels back to the original 4-real-items/3-items count — so the only way to
+reach 4-and-4 is moving exactly one of row 1's four real items (Feedback,
+Approve opportunities, Data review, Analytics review) down to join row 2's
+existing three. Built a side-by-side test harness loading the real
+`styles.css` and measured actual rendered widths for all four options rather
+than guessing from character counts:
+
+| moved down | row 1 width | row 2 width | gap |
+|---|---|---|---|
+| Approve opportunities | 437px | 633px | 196px |
+| Analytics review | 461px | 608px | 148px |
+| Data review | 490px | 579px | 89px |
+| **Feedback** | **516px** | **553px** | **37px** |
+
+None of the four options make row 1 wider — row 2's three original items
+(Edit opportunities, Submit an opportunity, Send digest now) are inherently
+the longest labels on this nav, so it's structurally the wider row regardless
+of which single item joins it. Moving Feedback got closest by a wide margin.
+Told directly, not silently: this doesn't fully satisfy "if one has to be
+bigger, make it the top row" — it gets as close as the label set allows.
+
+Row 1 is now: Approve opportunities, Data review, Analytics review, Log out.
+Row 2: Feedback, Edit opportunities, Submit an opportunity, Send digest now.
+Verified all 8 hrefs still resolve correctly post-move, and checked mobile
+again — the pre-existing header-overflow issue is present but measurably
+smaller than before (470px vs. 550px against a 375px viewport), not worsened.
+
 ## 2026-09-02 — Sized the admin nav's two rows to match what they actually are
 
 Arjun asked to organize the injected admin nav (the one supabase-auth.js adds
