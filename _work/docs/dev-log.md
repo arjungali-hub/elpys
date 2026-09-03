@@ -7,6 +7,40 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-02 — Sized the admin nav's two rows to match what they actually are
+
+Arjun asked to organize the injected admin nav (the one supabase-auth.js adds
+to every public page's header when logged in as admin) so "the 4 smaller ones
+are on top and the three bigger ones are on the bottom." Checked the CSS
+before touching anything: `.header-admin-link` and `.header-logout-btn` were
+shared identically by all 8 buttons across both rows — no size distinction
+existed anywhere. The "4 smaller / 3 bigger" categories weren't literal yet;
+they had to be built.
+
+The counts only resolve one way: row 1 already held Feedback, Approve
+opportunities, Data review, Analytics review and Log out — 4 real nav items
+plus a session action that doesn't belong to either category — and row 2
+already held exactly 3 (Edit opportunities, Submit an opportunity, Send
+digest now). Confirmed this reading directly with Arjun before writing any
+CSS, since two different pages (`/admin` itself vs. this injected nav) both
+plausibly matched "admin view" and guessing wrong meant redoing real work.
+
+New `.header-admin-link-lg` / `.header-logout-btn-lg` for row 2 only: larger
+font-size, bolder weight, more generous padding, a stronger border — same
+visual language as the site's own `.btn`, sized for a header rather than a
+full CTA. Row 1 unchanged. Reasoning made explicit in a comment: row 2 is the
+actual work an admin comes to the header to do; row 1 is navigation to other
+pages plus session status.
+
+Checked at 375px against both the branch and unmodified production before
+merging: row 1 already overflows off the right edge of the viewport on
+mobile (`document.documentElement.scrollWidth` reports 550px against a
+375px viewport) on production too, identically — a pre-existing, already-
+tracked issue (see the Analytics review entry's own testing note: "this
+project has an open header-overflow issue tracked elsewhere"), not something
+this change introduced. Row 2's new, larger buttons still wrap onto their own
+line correctly.
+
 ## 2026-09-02 — Fixed the analytics task's next-run date: first Monday, not the 1st
 
 Arjun caught this directly: `nextRunLabel()` in `api/analytics-review.js`
