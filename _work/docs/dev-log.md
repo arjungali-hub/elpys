@@ -7,6 +7,78 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-03 — Signup password: match the 8-char policy, show it upfront, plain-language errors
+
+Supabase's project-level Auth password policy was still 12 characters while
+`signup.html`'s own placeholder and client-side pre-check already assumed
+8 — real signups were being rejected against a rule the page never
+mentioned, and the rejection itself listed raw character sets
+(`abcdefghijklmnopqrstuvwxyz`, `ABCDEFGHIJKLMNOPQRSTUVWXYZ`,
+`0123456789`) instead of saying what was wrong.
+
+- Lowered the Supabase Auth password policy (project `ukrykzmehvghedrvmkjj`,
+  Authentication → Sign In / Up) from 12 to 8 characters, made by Arjun
+  directly in the dashboard. Kept the existing character-class requirement
+  (lowercase, uppercase, digits — no symbols) as-is; confirmed the new
+  minimum by triggering `signUp()` with a 3-character password and getting
+  back `weak_password` / `reasons: ["length"]` naming 8, not 12.
+- Added a persistent hint under the password field —
+  "Must be at least 8 characters, with a lowercase letter, an uppercase
+  letter, and a number." — styled with the page's existing `.consent-note`
+  class, so the rule is visible before anyone types rather than discovered
+  from an error. Removed the now-redundant placeholder.
+- Supabase's weak-password error carries a structured `error.code ===
+  'weak_password'` and a `reasons` array (`length`, `characters`, `pwned`)
+  rather than requiring the raw message to be parsed — `friendlyPasswordError()`
+  reads that instead of pattern-matching the character-set text, and returns
+  `null` for anything else so unrelated errors (bad email format, rate
+  limiting) still show Supabase's original message unchanged.
+- Verified live: too-short password → "Password must be at least 8
+  characters."; a password missing a character class → "Password must
+  include a lowercase letter, an uppercase letter, and a number."; a fully
+  valid password → real signup succeeded, landed on the "check your email"
+  state. A malformed email address still showed Supabase's raw "Unable to
+  validate email address: invalid format" untouched, confirming the rewrite
+  doesn't over-reach. One incidental finding while testing, not a regression
+  from this change: Supabase rejects `@example.com` addresses outright
+  (a deliverability/MX check, most likely, since `example.com` has none) —
+  worth knowing if a future test uses that domain and gets a confusing
+  "email address is invalid" instead of the expected result.
+- Grepped the repo for every place a password is created or changed —
+  `signup.html` is the only one; `login.html` and `admin-login.html` only
+  verify existing credentials, and there is no password-reset/change page.
+
+## 2026-09-03 — Listing detail page: a long, unbroken step URL was blowing out the map/signup column
+
+Arjun caught this by eye on the Bellevue Farmers Market listing: the map
+and "How to sign up" box on the right rendered far wider than intended,
+squeezing the name/description column into a narrow strip.
+
+Root cause was CSS, not the map or the box themselves. `.detail-right` is
+`flex: 0 0 300px; flex-shrink: 0` — meant to hold a fixed 300px regardless
+of viewport. But a step's text is data-driven, and this listing's step 2
+is a full, unbroken Google Form URL. With no `overflow-wrap` anywhere in
+the `.steps li` chain, that URL's min-content width (the narrowest the
+browser will ever render it without breaking) exceeded 300px, and because
+the column can't shrink, the browser fell back to sizing it by that
+content instead — a constant 740px at every viewport from 640px to
+1300px+, regardless of how much room was actually available.
+
+Fix: `overflow-wrap: anywhere` on `.steps li span:last-child`. Deliberately
+`anywhere`, not the more common `break-word` — `break-word` visually wraps
+the same way but doesn't reduce what the element reports as its minimum
+content width to the surrounding flex/grid layout, so it wouldn't actually
+have fixed the column-blowout; only `anywhere` does. `.steps` is shared
+with the homepage's `.card-steps`, so this protects any listing whose step
+text is a long unbroken token, not just this one.
+
+Verified via headless Chrome across 640–1300px on the live page:
+`.detail-right` now holds a clean 300px at every width above the 640px
+mobile breakpoint (previously a constant 740px regardless of viewport),
+and the description column reclaims the rest — 684px at 1300px wide, down
+to a still-readable 305px at 700px, instead of the ~107–244px it was
+squeezed to before.
+
 ## 2026-09-03 — Verified the soft-404/digest patch against live production
 
 Independent verification of the patch below, landed as given via `git am` on a
