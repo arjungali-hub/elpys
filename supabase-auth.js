@@ -88,8 +88,14 @@ function showModal(opts) {
         return a;
       }
 
+      // Elements are all created here, before either row decides who gets
+      // them — row membership is just which container each one is appended
+      // to further down. Kept this way (rather than building inline per row)
+      // because that split has moved twice already on request; declaring
+      // everything up front means the next reshuffle is a few appendChild
+      // lines, not a rewrite.
       var feedbackLink = makeAdminLink('Feedback', '/admin-feedback');
-      adminGroup.appendChild(makeAdminLink('Approve opportunities', '/admin-approve'));
+      var approveLink  = makeAdminLink('Approve opportunities', '/admin-approve');
 
       // Data review carries a traffic light so the queue and the database's
       // health are visible without opening the page. Colour comes from the
@@ -100,7 +106,6 @@ function showModal(opts) {
       reviewDot.className = 'status-dot is-unknown';
       reviewDot.setAttribute('aria-hidden', 'true');
       reviewLink.appendChild(reviewDot);
-      adminGroup.appendChild(reviewLink);
 
       // Failures leave the dot in its neutral "unknown" state rather than
       // guessing green — a dot that lies about health is worse than no dot.
@@ -133,7 +138,6 @@ function showModal(opts) {
       analyticsDot.className = 'status-dot is-unknown';
       analyticsDot.setAttribute('aria-hidden', 'true');
       analyticsLink.appendChild(analyticsDot);
-      adminGroup.appendChild(analyticsLink);
 
       fetch('/api/analytics-review?summary=1', { headers: { 'x-admin-password': adminPw } })
         .then(function (r) { return r.ok ? r.json() : null; })
@@ -156,36 +160,16 @@ function showModal(opts) {
         sessionStorage.removeItem('elpys_admin_pw');
         location.href = '/';
       });
-      adminGroup.appendChild(adminLogoutBtn);
-      inner.appendChild(adminGroup);
-
-      // ── Row 2: 4 buttons, same style as row 1 ────────────────────────────
-      // Both rows use the identical .header-admin-link / .header-logout-btn
-      // styling on purpose — no size or weight difference between them.
-      // Feedback lands here rather than row 1 to make the rows 4-and-4:
-      // tested all four ways of moving exactly one of row 1's original items
-      // down (Log out has to stay put, so it can't be the one that moves,
-      // and a straight swap always cancels back to the original 4/3 split).
-      // Row 2's three original items are inherently the longest labels on
-      // this nav, so every option left row 2 wider regardless of which item
-      // moved — moving Feedback (the shortest candidate) got the two rows
-      // closest: a 37px gap at 1400px, versus up to 196px for the worst
-      // option. Not a true tie, but as close as this label set allows.
-      var sub = document.createElement('div');
-      sub.className = 'header-admin-sub';
-      sub.appendChild(feedbackLink);
 
       var subEdit = document.createElement('a');
       subEdit.href        = '/admin-edit';
       subEdit.textContent = 'Edit opportunities';
       subEdit.className   = 'header-admin-link';
-      sub.appendChild(subEdit);
 
       var subSubmit = document.createElement('a');
       subSubmit.href      = '/submit';
       subSubmit.textContent = 'Submit an opportunity';
       subSubmit.className   = 'header-admin-link';
-      sub.appendChild(subSubmit);
 
       var digestMsg = document.createElement('span');
       digestMsg.className = 'header-digest-msg';
@@ -214,6 +198,26 @@ function showModal(opts) {
             digestBtn.textContent = 'Send digest now';
           });
       });
+
+      // ── Row assignment ────────────────────────────────────────────────
+      // Row 1: Approve opportunities, Feedback, Edit opportunities, Log out.
+      // Row 2: Data review, Analytics review, Submit an opportunity, Send
+      // digest now. Both rows use identical .header-admin-link /
+      // .header-logout-btn styling — no size or weight difference between
+      // them. Log out is the one element that has stayed in row 1 across
+      // every reshuffle of this nav; treat that as fixed unless told
+      // otherwise, since it's been called out by name twice now.
+      adminGroup.appendChild(approveLink);
+      adminGroup.appendChild(feedbackLink);
+      adminGroup.appendChild(subEdit);
+      adminGroup.appendChild(adminLogoutBtn);
+      inner.appendChild(adminGroup);
+
+      var sub = document.createElement('div');
+      sub.className = 'header-admin-sub';
+      sub.appendChild(reviewLink);
+      sub.appendChild(analyticsLink);
+      sub.appendChild(subSubmit);
       sub.appendChild(digestBtn);
       sub.appendChild(digestMsg);
       inner.parentElement.appendChild(sub);
