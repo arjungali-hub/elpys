@@ -7,6 +7,21 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-02 — Fixed the analytics task's next-run date: first Monday, not the 1st
+
+Arjun caught this directly: `nextRunLabel()` in `api/analytics-review.js`
+computed "next month's 1st" unconditionally, but the Cowork task actually runs
+on the first Monday of the month — the same date only four times a year. From
+today (Sept 2), that gave "October 1" when the real next run is September 7.
+
+New `firstMondayOf(year, month)` finds the actual date; `nextRunLabel()` takes
+the current month's first Monday if it's still ahead of now, otherwise next
+month's. Verified against the exact case that surfaced this (Sept 2 → "September
+7, 2026") and against a year rollover (Dec 31 → "January 4, 2027"). Confirmed
+live against production after deploy, not just locally — `/api/analytics-review`
+with the admin password now returns `detail: "The first monthly review runs
+September 7, 2026."`.
+
 ## 2026-09-02 — Analytics review page, and old URLs now redirect genuinely clean
 
 ### The page
