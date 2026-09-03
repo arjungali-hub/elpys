@@ -109,9 +109,17 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true, message: 'No subscribed users — digest skipped.' });
   }
 
-  // 3. Send one digest per matching user
+  // 3. Build one digest per matching user, then send them
+  //
+  // Building and sending are separated on purpose. Building is pure string
+  // work and costs nothing; sending is network-bound and is the only part
+  // that can run out of time. Keeping them apart means the time budget below
+  // governs sends alone, and a truncated run has an exact, reportable count
+  // of what was left rather than stopping somewhere inside a loop that was
+  // doing both.
   let sent = 0, skipped = 0;
   const failed = [];
+  const jobs = [];
 
   for (const profile of profiles) {
     const to = profile.email;
@@ -175,32 +183,88 @@ module.exports = async function handler(req, res) {
       }).join('\n\n') +
       '\n\n---\nUnsubscribe: ' + unsubUrl;
 
-    try {
-      await sendEmail({ to, subject: 'New volunteer opportunities this week — Elpys', html, text });
-      sent++;
-    } catch (err) {
-      // One undeliverable address must not end the run. This used to return
-      // straight out of the handler, so every remaining subscriber got nothing
-      // — and because the query keys off published_at within the last 7 days,
-      // next week's run would not have covered them either.
-      console.error('Failed to send to', to, err && err.message);
-      failed.push({ to: to, error: (err && err.message) || String(err) });
+    jobs.push({ to: to, html: html, text: text });
+  }
+
+  // ── Send phase ────────────────────────────────────────────────────────────
+  //
+  // This used to be a plain `await sendEmail(...)` inside the loop above: one
+  // send at a time, under this function's maxDuration. That works fine at one
+  // subscriber and dies somewhere around 20-40 — not with an error, but by
+  // being killed mid-loop. Some people would get that week's digest, the rest
+  // silently would not, and because the opportunity query keys off
+  // published_at within the last 7 days, the next run would not cover them
+  // either: the same tail can miss week after week with nothing to show for it.
+  //
+  // Three things changed. Sends now run CONCURRENCY at a time through the
+  // pooled transport in lib/sendEmail.js (pool: true, created once at module
+  // scope, so the connections are already there to reuse). This function's
+  // maxDuration is raised to 60s in vercel.json — a per-function override, not
+  // a change to the 10s the other endpoints get. And the run stops on its own
+  // before the platform kills it, so a truncated run REPORTS itself instead of
+  // vanishing.
+  //
+  // Gmail's own cap (~500 recipients/day on a consumer account) is now the
+  // binding constraint rather than the timeout, which is the right way round:
+  // it is a documented number rather than a cliff nobody sees coming.
+  const CONCURRENCY = 4;
+  const BUDGET_MS   = 50 * 1000;  // 60s limit, 10s of headroom for everything else
+  const startedAt   = Date.now();
+  let truncated     = false;
+
+  for (let i = 0; i < jobs.length; i += CONCURRENCY) {
+    if (Date.now() - startedAt > BUDGET_MS) {
+      truncated = true;
+      break;
     }
+    const batch = jobs.slice(i, i + CONCURRENCY);
+    // allSettled, not all: one rejection must not abandon the rest of its own
+    // batch, let alone the run.
+    const results = await Promise.allSettled(batch.map(job =>
+      sendEmail({ to: job.to, subject: 'New volunteer opportunities this week — Elpys', html: job.html, text: job.text })
+    ));
+    results.forEach((r, n) => {
+      if (r.status === 'fulfilled') { sent++; return; }
+      // One undeliverable address must not end the run. This used to return
+      // straight out of the handler, so every remaining subscriber got nothing.
+      const err = r.reason;
+      console.error('Failed to send to', batch[n].to, err && err.message);
+      failed.push({ to: batch[n].to, error: (err && err.message) || String(err) });
+    });
+  }
+
+  if (truncated) {
+    // Loud on purpose. A partial digest is the failure this whole restructure
+    // exists to make visible — it is not an error the platform will report,
+    // because nothing threw.
+    console.error(
+      'Digest TRUNCATED on time budget: sent ' + sent + ' of ' + jobs.length +
+      ' built messages in ' + Math.round((Date.now() - startedAt) / 1000) + 's. ' +
+      (jobs.length - sent - failed.length) + ' subscriber(s) got nothing this week. ' +
+      'Raise CONCURRENCY, raise maxDuration, or move to a batch email provider.'
+    );
   }
 
   if (failed.length) {
     console.error('Digest finished with ' + failed.length + ' failed send(s):', JSON.stringify(failed));
   }
 
+  const unsent = jobs.length - sent - failed.length;
+
   return res.status(200).json({
-    ok: true,
+    ok: !truncated,
     sent,
     skipped,
     failed: failed.length,
+    built: jobs.length,
+    unsent,
+    truncated,
     totalProfiles: profiles.length,
-    message: failed.length
-      ? 'Sent to ' + sent + ', skipped ' + skipped + ', ' + failed.length + ' failed to send (see logs).'
-      : undefined,
+    message: truncated
+      ? 'TRUNCATED on time budget: sent ' + sent + ' of ' + jobs.length + ', ' + unsent + ' subscriber(s) got nothing. See logs.'
+      : (failed.length
+          ? 'Sent to ' + sent + ', skipped ' + skipped + ', ' + failed.length + ' failed to send (see logs).'
+          : undefined),
   });
 };
 

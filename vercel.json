@@ -66,6 +66,10 @@
     }
   ],
   "functions": {
+    "api/send-digest.js": {
+      "memory": 256,
+      "maxDuration": 60
+    },
     "api/*.js": {
       "memory": 128,
       "maxDuration": 10

@@ -7,6 +7,107 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-03 — Real 404s for unknown listings, and a digest that stops loudly
+
+Two fixes found in the final pre-marketing confirmation pass. Both are about
+failures that are silent rather than loud, which is why neither had shown up on
+its own.
+
+### Unknown listing URLs returned 200, not 404
+
+The catch-all slug rewrite added during the clean-URLs work matches **any**
+single-segment path that is not a reserved name and sends it to
+`opportunities-detail.html`. That is what makes `/earthcorps` work. It also
+meant a URL for a listing that does not exist returned **HTTP 200** with the
+detail template, only becoming "Opportunity not found" once JavaScript ran.
+
+Verified before touching anything: `/this-page-does-not-exist` and the live
+`/keep-bellevue-beautiful-belred-cleanup` returned **byte-identical HTML** with
+identical 200 statuses. The two are indistinguishable to anything that does not
+execute scripts.
+
+Three consequences, in increasing order of how much they matter:
+
+1. `404.html` became unreachable for a mistyped single-segment URL — it only
+   fired for multi-segment paths. Someone typing `/abuot` got "Opportunity not
+   found — it may have been removed", which is the wrong message.
+2. Google reports a 200 that says "not found" as a soft 404. The `noindex`
+   `setPlaceholder()` injects stops it being *indexed*, not *reported*, and
+   only after render.
+3. **Every listing ever unpublished leaves a permanent 200 behind it.** That was
+   about to happen on a schedule: the two Keep Bellevue Beautiful events
+   (Sep 5 and Sep 12) are in the submitted sitemap, so Google had been pointed
+   directly at URLs that were going to start answering 200-not-found within
+   days.
+
+`middleware.js` now resolves the slug before the rewrite runs and serves a real
+404 for anything that is not a live listing. Specifics worth keeping:
+
+- **The slug check runs BEFORE the auth gate, and returns unconditionally.**
+  Every listing page is public; falling through to the gate would have 404'd all
+  fifteen for signed-out visitors, which is every visitor. `ADMIN_PATHS` exists
+  so the gated paths — all of which are also single-segment — skip the slug
+  branch and reach the gate as before.
+- **It fails OPEN.** No env vars, or Supabase unreachable, and the request
+  passes through exactly as before. A soft 404 on a junk URL is a nuisance; a
+  hard 404 on all fifteen real listings during a blip is an outage.
+- **Stale-while-revalidate cache**, 60s TTL. A stale set is returned while a
+  refresh runs unawaited, so only the first request an edge instance sees pays
+  the Supabase round-trip rather than adding one to every listing page's TTFB.
+  The cost is that a just-approved listing can 404 for up to a minute.
+- The filter matches `supabase-client.js` and `api/sitemap.js` exactly —
+  published, plus one-time rows only while their date is ahead. All three answer
+  "is this listing live right now?" and disagreement between them is the bug.
+- **The matcher's exclusion list is a duplicate of the one in `vercel.json`'s
+  rewrite** and has to stay identical. They describe the same set from opposite
+  ends. A name added to one and not the other either 404s a real page or lets a
+  soft 404 back through. Flagged in the file.
+- `decodeURIComponent` is wrapped: `/%` is a malformed escape that throws
+  `URIError`, which would have turned a junk URL into a 500 from the middleware
+  itself.
+
+Tested by running the real file in a VM against a stubbed fetch, covering every
+branch: three live slugs pass through; three unknown ones (including the Sep 5
+event) 404; four admin paths still 404 through the gate when signed out; the
+old `?slug=` redirect still 308s without the query; Supabase-down and env-missing
+both pass through; five requests cause one Supabase call; and `/%` 404s instead
+of throwing.
+
+### The weekly digest would have died mid-send, silently
+
+`api/send-digest.js` sent one email at a time — `await sendEmail(...)` inside
+the profile loop — under the `maxDuration: 10` that `vercel.json` applies to
+every `api/*.js`. At one subscriber that is fine. Somewhere around 20–40 it stops
+being fine, and not by erroring: the function is killed mid-loop. Some people get
+that week's digest, the rest silently do not, and because the opportunity query
+keys off `published_at` within the last 7 days, **the next run does not cover
+them either** — the same tail can miss week after week with nothing anywhere to
+show for it.
+
+Three changes:
+
+- Building and sending are now separate phases. Building is pure string work;
+  sending is the only part that can run out of time. Separating them means the
+  time budget governs sends alone and a truncated run has an exact count of what
+  was left, rather than stopping somewhere inside a loop doing both.
+- Sends run 4 at a time via `Promise.allSettled` through the already-pooled
+  transport in `lib/sendEmail.js`. `allSettled`, not `all`: one rejection must
+  not abandon the rest of its own batch.
+- A 50s budget inside a `maxDuration` raised to 60s **for this function only**
+  (a per-function override in `vercel.json`; the other endpoints keep 10s). The
+  run now stops itself before the platform kills it and reports
+  `truncated: true` with `sent`/`built`/`unsent`, plus a `console.error` naming
+  how many people got nothing.
+
+Gmail's own ~500-recipients/day cap is now the binding constraint instead of the
+timeout, which is the right way round: a documented number rather than a cliff.
+
+Tested against the real handler with a stubbed mailer: 30 recipients all
+delivered at peak concurrency 4 in 221ms where sequential would be ~600ms; one
+bad address yields sent 19 / failed 1 / not truncated; and a deliberately slow
+mailer with 400 recipients truncates at 224 with `ok: false`, counts that add up
+(`sent + failed + unsent === built`), and the loud log line.
+
 ## 2026-09-02 — Admin nav: Feedback and Submit an opportunity swapped
 
 Fourth request against this nav's row layout today. Row 1: Approve

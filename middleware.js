@@ -115,6 +115,83 @@ const ADMIN_VIEW_REDIRECTS = {
   confirm:  '/admin-approve',
 };
 
+// The gated paths, normalised the same way `path` is below (.html and trailing
+// slash stripped). Every one of them is also a single segment, so the slug
+// check has to know to leave them alone — without this it would try to resolve
+// "admin" as a listing, fail, and 404 the admin surface for the real admin
+// before the session check ever ran.
+const ADMIN_PATHS = new Set([
+  '/admin', '/admin-feedback', '/admin-edit', '/admin-approve',
+  '/admin-review', '/review', '/analytics-review',
+]);
+
+// ── Real 404s for listing URLs that don't exist ───────────────────────────────
+//
+// vercel.json's catch-all rewrite sends ANY single-segment path that isn't a
+// reserved name to opportunities-detail.html. That is what makes /earthcorps
+// work — and it also means a URL for a listing that does not exist returns
+// HTTP 200 with the detail template, only becoming "Opportunity not found"
+// after JavaScript runs. A 200 that says "not found" is a soft 404: Google
+// reports it, 404.html becomes unreachable for a mistyped URL, and — the case
+// that actually bites — every listing ever unpublished leaves a permanent 200
+// behind it, including the one-time events that drop off the site the day
+// after they happen, on URLs the sitemap told Google to crawl.
+//
+// So: resolve the slug here, before the rewrite, and serve a real 404 for
+// anything that isn't a live listing.
+//
+// The filter MUST match the one in supabase-client.js and api/sitemap.js —
+// published, plus one-time rows only while their date is still ahead. All
+// three answer the same question ("is this listing live right now?") and a
+// disagreement between them is exactly the bug this is fixing.
+const SLUG_TTL_MS = 60 * 1000;
+let slugCache = { slugs: null, at: 0, inflight: null };
+
+function restBase(u) {
+  if (!u) return null;
+  const base = u.endsWith('/') ? u : u + '/';
+  return base.endsWith('/rest/v1/') ? base : base + 'rest/v1/';
+}
+
+async function loadSlugs() {
+  const base = restBase(process.env.SUPABASE_URL);
+  const key  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!base || !key) return null;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const url = base + 'Opportunities?status=eq.published&select=slug'
+    + '&or=(opportunity_type.eq.recurring,event_date.gte.' + today + ')';
+
+  const r = await fetch(url, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
+  if (!r.ok) throw new Error('slug fetch ' + r.status);
+  const rows = await r.json();
+  return new Set(rows.map(row => row && row.slug).filter(Boolean));
+}
+
+// Returns the live slug set, or null when it cannot be known.
+//
+// Stale-while-revalidate: a cached set that has aged out is still returned,
+// with a refresh kicked off and deliberately NOT awaited. Only the very first
+// request an edge instance sees pays the Supabase round-trip; everything after
+// it is served from memory. The cost of being up to a minute stale is that a
+// listing approved seconds ago 404s briefly — the cost of awaiting every time
+// would be a database round-trip added to the TTFB of every listing page view.
+async function liveSlugs() {
+  const fresh = slugCache.slugs && (Date.now() - slugCache.at < SLUG_TTL_MS);
+  if (fresh) return slugCache.slugs;
+
+  if (!slugCache.inflight) {
+    slugCache.inflight = loadSlugs()
+      .then(set => { if (set) { slugCache.slugs = set; slugCache.at = Date.now(); } return set; })
+      .catch(err => { console.error('middleware: slug list unavailable —', err && err.message); return null; })
+      .finally(() => { slugCache.inflight = null; });
+  }
+
+  // Stale copy in hand: use it now, let the refresh land for the next request.
+  if (slugCache.slugs) return slugCache.slugs;
+  return slugCache.inflight;
+}
+
 export const config = {
   matcher: [
     '/admin', '/admin.html',
@@ -125,8 +202,28 @@ export const config = {
     // Public — present only for the query-stripping redirect below, never gated.
     '/opportunities-detail', '/opportunities-detail.html',
     '/opportunities/detail', '/opportunities/detail.html',
+    // Public — every path the catch-all slug rewrite would swallow, so an
+    // unknown listing can be given a real 404 before the rewrite runs.
+    //
+    // KEEP THIS EXCLUSION LIST IDENTICAL to the one in vercel.json's catch-all
+    // rewrite. They describe the same set from opposite ends: that one says
+    // "rewrite these to the detail page", this one says "check these are real
+    // listings first". A name added to one and not the other either 404s a
+    // real page or lets a soft 404 back through.
+    '/:slug((?!(?:api|admin-login|admin-review|admin-feedback|admin-edit|admin-approve|admin|analytics-review|review|login|signup|submit|feedback|how-we-check|map|opportunities-detail|privacy|terms|about|account|index|404|analytics\\.js|beta-banner\\.js|loading\\.js|middleware\\.js|mini-map\\.js|supabase-auth\\.js|supabase-client\\.js|styles\\.css|robots\\.txt|sitemap\\.xml|favicon\\.ico|logos)$)[^/]+)',
   ],
 };
+
+// Shared by the slug check and the admin gate, so the two 404s are the same
+// page. Self-fetched from this deployment rather than duplicated here, so it
+// cannot drift from 404.html.
+async function notFound(request) {
+  const page = await fetch(new URL('/404.html', request.url));
+  return new Response(await page.text(), {
+    status: 404,
+    headers: { 'content-type': 'text/html; charset=utf-8' },
+  });
+}
 
 export default async function middleware(request) {
   const url = new URL(request.url);
@@ -149,17 +246,36 @@ export default async function middleware(request) {
     return;
   }
 
-  // ── Admin surface: gate first ─────────────────────────────────────────────
+  // ── Public: is this single-segment path a live listing? ───────────────────
+  //
+  // MUST come before the admin gate. Every listing page is public; falling
+  // through to the gate would 404 all fifteen of them for signed-out visitors,
+  // which is every visitor. Both branches below return explicitly for that
+  // reason — there is no path from here into the gate.
+  const segments = path.split('/').filter(Boolean);
+  const isAdminPath = ADMIN_PATHS.has(path);
+  if (!isAdminPath && segments.length === 1) {
+    // decodeURIComponent throws URIError on a malformed escape ("/%"), which
+    // would turn a junk URL into a 500 from the middleware itself. A path that
+    // cannot even be decoded is not a listing.
+    let candidate = null;
+    try { candidate = decodeURIComponent(segments[0]); } catch (e) { /* leave null */ }
+    if (candidate === null) return notFound(request);
+
+    const slugs = await liveSlugs();
+    // Fail OPEN. If Supabase is unreachable or the env vars are missing, let
+    // the request through to the rewrite exactly as before — a soft 404 on a
+    // bad URL is a nuisance, a hard 404 on every real listing during a blip is
+    // an outage.
+    if (slugs && !slugs.has(candidate)) {
+      return notFound(request);
+    }
+    return;
+  }
+
+  // ── Admin surface: gate ───────────────────────────────────────────────────
   if (!(await hasValidSession(request))) {
-    // Same 404 page every other unmatched URL on the site gets — self-fetched
-    // from this deployment rather than duplicated here, so it can't drift from
-    // 404.html (which is itself generated from about.html's header/footer for
-    // the same reason).
-    const notFound = await fetch(new URL('/404.html', request.url));
-    return new Response(await notFound.text(), {
-      status: 404,
-      headers: { 'content-type': 'text/html; charset=utf-8' },
-    });
+    return notFound(request);
   }
 
   // ── Signed in: old /admin?view=X → clean /admin-X, query dropped ──────────
