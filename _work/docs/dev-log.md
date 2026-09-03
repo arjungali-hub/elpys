@@ -7,6 +7,31 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-02 — Admin nav row swap: Data/Analytics review down, Feedback/Edit up
+
+Third change to this nav's row layout today, requested directly: swap Data
+review and Analytics review down to row 2, swap Feedback and Edit
+opportunities up to row 1. Log out stays put, as it has through all three
+changes.
+
+Row 1: Approve opportunities, Feedback, Edit opportunities, Log out.
+Row 2: Data review, Analytics review, Submit an opportunity, Send digest now.
+
+Restructured how the nav is built rather than just moving lines around: every
+element (each link, each status dot, each fetch call) is now created once, up
+front, and appended to its row in one block at the end. The previous
+structure interleaved creation with row placement, so each reshuffle meant
+finding and re-cutting a whole creation block out of one row's code and
+pasting it into the other's — this is the second time that got done by hand
+in one session. Row membership is now four `appendChild` lines per row;
+moving something is changing which block it's in, not moving code around it.
+
+Verified the two status-dot fetches (`/api/review?summary=1`,
+`/api/analytics-review?summary=1`) still color correctly after landing in
+row 2 — they reference the dot elements directly, not by row, so the move
+doesn't touch that logic. Confirmed all 8 hrefs still resolve to the right
+pages post-swap.
+
 ## 2026-09-02 — Admin nav follow-up: no bold, 4-and-4 instead of 5-and-3
 
 Arjun looked at the previous entry's result and asked for two changes: drop
