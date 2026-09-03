@@ -7,6 +7,70 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-03 — Verified the soft-404/digest patch against live production
+
+Independent verification of the patch below, landed as given via `git am` on a
+fresh branch off `main` at `c69fec7`, no conflicts, diff matched the patch
+description exactly. Merged via branch + merge commit and pushed (now
+`7562c8f`).
+
+- **Slug-gate ordering, the one thing that couldn't be wrong**: confirmed in
+  the diff and by testing signed-out that all four admin paths (`/admin`,
+  `/review`, `/analytics-review`, `/admin-feedback`) still 404 signed-out and
+  all load correctly signed-in — the new slug check runs before the gate but
+  exits early for `ADMIN_PATHS` members without ever hitting Supabase, so the
+  gate is unreachable-skipped only for real listing slugs, never for admin
+  paths. `vercel.json`'s catch-all exclusion list and `middleware.js`'s new
+  matcher entry are byte-identical (diffed the two negative-lookahead regexes
+  directly).
+- **Real slugs, 200**: `/earthcorps`, `/wta`, and one more current listing all
+  returned 200 with correct content.
+- **Unknown slug, real 404**: `/this-page-does-not-exist` returned **404**
+  with the branded `404.html` body — no longer the "Opportunity not found"
+  placeholder that used to ship as a 200.
+- **`/keep-bellevue-beautiful-belred-cleanup`**: still 200 today, as expected
+  — it auto-404s after Sep 5 with no code change once its event date passes
+  the `loadSlugs()` filter.
+- **`/opportunities-detail?slug=wta`**: still a clean 308 to `/wta` with no
+  query string, unaffected by this patch.
+- **`/%`**: **400**, not the 404 the patch's own note expected — traced this
+  to Vercel's edge layer rejecting syntactically invalid percent-encoding
+  before `middleware.js` ever runs. `/%25` (a validly-escaped `%`) reaches the
+  app and correctly 404s. No 500 anywhere, which is the property the patch
+  actually cares about; the exact status code for this one malformed-input
+  case just isn't middleware's to set.
+- **Homepage and `/map`**: 15 opportunities on each, all links resolve,
+  zero console errors, same as before.
+- **New listing → live URL, then delete → 404 again**: approved a test
+  listing and its slug started resolving; deleted it and re-tested. Found a
+  real gap between the app's 60s slug-cache TTL and what visitors actually
+  see: this route is a rewrite to a static file, and Vercel's CDN caches that
+  per-URL response (`X-Vercel-Cache: HIT`) independently of and far past the
+  60s the middleware itself uses — confirmed the same stale-serving behavior
+  on `/earthcorps`, a real listing that was never touched, so it's a property
+  of the route, not a fluke of the test slug. Query-string cache-busting and
+  client `Cache-Control`/`Pragma: no-cache` headers didn't force
+  revalidation; the deleted test slug was still serving a stale 200 well
+  after the TTL. Left alone per scope (do not touch the slug cache TTL), but
+  worth flagging: this is the exact mechanism the Sep 5/12 Keep Bellevue
+  Beautiful auto-404 depends on, and the CDN layer may hold those URLs live
+  well past when the app's own logic says they should be gone.
+- **Digest**: manual trigger returned the new `built`/`unsent`/`truncated`
+  fields alongside `sent`/`skipped`/`failed`, but short-circuited at the
+  pre-existing "no opportunities published in the last 7 days" early return
+  before reaching the new batching code — confirmed genuinely true via a
+  direct query, not a bug. Did not force a real send (one real subscriber,
+  explicitly out of scope). Instead verified the batching math itself —
+  concurrency-of-4, 50s budget, `unsent`/`truncated` bookkeeping — by
+  extracting the exact same logic against a mocked send function: all-succeed,
+  partial-failure, and budget-exceeded cases all computed correctly.
+- **`maxDuration: 60` for `api/send-digest.js`**: no available tool exposes
+  per-function runtime config directly for confirmation against the
+  dashboard. Build logs showed a clean deploy with `vercel.json` parsed
+  correctly; the only warning was that `memory` settings are ignored under
+  this account's Fluid Compute billing — `maxDuration` was not flagged, which
+  is consistent with it taking effect, but isn't a direct confirmation.
+
 ## 2026-09-03 — Real 404s for unknown listings, and a digest that stops loudly
 
 Two fixes found in the final pre-marketing confirmation pass. Both are about
