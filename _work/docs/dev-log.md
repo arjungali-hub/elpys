@@ -7,6 +7,131 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-04 — The map on phones, and the clock that hides an event on its own day
+
+Four problems found while building and testing the `elpys-site-check` skill. Two
+of them are the kind that only show up when you stop working down a checklist:
+neither had a line item, and both were found by unguided passes that a strict
+checklist pass walked straight past.
+
+### The map was a hairline on every phone
+
+Below 640px the map column rendered **1–2 pixels wide** on the live site. The
+sidebar above it looked completely normal, so the page read as "the map didn't
+load" rather than "the map is squashed". The audience is teenagers; the phone
+view is the product.
+
+`.map-layout` is a flex row with `align-items: flex-start`. Above 640px that
+governs vertical alignment and is correct. The mobile block flipped the row to
+`flex-direction: column` and stopped there — and once stacked, `flex-start`
+governs **width** instead, sizing each child to its own content. `.map-sidebar`
+survived because the mobile block gives it `width: 100%`. `.map-main` never got
+that line, and its only child (`#map`) is `width: 100%` of a parent with no
+width, which resolves to zero. The 1–2px was the border.
+
+Fixed with `align-items: stretch` on the stacked row, plus an explicit
+`width: 100%` on `.map-main`. Also added `min-height: 0` to the mobile
+`.map-sidebar` rule: the base rule's `min-height: 360px` was beating the mobile
+`max-height: 200px`, so the list was 360px tall on a phone and pushed the map
+even further down. That had been invisible because there was no map to push.
+
+Measured in headless Chromium against the real stylesheet, before and after, at
+1280 / 641 / 640 / 375px:
+
+```
+        BEFORE                          AFTER
+1280px  map-main 1020                   map-main 1020    (unchanged)
+ 641px  map-main  381                   map-main  381    (unchanged)
+ 640px  map-main    7   sidebar h 360   map-main  640    sidebar h 48
+ 375px  map-main    7   sidebar h 360   map-main  375    sidebar h 48
+```
+
+Desktop is byte-identical; the rule only exists below 640px.
+
+Second-order: the map now gets a real size at load, so `fitBounds` frames it
+properly instead of fitting every pin into a 2px box and settling at street-level
+zoom on an arbitrary block. **Open question for Krish:** a full-width 528px-tall
+map on a phone is a scroll trap — dragging a finger over it pans the map rather
+than the page. Not changed, because how a map should behave on touch is a
+product judgement, not a bug.
+
+### One-time events 404'd on their own event day, from 5pm
+
+Three places decide whether a one-time listing is still live, and the code
+carries a comment saying all three must agree. They didn't.
+
+- `middleware.js` (the 404 gate) — `new Date().toISOString().slice(0,10)`, UTC
+- `api/sitemap.js` — same, UTC
+- `supabase-client.js` — the **viewer's local** calendar day
+
+UTC is 7–8 hours ahead of Bellevue. From 5:00pm Pacific onward the server has
+already rolled to tomorrow and drops the event from the live set, while the
+homepage and the card are still showing it. For those seven hours the site
+advertises a link its own front door refuses — on the evening of the event, which
+is exactly when someone checks the details. On a site whose homepage promises
+"no dead links, no guessing".
+
+This was days from firing: the BelRed cleanup is **Sep 5** and Eastgate is
+**Sep 12**, and both are in the submitted sitemap.
+
+All three now compute the Bellevue calendar day via
+`Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' })`, which yields
+`YYYY-MM-DD` directly. `supabase-client.js` is pinned to Pacific too rather than
+the viewer's clock, so a visitor in another timezone sees the same set the server
+serves. Each has a UTC-8 fallback if the timezone database is missing — it errs
+toward keeping a listing live an hour longer during DST, never toward 404ing one
+that is still on.
+
+Reproduced at the exact failing moment (`2026-09-06T00:30Z` = Sat Sep 5,
+5:30pm Bellevue): old code returns `2026-09-06` and hides the Sep 5 event; new
+code returns `2026-09-05` and keeps it. The existing middleware suite still
+passes every branch.
+
+### Three listings shared one pin, so two were unclickable
+
+King County Parks, Hopelink and The Sophia Way all have address "Bellevue, WA"
+and geocoded to the identical point `47.6144219, -122.192337`. Their markers sat
+exactly on top of each other: 15 rows in the sidebar, ~12 reachable pins, and the
+click always opened whichever was drawn last. The page's own intro says "click a
+name on the left (or a pin)", and for two of them the pin half wasn't true.
+
+`map.html` now nudges each *repeat* of a coordinate onto a ~40m ring around it.
+The first listing at any point keeps its exact position, so nothing that was
+already distinct moves. Verified: the three land 40m from each other, and a
+unique coordinate comes back untouched. The route feature still uses the true
+`lat`/`lng`, not the display offset — the route should go to the real address.
+
+The coordinates in the database are unchanged. They're honest; it's the drawing
+that was lossy.
+
+### Trailing slashes 404'd
+
+`/about/`, `/map/`, `/earthcorps/` — all 404. The catch-all slug rewrite in
+`vercel.json` matches `[^/]+`, so a path ending in a slash can never match it and
+falls through to a static miss. This matters specifically because marketing is
+next: people paste links into group chats and newsletters, and plenty of tools
+append a slash.
+
+Added `"trailingSlash": false`, which makes Vercel 308-redirect `/about/` to
+`/about` ahead of both middleware and the rewrite.
+
+A first attempt also added an `_comment_` key to document the reasoning inline —
+**don't**. Vercel validates `vercel.json` against a strict schema and rejects
+unknown top-level properties, so that would have failed the build. The reasoning
+lives here instead.
+
+### Also: the slug fetch now retries, and can't hang
+
+`slug list unavailable — fetch failed` had been appearing in the logs most days,
+not just after a deploy — including 19 hours after the burst it was blamed on.
+Every occurrence is a window where the whole soft-404 fix is off, because it fails
+open by design.
+
+`loadSlugs()` now makes two attempts, each under a 2.5s `AbortSignal.timeout`.
+The timeout matters more than the retry: a request that *hangs* rather than fails
+would leave the caller awaiting indefinitely, which is worse than the failure it
+replaced.
+
 ## 2026-09-03 — Signup password: match the 8-char policy, show it upfront, plain-language errors
 
 Supabase's project-level Auth password policy was still 12 characters while

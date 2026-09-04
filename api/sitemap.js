@@ -35,8 +35,18 @@ function xmlEscape(value) {
   }[ch]));
 }
 
+// The Bellevue calendar day, not UTC's - must match middleware.js's
+// pacificToday() and supabase-client.js's _todayIso() exactly. See the comment
+// in middleware.js for why UTC here 404s an event on its own event day.
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Los_Angeles',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+  } catch (_) {
+    return new Date(Date.now() - 8 * 3600 * 1000).toISOString().slice(0, 10);
+  }
 }
 
 async function fetchSlugs() {

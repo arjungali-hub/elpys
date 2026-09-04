@@ -280,6 +280,25 @@
   async function initMap() {
     const sidebar = document.getElementById('map-sidebar');
     const bounds = [];
+    // Three approximate "Bellevue, WA" listings geocode to the identical point, so
+    // their pins stack and only the last one drawn is clickable - the sidebar shows
+    // 15 opportunities while the map offers about 12. Nudge each repeat of a
+    // coordinate onto a small ring (~40m) around it so every pin can be reached.
+    // The first at any point keeps its exact position, so nothing that was already
+    // distinct moves.
+    const seenPoints = new Map();
+    function spread(lat, lng) {
+      const key = lat.toFixed(6) + ',' + lng.toFixed(6);
+      const n = seenPoints.get(key) || 0;
+      seenPoints.set(key, n + 1);
+      if (n === 0) return [lat, lng];
+      const R = 0.00036;                       // ~40m in degrees of latitude
+      const angle = (n - 1) * (2 * Math.PI / 6) + Math.PI / 6;
+      return [
+        lat + R * Math.sin(angle),
+        lng + R * Math.cos(angle) / Math.max(0.2, Math.cos(lat * Math.PI / 180)),
+      ];
+    }
 
     // The sidebar was simply blank until the fetch resolved.
     Loading.show(sidebar, Loading.rows(5));
@@ -329,8 +348,9 @@
       // A row without usable coordinates still gets a sidebar entry, but no
       // pin — L.marker at NaN throws.
       if (isFinite(opp.lat) && isFinite(opp.lng)) {
-        opp.marker = L.marker([opp.lat, opp.lng], { icon: pinIcon(false) }).addTo(map).bindPopup(popupHtml);
-        bounds.push([opp.lat, opp.lng]);
+        const at = spread(opp.lat, opp.lng);
+        opp.marker = L.marker(at, { icon: pinIcon(false) }).addTo(map).bindPopup(popupHtml);
+        bounds.push(at);
       }
 
       const wrap = document.createElement('div');

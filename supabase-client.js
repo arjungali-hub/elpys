@@ -127,13 +127,22 @@ async function _fetchOpportunitiesUncached() {
   return rows.map(_transformRow);
 }
 
-// Local (not UTC) today as YYYY-MM-DD, so the auto-hide cutoff matches the
-// viewer's own calendar day rather than UTC's.
+// The Bellevue calendar day as YYYY-MM-DD - must match middleware.js's
+// pacificToday() and api/sitemap.js's todayIso() exactly, or a card shows for a
+// listing whose own URL 404s. Pinned to Pacific rather than the viewer's clock
+// so a visitor in another timezone sees the same set the server serves.
 function _todayIso() {
-  const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return d.getFullYear() + '-' + m + '-' + day;
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Los_Angeles',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+  } catch (_) {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
 }
 
 // Maps a Supabase row to the shape expected by map.html, mini-map.js,

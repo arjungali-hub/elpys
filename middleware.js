@@ -153,19 +153,69 @@ function restBase(u) {
   return base.endsWith('/rest/v1/') ? base : base + 'rest/v1/';
 }
 
+// The Bellevue calendar day, not UTC's.
+//
+// UTC runs 7-8 hours ahead of Pacific, so a UTC cutoff hides a one-time listing
+// from this gate and from api/sitemap.js while index.html and the listing page
+// are still showing its card - the listing 404s from about 5pm on its own event
+// day, which is exactly when someone would be checking the details. All three
+// date checks must answer this the same way; supabase-client.js does too.
+function pacificToday() {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Los_Angeles',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+  } catch (_) {
+    // No timezone database. UTC-8 errs toward keeping a listing live an hour
+    // longer during DST, never toward 404ing one that is still on.
+    return new Date(Date.now() - 8 * 3600 * 1000).toISOString().slice(0, 10);
+  }
+}
+
 async function loadSlugs() {
   const base = restBase(process.env.SUPABASE_URL);
   const key  = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!base || !key) return null;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = pacificToday();
   const url = base + 'Opportunities?status=eq.published&select=slug'
     + '&or=(opportunity_type.eq.recurring,event_date.gte.' + today + ')';
 
-  const r = await fetch(url, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
-  if (!r.ok) throw new Error('slug fetch ' + r.status);
-  const rows = await r.json();
-  return new Set(rows.map(row => row && row.slug).filter(Boolean));
+  // One retry, and a hard timeout on each attempt.
+  //
+  // `slug list unavailable — fetch failed` was showing up in the logs most days,
+  // not just after a deploy. Each occurrence is a window where an unknown listing
+  // URL answers 200 again, because the whole path fails open on purpose. A single
+  // transient blip should not cost that. The timeout matters more than the retry:
+  // without it a request that HANGS rather than fails leaves the caller awaiting
+  // forever, which is worse than the failure it replaced.
+  const headers = { apikey: key, Authorization: 'Bearer ' + key };
+  let lastErr;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const r = await fetch(url, { headers, signal: timeoutSignal(2500) });
+      if (!r.ok) throw new Error('slug fetch ' + r.status);
+      const rows = await r.json();
+      return new Set(rows.map(row => row && row.slug).filter(Boolean));
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
+// AbortSignal.timeout is present in the edge runtime, but this file also runs in
+// the test harness and in older Node, so fall back rather than throw.
+function timeoutSignal(ms) {
+  try {
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) return AbortSignal.timeout(ms);
+    const c = new AbortController();
+    setTimeout(() => c.abort(), ms);
+    return c.signal;
+  } catch (_) {
+    return undefined;
+  }
 }
 
 // Returns the live slug set, or null when it cannot be known.
