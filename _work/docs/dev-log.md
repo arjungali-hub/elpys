@@ -7,6 +7,79 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-04 — Verified the phone-map/event-clock/pins/trailing-slash patch against live production
+
+Applied via `git am` on a fresh `phone-map-and-event-day-clock` branch off
+`main` at `5a0b727`, no conflicts, diff matched the patch description
+exactly (checked each of `styles.css`, `middleware.js`, `api/sitemap.js`,
+`supabase-client.js`, `map.html`, `vercel.json` against its own stated
+change). Fast-forward merge to `main` (`2b82965`) since the branch was a
+direct descendant, pushed, deployed live.
+
+- **Phone map width**: `.map-main` measured 343px at 375px viewport (was
+  ~1-2px), 577px at 640px (still stacked, correct), and the desktop
+  side-by-side layout (318px main + 240px sidebar) kicks in cleanly at
+  641px. No horizontal overflow at 375px on `/map`, `/`, `/submit`, or a
+  listing page. The map itself renders at zoom 10 (confirmed via the tile
+  URL's zoom segment) — the Bellevue area, not a street-level close-up.
+- **Trailing slashes**: `/about/`, `/map/`, `/privacy/`, `/earthcorps/` all
+  **308** to the same path with no trailing slash and no query string, then
+  **200** once followed. No loop. `vercel.json` stayed valid JSON with no
+  comment keys, per the patch's own warning.
+- **Nothing else in routing moved**: all 8 public pages, `robots.txt`,
+  `sitemap.xml` → 200. Three real slugs → 200. `/this-page-does-not-exist`
+  → 404 with the branded page. `/opportunities-detail?slug=wta` → 308 to
+  `/wta`, no query string. `/admin`, `/review`, `/analytics-review`,
+  `/admin-feedback` signed out → 404, all four. **Could not test the
+  signed-in state** — no admin credential available in this environment —
+  but the diff confirms `ADMIN_PATHS`, `hasValidSession`, and the gate
+  itself are byte-for-byte untouched by this patch, so it is very unlikely
+  to have changed; flagging the gap rather than assuming.
+- **The clock**: `keep-bellevue-beautiful-eastgate-cleanup` (Sep 12) is
+  live in both `/sitemap.xml` and its own URL (200) as of Sep 4. Confirmed
+  all three date functions — `pacificToday()`, `todayIso()`, `_todayIso()`
+  — agree at the patch's own named test instant: evaluated at
+  `2026-09-13T00:30:00Z`, all three return `2026-09-12`, where the old
+  UTC-slice code gives `2026-09-13`. One inconsistency the patch's own
+  description doesn't quite match: it says all three now have "a UTC-8
+  fallback," but `supabase-client.js`'s `_todayIso()` catch block still
+  falls back to the viewer's local calendar day, not UTC-8, unlike the
+  other two. Only reachable if `Intl.DateTimeFormat` with a `timeZone`
+  option throws, which no real evergreen browser does — a latent,
+  practically-unreachable drift rather than something observed live, and
+  not fixed here since it's the patch's own design choice, not something
+  live verification actually caught misbehaving.
+- **Pins**: 14 live opportunities today (not 15 — the Sep 5 Belred cleanup
+  the previous patch's soft-404 fix targeted has since rolled off, exactly
+  as intended), all 14 with coordinates, all 14 rendering as markers.
+  King County Parks / Hopelink / The Sophia Way still geocode to the exact
+  same point. **Real finding**: at the map's default fit-all-pins zoom
+  (~10-11), the ~40m offset is under 1 screen pixel — the three markers'
+  bounding boxes still fully overlap (measured identical rects), and a
+  direct click at their shared position always resolves to whichever is
+  topmost (King County Parks), same as before the patch. Zooming in
+  several steps only reached ~13px of separation against 21px-wide icons —
+  still substantially overlapping. However, the fix isn't a no-op: each
+  opportunity's `.marker` reference is now genuinely distinct (confirmed —
+  it wasn't, before, since all three pointed at one shared marker object
+  implicitly via identical coordinates), so the **sidebar → click a row**
+  path (`selectOpportunity`, which calls `opp.marker.openPopup()` directly
+  and flies to zoom 13) correctly reaches each of the three every time,
+  regardless of pixel overlap. What doesn't work is a visitor trying to
+  tell the three apart by looking at and clicking the map directly at its
+  default zoom — which is exactly the scenario the patch's own comment
+  describes fixing. Not fixed here (would mean picking a new radius or a
+  zoom-dependent scale — a design call, and the instructions were explicit
+  about landing the patch as given), but flagged clearly since it falls
+  short of "every pin can be reached" at the page's actual default state.
+- **Touch-drag scroll trap**: present and visible during phone-width
+  testing (full-width, ~585px-tall map on a 375px phone) — not evaluated
+  further or touched, per instruction; a product decision, not a defect of
+  this patch.
+- **axe-core** (injected directly — CSP blocks a CDN `<script src>`) on
+  `/`, `/map`, `/submit`, and a listing page: zero violations on all four,
+  matching the pre-existing bar.
+
 ## 2026-09-04 — The map on phones, and the clock that hides an event on its own day
 
 Four problems found while building and testing the `elpys-site-check` skill. Two
