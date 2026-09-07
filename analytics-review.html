@@ -51,6 +51,22 @@
     .status-panel-detail { font-size: 0.8125rem; color: var(--text-muted); line-height: 1.5; }
     .status-panel-meta { font-size: 0.75rem; color: var(--text-subtle); margin-top: 0.35rem; }
 
+    /* Redesign suggestion callout — the same alert palette .stat.is-zero uses
+       below (#FEF2F2 / #FCA5A5 / #991B1B), not a new colour. This is the one
+       thing on the page that asks for action rather than just reporting a
+       number, so it gets the box treatment (border + tinted background)
+       rather than just tinted text. */
+    .redesign-card { background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: var(--radius-lg);
+      padding: 1.1rem 1.3rem; margin-bottom: 1.75rem; max-width: 62ch; }
+    .redesign-card-title { font-size: 1rem; font-weight: 700; color: #991B1B; margin-bottom: 0.7rem; }
+    .redesign-card-prompt { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.8125rem; line-height: 1.5; color: var(--text-main); background: var(--bg-primary);
+      border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem;
+      max-height: 280px; overflow-y: auto; overflow-x: hidden; white-space: pre-wrap;
+      word-break: break-word; margin: 0 0 0.9rem; }
+    .redesign-card-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+    .redesign-card-msg { font-size: 0.8125rem; color: #991B1B; margin-top: 0.5rem; min-height: 1.1em; }
+
     .supa-status { font-size: 0.75rem; color: var(--text-muted); display: inline-flex; align-items: center;
       gap: 0.35rem; border: 1px solid var(--border); background: var(--bg-primary);
       border-radius: 999px; padding: 0.1rem 0.55rem; white-space: nowrap; }
@@ -141,6 +157,10 @@
       <p class="status-panel-meta" id="status-panel-meta" hidden></p>
     </div>
   </div>
+
+  <!-- Populated by renderRedesignCard() when reviews[0] has a pending
+       redesign_prompt; left empty (no placeholder) the rest of the time. -->
+  <div id="redesign-card-slot"></div>
 
   <!-- Hidden from the start when a password is already stored, same as
        review.html: the load begins immediately in that case, and showing a
@@ -253,6 +273,91 @@
     panel.hidden = false;
   }
 
+  // Renders the callout for a pending, unacknowledged redesign_prompt on the
+  // most recent review row, or clears it when there is none — the common
+  // case, which must render nothing at all, not an empty card.
+  //
+  // The prompt text is set via .textContent, never innerHTML/esc(): esc()
+  // exists to make a string SAFE inside innerHTML, which is a different job
+  // from keeping it byte-for-byte — round-tripping through HTML-escaping and
+  // back is exactly how "Copy prompt" could hand back an altered string.
+  // .textContent reads back exactly what was written, so the copy button
+  // below just re-reads it rather than keeping a second copy of the text.
+  function renderRedesignCard(row) {
+    const slot = document.getElementById('redesign-card-slot');
+    slot.innerHTML = '';
+    if (!row || row.redesign_prompt == null || row.redesign_prompt_acknowledged_at != null) return;
+
+    const card = document.createElement('div');
+    card.className = 'redesign-card';
+
+    const title = document.createElement('p');
+    title.className = 'redesign-card-title';
+    title.textContent = row.redesign_prompt_title || 'Redesign suggestion ready';
+
+    const pre = document.createElement('pre');
+    pre.className = 'redesign-card-prompt';
+    pre.textContent = row.redesign_prompt;
+
+    const msg = document.createElement('p');
+    msg.className = 'redesign-card-msg';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn-primary';
+    copyBtn.textContent = 'Copy prompt';
+    copyBtn.addEventListener('click', async () => {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        msg.textContent = 'Clipboard access isn\'t available here — select the text above and copy it manually.';
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(pre.textContent);
+        msg.textContent = '';
+        const original = copyBtn.textContent;
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => { copyBtn.textContent = original; }, 1500);
+      } catch (err) {
+        msg.textContent = 'Could not copy automatically — select the text above and copy it manually.';
+      }
+    });
+
+    const ackBtn = document.createElement('button');
+    ackBtn.className = 'btn-primary';
+    ackBtn.textContent = 'Mark handled';
+    ackBtn.addEventListener('click', async () => {
+      ackBtn.disabled = true;
+      msg.textContent = '';
+      try {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'x-admin-password': _password, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'acknowledge-redesign-prompt', id: row.id }),
+        });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          throw new Error(e.error || 'HTTP ' + res.status);
+        }
+        // The dot itself catches up next time the nav's own summary fetch
+        // runs (next page load) — nothing to force from here.
+        card.remove();
+      } catch (err) {
+        ackBtn.disabled = false;
+        msg.textContent = 'Could not mark this handled: ' + err.message;
+      }
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'redesign-card-actions';
+    actions.appendChild(copyBtn);
+    actions.appendChild(ackBtn);
+
+    card.appendChild(title);
+    card.appendChild(pre);
+    card.appendChild(actions);
+    card.appendChild(msg);
+    slot.appendChild(card);
+  }
+
   function renderSupabaseStatus(status) {
     const el = document.getElementById('supabase-status');
     const state = (status && status.state) || 'unknown';
@@ -332,6 +437,7 @@
       document.getElementById('content').style.display = 'block';
       renderSupabaseStatus(supabase);
       renderStatusPanel(status, taskRun);
+      renderRedesignCard(Array.isArray(reviews) && reviews[0] ? reviews[0] : null);
 
       if (supabase && supabase.state !== 'active') {
         document.getElementById('latest').innerHTML =

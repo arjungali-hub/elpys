@@ -1,7 +1,10 @@
 // Vercel serverless function — /api/analytics-review
 //
-// Backs the admin Analytics review page (analytics-review.html). Read-only:
-// GET (and OPTIONS) only, no POST — nothing on that page edits anything.
+// Backs the admin Analytics review page (analytics-review.html). Almost
+// entirely read-only: GET returns the review data and status, and the one
+// POST action (acknowledge-redesign-prompt) only ever sets a single
+// timestamp column that this endpoint itself owns — the scheduled task that
+// writes the rest of each row never touches it. Nothing else here writes.
 //
 // The rows come from a Cowork scheduled task ("Elpys Monthly Analytics
 // Review") that runs on the first Monday of each month (not the 1st — those
@@ -141,9 +144,28 @@ function nextRunLabel(now) {
   });
 }
 
+// A pending, unacknowledged redesign prompt on the most recent review row —
+// independent of task_runs, and independent of whether that row is otherwise
+// old. null-checked rather than truthy-checked because redesign_prompt and
+// redesign_prompt_acknowledged_at are both nullable text/timestamptz columns,
+// not booleans.
+function isPendingRedesignPrompt(latestReview) {
+  return !!(
+    latestReview &&
+    latestReview.redesign_prompt !== null &&
+    latestReview.redesign_prompt !== undefined &&
+    latestReview.redesign_prompt_acknowledged_at === null
+  );
+}
+
 // The traffic light this page and the admin header dot both render — same
-// {dot, label, detail} shape computeStatus() returns in api/review.js.
-function computeStatus(supabase, taskRun, now) {
+// {dot, label, detail} shape computeStatus() returns in api/review.js, plus
+// pendingRedesignPrompt so callers don't have to re-derive it from raw row
+// fields. latestReview is the most recent analytics_reviews row (or null) —
+// only its redesign_prompt* fields are read here.
+function computeStatus(supabase, taskRun, latestReview, now) {
+  const pendingRedesignPrompt = isPendingRedesignPrompt(latestReview);
+
   if (supabase.state !== 'active') {
     return {
       dot: 'red',
@@ -151,6 +173,7 @@ function computeStatus(supabase, taskRun, now) {
       detail: (supabase.detail ? supabase.detail + ' ' : '') +
         'Restore it from the Supabase dashboard soon — a project left paused too long is deleted, ' +
         'not just parked. No analytics review can be read or written until it is running again.',
+      pendingRedesignPrompt,
     };
   }
 
@@ -159,32 +182,58 @@ function computeStatus(supabase, taskRun, now) {
       dot: 'unknown',
       label: 'Never run',
       detail: 'The first monthly review runs ' + nextRunLabel(now) + '.',
+      pendingRedesignPrompt,
     };
   }
 
+  // A broken task is worse than a pending suggestion — failed stays red no
+  // matter what the most recent row's redesign_prompt fields say.
   if (taskRun.status === 'failed') {
     return {
       dot: 'red',
       label: 'Last run failed',
       detail: taskRun.note || 'No details recorded.',
+      pendingRedesignPrompt,
     };
   }
 
+  let existingYellow = null;
   if (taskRun.status === 'degraded') {
-    return {
-      dot: 'yellow',
+    existingYellow = {
       label: 'Last run degraded',
       detail: taskRun.note ||
         'The run finished but reported a problem, and no note was recorded. The figures below may be incomplete.',
     };
-  }
-
-  if (taskRun.ageDays !== null && taskRun.ageDays > REVIEW_STALE_DAYS) {
-    return {
-      dot: 'yellow',
+  } else if (taskRun.ageDays !== null && taskRun.ageDays > REVIEW_STALE_DAYS) {
+    existingYellow = {
       label: 'Overdue',
       detail: 'Last successful run was ' + taskRun.ageDays +
         (taskRun.ageDays === 1 ? ' day' : ' days') + ' ago. Expected monthly.',
+    };
+  }
+
+  // A pending redesign prompt is a second, independent reason to go yellow.
+  // Never let it get silently absorbed into an unrelated degraded/overdue
+  // reason — either it's the only reason (its own label), or it rides along
+  // in the detail of whichever existing reason applies.
+  if (existingYellow || pendingRedesignPrompt) {
+    if (existingYellow && pendingRedesignPrompt) {
+      return {
+        dot: 'yellow',
+        label: existingYellow.label,
+        detail: existingYellow.detail +
+          ' Also: a redesign suggestion is ready — ' + latestReview.redesign_prompt_title,
+        pendingRedesignPrompt,
+      };
+    }
+    if (existingYellow) {
+      return { dot: 'yellow', label: existingYellow.label, detail: existingYellow.detail, pendingRedesignPrompt };
+    }
+    return {
+      dot: 'yellow',
+      label: 'Redesign suggestion ready',
+      detail: latestReview.redesign_prompt_title,
+      pendingRedesignPrompt,
     };
   }
 
@@ -195,6 +244,7 @@ function computeStatus(supabase, taskRun, now) {
     dot: 'green',
     label: 'Running on schedule',
     detail: 'The monthly analytics task reported success on its last run.',
+    pendingRedesignPrompt,
   };
 }
 
@@ -210,12 +260,28 @@ module.exports = async function handler(req, res) {
   }
 };
 
+// Lightweight companion to the full `select=*` fetch below — used only for
+// ?summary=1, which colours one dot and should not need 12 rows of metrics
+// to do it (same reasoning as the full fetch being skipped there already).
+async function fetchLatestReviewSummary() {
+  const r = await fetch(
+    SUPABASE_URL + 'analytics_reviews?select=id,redesign_prompt,redesign_prompt_title,redesign_prompt_acknowledged_at' +
+      '&order=period_end.desc&limit=1',
+    { headers: supabaseHeaders() }
+  );
+  if (!r.ok) return null;
+  const rows = await r.json().catch(() => null);
+  return Array.isArray(rows) && rows[0] ? rows[0] : null;
+}
+
 async function handleAnalyticsReview(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-password');
   if (req.method === 'OPTIONS') return res.status(204).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   const denied = checkAdminPassword(req, req.headers['x-admin-password']);
   if (denied) return res.status(denied.status).json(denied.body);
@@ -233,23 +299,62 @@ async function handleAnalyticsReview(req, res) {
     });
   }
 
+  // ── POST — the one write action this page has: acknowledging a redesign
+  // prompt. Everything else about this page stays read-only, by design. ─────
+  if (req.method === 'POST') {
+    const { action, id } = req.body || {};
+    if (action !== 'acknowledge-redesign-prompt') {
+      return res.status(400).json({ error: 'Unknown action.' });
+    }
+
+    const idNum = Number(id);
+    if (!Number.isInteger(idNum) || idNum <= 0) {
+      return res.status(400).json({ error: 'id must be a positive integer.' });
+    }
+
+    // The WHERE clause does the "harmless double-click" handling: a filter
+    // that matches zero rows (already acknowledged, or redesign_prompt is
+    // null) still answers 2xx from PostgREST — that is a no-op, not an error,
+    // so it is not treated as one here either.
+    const r = await fetch(
+      SUPABASE_URL + 'analytics_reviews?id=eq.' + idNum +
+        '&redesign_prompt=not.is.null&redesign_prompt_acknowledged_at=is.null',
+      {
+        method:  'PATCH',
+        headers: supabaseHeaders({ 'Content-Type': 'application/json' }),
+        body:    JSON.stringify({ redesign_prompt_acknowledged_at: new Date().toISOString() }),
+      }
+    );
+    if (!r.ok) {
+      const body = await readJson(r);
+      return res.status(500).json(failure('Could not update the review row.', r.status, body.text, body.parsed));
+    }
+    return res.status(200).json({ ok: true });
+  }
+
+  // ── GET from here down ──────────────────────────────────────────────────
   const summaryOnly = req.query && (req.query.summary === '1' || req.query.summary === 'true');
   const supabase = await probeSupabase();
 
   if (supabase.state !== 'active') {
-    const status = computeStatus(supabase, null);
+    const status = computeStatus(supabase, null, null);
     return res.status(200).json(summaryOnly
-      ? { supabase, status }
-      : { supabase, status, taskRun: null, reviews: [] });
+      ? { supabase, status, pendingRedesignPrompt: status.pendingRedesignPrompt }
+      : { supabase, status, taskRun: null, reviews: [], pendingRedesignPrompt: status.pendingRedesignPrompt });
   }
 
   const taskRun = await fetchTaskRun();
-  const status  = computeStatus(supabase, taskRun);
 
   // ?summary=1 — just the traffic light, for the admin header dot. Pulling 12
   // rows of metrics to colour one dot would be wasteful, same reasoning as
-  // /api/review?summary=1.
-  if (summaryOnly) return res.status(200).json({ supabase, status });
+  // /api/review?summary=1 — but the dot's new yellow reason needs the most
+  // recent row's redesign_prompt fields, so fetch those few columns for one
+  // row rather than skipping the review table entirely.
+  if (summaryOnly) {
+    const latestReview = await fetchLatestReviewSummary();
+    const status = computeStatus(supabase, taskRun, latestReview);
+    return res.status(200).json({ supabase, status, pendingRedesignPrompt: status.pendingRedesignPrompt });
+  }
 
   const r = await fetch(
     SUPABASE_URL + 'analytics_reviews?select=*&order=period_end.desc&limit=' + REVIEW_LIMIT,
@@ -260,10 +365,14 @@ async function handleAnalyticsReview(req, res) {
     return res.status(500).json(failure('Could not load analytics reviews.', r.status, body.text, body.parsed));
   }
 
+  const reviews = Array.isArray(body.parsed) ? body.parsed : [];
+  const status  = computeStatus(supabase, taskRun, reviews[0] || null);
+
   return res.status(200).json({
     supabase,
     status,
     taskRun,
-    reviews: Array.isArray(body.parsed) ? body.parsed : [],
+    reviews,
+    pendingRedesignPrompt: status.pendingRedesignPrompt,
   });
 }
