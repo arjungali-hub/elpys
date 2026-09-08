@@ -7,6 +7,86 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-07 — Analytics review: surface pending redesign prompts on the status dot
+
+`analytics_reviews` already had `redesign_prompt` / `redesign_prompt_title` —
+written by the monthly scheduled task when a period's data shows something
+specific and actionable — and nothing read them. They just sat there,
+invisible, with no way to mark one handled.
+
+- `computeStatus()` (shared by the full GET and `?summary=1`, so the page
+  and the sitewide nav dot both pick it up) now takes the most recent
+  review row and treats an unacknowledged `redesign_prompt` as a second,
+  independent reason to go yellow. Priority: `failed` still wins outright
+  (red, unchanged) — a broken task is worse than a pending suggestion.
+  A pending prompt alongside an existing degraded/overdue reason rides
+  along in that reason's `detail` ("Also: a redesign suggestion is ready —
+  " plus the title) rather than replacing it; alone, it gets its own label
+  ("Redesign suggestion ready"). `never-run` and `supabase down` are
+  untouched by it — verified rather than assumed, since the wording only
+  named `failed` as the priority exception and left those two ambiguous.
+  Both responses now expose `pendingRedesignPrompt` at the top level.
+- One new POST action on `/api/analytics-review`, gated by the same
+  `checkAdminPassword` as GET: `acknowledge-redesign-prompt`. Validates
+  `id` is a positive integer, then a single UPDATE guarded by
+  `redesign_prompt IS NOT NULL AND redesign_prompt_acknowledged_at IS NULL`
+  — a double-click or a stale tab matches zero rows and still answers
+  `200 {ok:true}`, not an error. Nothing else about this endpoint writes;
+  the scheduled task still owns every other column on the row.
+- `analytics-review.html` renders the prompt in a callout directly under
+  the status panel — reusing the exact `#991B1B` / `#FCA5A5` / `#FEF2F2`
+  alert palette `.stat.is-zero` already uses below it, not a new color.
+  Copy prompt uses the Clipboard API; the prompt text is set via
+  `.textContent`, never `innerHTML`/`esc()`, specifically so the copy
+  button can just re-read the DOM rather than keep a second copy of the
+  string — round-tripping through HTML-escaping is exactly how a copy
+  button could otherwise hand back an altered string. Mark handled POSTs
+  the ack action and removes the card from the DOM on success; on failure
+  it re-enables the button and shows an inline error. Renders nothing when
+  there's no pending prompt.
+- `supabase-auth.js` needed no changes — confirmed by reading it rather
+  than assuming: the nav dot already colors itself generically from
+  whatever `status.dot` string `?summary=1` returns, and yellow already
+  existed for degraded/overdue.
+
+Verified end-to-end against live production on a real row (id 3, "most
+recent" by `period_end`), with the admin password provided directly in
+chat (used only in-memory for this session, not saved anywhere) — the
+Supabase MCP connector for this session had gone stale and needed a
+manual SQL round-trip instead of live queries:
+- `GET` and `GET ?summary=1` both showed `dot:'yellow'`,
+  `label:'Redesign suggestion ready'`, `detail` equal to the title, and
+  `pendingRedesignPrompt:true` at the top level.
+- The page rendered the card with the exact title and prompt text; the
+  sitewide "Analytics review" nav dot on another page also went yellow.
+- Copy prompt: clipboard contents matched the raw `redesign_prompt`
+  column byte-for-byte, including its `\r\n\r\n`, with the em dash intact
+  — no HTML-escaping artifacts. (Needed a real CDP-dispatched click, not a
+  JS `.click()` — Chrome only grants Clipboard API user-activation to a
+  genuine input event, which matters for headless testing, not for a real
+  admin clicking the button.)
+- Mark handled: card disappeared from the DOM, and a fresh GET confirmed
+  `redesign_prompt_acknowledged_at` was set in the database; the dot and
+  the sitewide nav dot both reverted to green on the next load. A second
+  acknowledge POST against the now-acknowledged row still answered
+  `200 {ok:true}` (the double-click case). Bad input (`id` non-numeric,
+  negative, or a wrong/missing `action`) all answered `400`.
+- A row with `redesign_prompt IS NULL` (the normal case, confirmed on the
+  same row after acknowledging it) rendered the page with no card, no
+  layout shift, exactly as before this change.
+- `failed`-wins and the overdue+pending combination were verified against
+  the actual deployed `computeStatus()` source (extracted and run in
+  isolation, not retyped from memory) with synthetic `taskRun`/row inputs,
+  rather than by editing the live `task_runs` row — that table is real
+  monitoring data, and flipping it back and forth manually is exactly the
+  kind of thing that stays wrong if a revert step gets missed.
+- 375px: card, prompt block, and both buttons fit within the viewport with
+  no horizontal overflow.
+
+Test row (id 3) was reset to `redesign_prompt` / `redesign_prompt_title` /
+`redesign_prompt_acknowledged_at` all `NULL` afterward — confirmed via a
+final `?summary=1` check back to green before calling this done.
+
 ## 2026-09-04 — Verified the phone-map/event-clock/pins/trailing-slash patch against live production
 
 Applied via `git am` on a fresh `phone-map-and-event-day-clock` branch off
