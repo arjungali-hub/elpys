@@ -67,14 +67,6 @@
     .redesign-card-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
     .redesign-card-msg { font-size: 0.8125rem; color: #991B1B; margin-top: 0.5rem; min-height: 1.1em; }
 
-    .supa-status { font-size: 0.75rem; color: var(--text-muted); display: inline-flex; align-items: center;
-      gap: 0.35rem; border: 1px solid var(--border); background: var(--bg-primary);
-      border-radius: 999px; padding: 0.1rem 0.55rem; white-space: nowrap; }
-    .supa-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--subtle-ui); flex-shrink: 0; }
-    .supa-status.is-active .supa-dot { background: var(--dot-green); }
-    .supa-status.is-paused { color: var(--text-main); border-color: var(--dot-yellow); }
-    .supa-status.is-paused .supa-dot { background: var(--dot-yellow); }
-
     /* Login — identical to review.html's, since the two share a session key. */
     #login-panel { max-width: 340px; }
     .login-row { display: flex; gap: 0.5rem; }
@@ -145,7 +137,6 @@
     <h1 class="page-title"><span class="site-name"><svg class="site-name-sparkles" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 129" aria-hidden="true"><g fill="#d9662f"><path d="M11 21 C11 27.3 11 27.3 17.3 30 C11 32.7 11 32.7 11 39 C11 32.7 11 32.7 4.7 30 C11 27.3 11 27.3 11 21 Z"/><path d="M189 17 C189 23.3 189 23.3 195.3 26 C189 28.7 189 28.7 189 35 C189 28.7 189 28.7 182.7 26 C189 23.3 189 23.3 189 17 Z"/></g><g fill="#e8935f"><path d="M8 73.8 C8 78.1 8 78.1 12.3 80 C8 81.9 8 81.9 8 86.2 C8 81.9 8 81.9 3.7 80 C8 78.1 8 78.1 8 73.8 Z"/><path d="M192 69.8 C192 74.1 192 74.1 196.3 76 C192 77.9 192 77.9 192 82.2 C192 77.9 192 77.9 187.7 76 C192 74.1 192 74.1 192 69.8 Z"/><path d="M70 111.8 C70 116.1 70 116.1 74.3 118 C70 119.9 70 119.9 70 124.2 C70 119.9 70 119.9 65.7 118 C70 116.1 70 116.1 70 111.8 Z"/><path d="M133 112.8 C133 117.1 133 117.1 137.3 119 C133 120.9 133 120.9 133 125.2 C133 120.9 133 120.9 128.7 119 C133 117.1 133 117.1 133 112.8 Z"/></g></svg>e<span class="site-name-l">l<svg class="site-name-flame" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 34" aria-hidden="true"><path d="M15 34 C9 30 7.5 23 10 17 C11.2 20.5 13.5 20.5 13.5 17 C15.5 20.5 19 23 16.5 28 C20 25.5 21 19.5 17.5 13.5 C22 17 23.5 24 20 30 C18 32.5 16 34 15 34 Z" fill="#d9662f"/><path d="M15 30 C12 28 11 24.5 12.4 21.5 C13 23.3 14.2 23.3 14.2 21.5 C15.2 23.3 17 24.5 15.6 27 C17.4 25.7 18 22.5 16.2 19.5 C18.5 21.3 19.2 25 17.4 28 C16.4 29.3 15.5 30 15 30 Z" fill="#f2a03d"/></svg><svg class="site-name-torch-base" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 12" aria-hidden="true"><path d="M3 0 L17 0 L14.5 6 L5.5 6 Z" fill="#2b2420"/><rect x="4.5" y="6" width="11" height="3.2" rx="1.6" fill="#2b2420"/></svg></span>pys</span> Analytics review</h1>
     <a href="/">← Home</a>
     <a href="/admin">← Admin</a>
-    <span id="supabase-status" class="supa-status" hidden></span>
   </div>
   <p class="subtitle">Monthly traffic, performance and sign-up figures, written by the scheduled analytics task. Read-only — nothing here changes any data.</p>
 
@@ -358,19 +349,6 @@
     slot.appendChild(card);
   }
 
-  function renderSupabaseStatus(status) {
-    const el = document.getElementById('supabase-status');
-    const state = (status && status.state) || 'unknown';
-    const label = state === 'active' ? 'Active'
-                : state === 'paused' ? 'Paused'
-                : state === 'error'  ? 'Error'
-                : 'Unknown';
-    el.className = 'supa-status' + (state === 'active' ? ' is-active' : state === 'paused' ? ' is-paused' : '');
-    el.innerHTML = '<span class="supa-dot"></span>Supabase: ' + esc(label);
-    if (status && status.detail) el.title = status.detail;
-    el.hidden = false;
-  }
-
   // ── Auth ───────────────────────────────────────────────────────────────────
   // Shares the session key with admin.html and review.html, so logging in on
   // any one of them carries over to the others.
@@ -435,7 +413,6 @@
       loginPanel().style.display   = 'none';
       loadingPanel().style.display = 'none';
       document.getElementById('content').style.display = 'block';
-      renderSupabaseStatus(supabase);
       renderStatusPanel(status, taskRun);
       renderRedesignCard(Array.isArray(reviews) && reviews[0] ? reviews[0] : null);
 
