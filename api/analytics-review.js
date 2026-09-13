@@ -74,17 +74,28 @@ function failure(label, status, text, parsed) {
   };
 }
 
+// A request that hangs rather than fails leaves whoever's awaiting it stuck
+// until Vercel's own platform-level function timeout kills the whole
+// invocation — which answers with a raw "Gateway Timeout" the client can't
+// parse into anything useful, instead of a clean answer from our own code.
+// Every Supabase call in this file goes through this rather than a bare
+// fetch(), so a slow response fails fast and on our own terms.
+function abortAfter(ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return { signal: controller.signal, cancel: () => clearTimeout(timer) };
+}
+
 // Same probe as api/review.js: a paused project refuses connections or answers
 // 5xx, which is distinguishable from a bad key (401) or a missing table (404).
 // Probing Opportunities rather than analytics_reviews on purpose — a brand new
 // table with zero rows is not evidence of anything being wrong, so it makes a
 // poor liveness signal.
 async function probeSupabase() {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
+  const { signal, cancel } = abortAfter(8000);
   try {
     const r = await fetch(SUPABASE_URL + 'Opportunities?select=id&limit=1', {
-      headers: supabaseHeaders(), signal: controller.signal,
+      headers: supabaseHeaders(), signal,
     });
     if (r.ok) return { state: 'active', detail: null };
     const body = await readJson(r);
@@ -95,19 +106,37 @@ async function probeSupabase() {
     const detail = err && err.name === 'AbortError' ? 'No response within 8s' : (err && err.message) || String(err);
     return { state: 'paused', detail: detail };
   } finally {
-    clearTimeout(timer);
+    cancel();
   }
 }
 
+// Throws on a connectivity failure (network error, timeout, or a non-2xx
+// response) rather than folding it into a null return. That distinction
+// matters: null here means "queried fine, genuinely zero rows" — the real
+// meaning of "never run" — and a caller that can't tell that apart from "the
+// query itself failed" ends up showing "Never run" for a task that in fact
+// ran recently and successfully, which is exactly what was observed live
+// once during testing. The caller is responsible for telling those two
+// apart in what it shows.
 async function fetchTaskRun() {
-  const r = await fetch(
-    SUPABASE_URL + 'task_runs?task_name=eq.' + encodeURIComponent(TASK_NAME) +
-      '&select=task_name,last_run_at,status,note,updated_at',
-    { headers: supabaseHeaders() }
-  );
-  if (!r.ok) return null;
+  const { signal, cancel } = abortAfter(5000);
+  let r;
+  try {
+    r = await fetch(
+      SUPABASE_URL + 'task_runs?task_name=eq.' + encodeURIComponent(TASK_NAME) +
+        '&select=task_name,last_run_at,status,note,updated_at',
+      { headers: supabaseHeaders(), signal }
+    );
+  } catch (err) {
+    const detail = err && err.name === 'AbortError' ? 'no response within 5s' : (err && err.message) || String(err);
+    throw new Error('task_runs unreachable: ' + detail);
+  } finally {
+    cancel();
+  }
+  if (!r.ok) throw new Error('task_runs fetch failed: HTTP ' + r.status);
+
   const rows = await r.json().catch(() => null);
-  if (!Array.isArray(rows) || rows.length === 0) return null;
+  if (!Array.isArray(rows) || rows.length === 0) return null; // genuinely never run
   const row = rows[0];
   const t = new Date(row.last_run_at).getTime();
   return {
@@ -269,13 +298,24 @@ module.exports = async function handler(req, res) {
 // ?summary=1, which colours one dot and should not need 12 rows of metrics
 // to do it (same reasoning as the full fetch being skipped there already).
 async function fetchLatestReviewSummary() {
-  const r = await fetch(
-    SUPABASE_URL + 'analytics_reviews?select=id,redesign_prompts&order=period_end.desc&limit=1',
-    { headers: supabaseHeaders() }
-  );
-  if (!r.ok) return null;
-  const rows = await r.json().catch(() => null);
-  return Array.isArray(rows) && rows[0] ? rows[0] : null;
+  const { signal, cancel } = abortAfter(5000);
+  try {
+    const r = await fetch(
+      SUPABASE_URL + 'analytics_reviews?select=id,redesign_prompts&order=period_end.desc&limit=1',
+      { headers: supabaseHeaders(), signal }
+    );
+    if (!r.ok) return null;
+    const rows = await r.json().catch(() => null);
+    return Array.isArray(rows) && rows[0] ? rows[0] : null;
+  } catch (_) {
+    // Best-effort only: a summary request that can't fetch this loses the
+    // redesign-prompt yellow reason but still answers with whatever the rest
+    // of the status can tell honestly, rather than failing the whole request
+    // over one extra, non-essential column.
+    return null;
+  } finally {
+    cancel();
+  }
 }
 
 async function handleAnalyticsReview(req, res) {
@@ -379,7 +419,26 @@ async function handleAnalyticsReview(req, res) {
       : { supabase, status, taskRun: null, reviews: [], pendingRedesignPrompts: status.pendingRedesignPrompts });
   }
 
-  const taskRun = await fetchTaskRun();
+  let taskRun;
+  try {
+    taskRun = await fetchTaskRun();
+  } catch (err) {
+    // Distinct from "never run": the query itself failed (network blip,
+    // timeout, a bad response) rather than answering with zero rows. Saying
+    // "Never run" here would be actively wrong for a task that in fact ran
+    // recently and successfully — this is what showed up during testing.
+    console.error('/api/analytics-review: could not check task_runs —', err && err.message);
+    const status = {
+      dot: 'unknown',
+      label: 'Could not check',
+      detail: 'The monthly task\'s run history could not be reached just now. ' +
+        'This does not mean the task failed to run — try reloading in a moment.',
+      pendingRedesignPrompts: [],
+    };
+    return res.status(200).json(summaryOnly
+      ? { supabase, status, pendingRedesignPrompts: status.pendingRedesignPrompts }
+      : { supabase, status, taskRun: null, reviews: [], pendingRedesignPrompts: status.pendingRedesignPrompts });
+  }
 
   // ?summary=1 — just the traffic light, for the admin header dot. Pulling 12
   // rows of metrics to colour one dot would be wasteful, same reasoning as
@@ -392,11 +451,20 @@ async function handleAnalyticsReview(req, res) {
     return res.status(200).json({ supabase, status, pendingRedesignPrompts: status.pendingRedesignPrompts });
   }
 
-  const r = await fetch(
-    SUPABASE_URL + 'analytics_reviews?select=*&order=period_end.desc&limit=' + REVIEW_LIMIT,
-    { headers: supabaseHeaders() }
-  );
-  const body = await readJson(r);
+  const { signal: reviewsSignal, cancel: cancelReviews } = abortAfter(6000);
+  let r, body;
+  try {
+    r = await fetch(
+      SUPABASE_URL + 'analytics_reviews?select=*&order=period_end.desc&limit=' + REVIEW_LIMIT,
+      { headers: supabaseHeaders(), signal: reviewsSignal }
+    );
+    body = await readJson(r);
+  } catch (err) {
+    const detail = err && err.name === 'AbortError' ? 'no response within 6s' : (err && err.message) || String(err);
+    return res.status(500).json(failure('Could not load analytics reviews.', null, detail, null));
+  } finally {
+    cancelReviews();
+  }
   if (!r.ok) {
     return res.status(500).json(failure('Could not load analytics reviews.', r.status, body.text, body.parsed));
   }

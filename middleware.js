@@ -44,6 +44,11 @@
 // checkAdminPassword or the data endpoints, so it cannot by itself expose
 // admin data. Losing this file entirely is a visibility regression, not a
 // security one.
+//
+// bare /admin now 404s unconditionally, signed in or not — see ADMIN_PATHS'
+// own comment below for why. admin.html the FILE is still very much alive;
+// it just has no direct URL of its own any more, only the named views
+// (/admin-feedback, /admin-edit, /admin-approve).
 
 const COOKIE_NAME = 'elpys_admin_session';
 
@@ -93,35 +98,22 @@ async function hasValidSession(request) {
   return constantTimeStringEqual(expected, sig);
 }
 
-// Old-URL redirects handled HERE rather than in vercel.json's redirects[],
-// because Vercel re-appends the incoming query string to any redirect
-// destination that doesn't already carry one. That turned
-// /opportunities-detail?slug=wta into /wta?slug=wta — right page, but a
-// leftover parameter hanging off a URL whose whole point was to be clean.
-// `preserveQueryParams` is a Bulk Redirects API field, not a vercel.json key
-// (confirmed by a failed deployment), so there is no way to switch that off
-// in the config file. Middleware builds the Location header itself, so it can
-// simply not include the query.
-//
-// SAFETY: these are matched on the ORIGINAL request path. /opportunities-detail
-// is also the internal destination of the catch-all slug rewrite, so if
-// middleware ran on rewritten paths this would redirect /earthcorps to itself
-// forever. Verified on a preview deployment that it does not — but if this
-// file's matcher is ever changed, re-test /earthcorps for a redirect loop
-// before shipping.
-const ADMIN_VIEW_REDIRECTS = {
-  feedback: '/admin-feedback',
-  edit:     '/admin-edit',
-  confirm:  '/admin-approve',
-};
-
 // The gated paths, normalised the same way `path` is below (.html and trailing
 // slash stripped). Every one of them is also a single segment, so the slug
 // check has to know to leave them alone — without this it would try to resolve
-// "admin" as a listing, fail, and 404 the admin surface for the real admin
-// before the session check ever ran.
+// each as a listing, fail, and 404 the admin surface before the session check
+// ever ran.
+//
+// '/admin' is deliberately NOT in this set — it has its own unconditional
+// 404 above, before this file does anything else. See that check's own
+// comment for why it isn't handled here instead. /admin-feedback, /admin-edit
+// and /admin-approve are untouched: they are their own literal paths here,
+// each still gated normally, and Vercel rewrites them onto /admin?view=...
+// only AFTER middleware has already let them through — see vercel.json. That
+// rewrite destination is never itself re-checked against this set, so
+// retiring bare /admin does not touch them.
 const ADMIN_PATHS = new Set([
-  '/admin', '/admin-feedback', '/admin-edit', '/admin-approve',
+  '/admin-feedback', '/admin-edit', '/admin-approve',
   '/admin-review', '/review', '/analytics-review',
 ]);
 
@@ -279,6 +271,18 @@ export default async function middleware(request) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\.html$/, '').replace(/\/$/, '') || '/';
 
+  // ── Bare /admin: retired, unconditionally 404 ─────────────────────────────
+  // Deliberately its own check, ahead of everything else, rather than just
+  // leaving '/admin' out of ADMIN_PATHS and letting it fall into the slug
+  // check below: that check fails OPEN when Supabase is unreachable (right,
+  // for public listing pages — wrong here), which would have turned a
+  // Supabase blip into bare /admin briefly serving admin.html's shell with no
+  // gate at all. This check has no such dependency — /admin 404s the same way
+  // whether Supabase is up, down, or slow. Signed in or not; there is no
+  // session check to bypass here on purpose. The named views
+  // (/admin-feedback, /admin-edit, /admin-approve) are untouched.
+  if (path === '/admin') return notFound(request);
+
   // ── Public: old listing URLs → clean /<slug>, query dropped ───────────────
   // Deliberately before the auth gate: these are public pages and must never
   // be gated.
@@ -326,16 +330,5 @@ export default async function middleware(request) {
   // ── Admin surface: gate ───────────────────────────────────────────────────
   if (!(await hasValidSession(request))) {
     return notFound(request);
-  }
-
-  // ── Signed in: old /admin?view=X → clean /admin-X, query dropped ──────────
-  // After the gate on purpose. Redirecting first would confirm to a signed-out
-  // stranger that /admin-feedback exists; this way they just get the 404.
-  if (path === '/admin') {
-    const view = url.searchParams.get('view');
-    const target = view && Object.prototype.hasOwnProperty.call(ADMIN_VIEW_REDIRECTS, view)
-      ? ADMIN_VIEW_REDIRECTS[view]
-      : null;
-    if (target) return Response.redirect(new URL(target, url.origin), 308);
   }
 }
