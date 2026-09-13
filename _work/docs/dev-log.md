@@ -7,6 +7,59 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-13 — Retired bare /admin; analytics-review stopped lying about task_runs failures
+
+Two independent fixes, both requested directly after the redesign_prompts
+migration below.
+
+**Bare /admin now 404s unconditionally**, signed in or not. Arjun flagged
+that `/admin` "shouldn't be an actual page" and that Analytics review
+linked to it (that link was removed in the migration below); this makes
+the URL itself 404 rather than just removing the one stray link to it.
+
+Implementation note, because the obvious approach was wrong: the natural
+fix looked like leaving `/admin` out of `ADMIN_PATHS` and letting it fall
+into the existing slug-check logic (which already 404s any unknown
+single-segment path). That check fails OPEN when Supabase is unreachable —
+correct for public listing pages, since a hard 404 on every real listing
+during a blip is worse than a stray soft-404 on a bad URL — but wrong here:
+it would have turned a Supabase outage into bare `/admin` briefly serving
+`admin.html`'s shell with no gate at all. Used a separate, unconditional
+check instead (`if (path === '/admin') return notFound(request)`), ahead
+of everything else in the file, with no dependency on Supabase or session
+state either way. `/admin-feedback`, `/admin-edit` and `/admin-approve` are
+untouched — each is still its own gated literal path, and Vercel's rewrite
+of them onto `/admin?view=...` happens only after middleware has already
+let them through, so retiring bare `/admin` doesn't touch what they
+rewrite to. The old `/admin?view=X → /admin-X` redirect is gone too, since
+its own trigger path (`/admin`) now 404s before ever reaching it — verified
+on a preview: `/admin` 404s in both auth states, `/admin?view=feedback`
+(the old bookmark style) also now 404s, and all three named views still
+load their real content when signed in.
+
+**`api/analytics-review.js`'s status dot could say "Never run" for a task
+that had just run successfully.** Found live during the redesign_prompts
+migration's testing (see below) and very likely the cause of an earlier
+"Could not load analytics reviews. — Gateway Timeout" report: `fetchTaskRun()`
+folded "the query failed" and "the query succeeded with zero rows" into the
+same `null` return, and neither it nor the reviews-list fetch had a
+timeout — so a slow or failed connection to Supabase either quietly
+mis-reported as "the task has never run" or hung until Vercel's own
+platform-level function timeout fired, producing a raw Gateway Timeout the
+client can't parse into anything useful. `fetchTaskRun()` now throws
+distinctly on a connectivity failure; the handler catches that and reports
+an honest `{dot: 'unknown', label: 'Could not check'}` instead of guessing
+"Never run". Every Supabase call in this file (`probeSupabase`,
+`fetchTaskRun`, both review-list fetches) now goes through a shared
+`abortAfter()` timeout, so a slow response fails on this code's own terms —
+with a real JSON error — comfortably inside Vercel's 10s function budget,
+rather than letting the platform's own timeout reach the client first.
+Verified on a preview: normal responses unaffected (five consecutive
+`?summary=1` calls, all green, 0.3-0.5s each) — the actual failure path
+isn't easily reproducible on demand (it was a transient blip), so this is
+verified by code review and by confirming the healthy path still behaves
+identically, not by forcing the failure live.
+
 ## 2026-09-13 — Analytics review: migrated to a redesign_prompts array (up to 3 per month, not 1)
 
 The Elpys Monthly Analytics Review scheduled task is being upgraded to
