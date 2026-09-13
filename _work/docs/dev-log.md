@@ -7,6 +7,78 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-13 — Analytics review: migrated to a redesign_prompts array (up to 3 per month, not 1)
+
+The Elpys Monthly Analytics Review scheduled task is being upgraded to
+surface a ranked list of up to 3 redesign signals per month instead of at
+most one, and its instructions already write `redesign_prompts` (jsonb
+array) instead of the old three columns. This lands the schema change and
+rewires the two consumers to match, on branch `feature/redesign-prompts-array`.
+
+- **Schema**: `redesign_prompt` (text) / `redesign_prompt_title` (text) /
+  `redesign_prompt_acknowledged_at` (timestamptz) dropped; added
+  `redesign_prompts jsonb not null default '[]'`. Confirmed at migration
+  time (not just trusted from the task instructions) that 0 rows had data
+  in the old columns — a clean drop, nothing to backfill. Each array
+  element: `{id (uuid), rank, signal_type, title, prompt, acknowledged_at}`.
+- **`api/analytics-review.js`**: `pendingRedesignPrompts(latestReview)`
+  replaces `isPendingRedesignPrompt()`, returning every unacknowledged
+  entry sorted by rank instead of a boolean. `computeStatus()`'s yellow
+  branch scales with count — 1 pending keeps the old wording ("Redesign
+  suggestion ready"), 2+ becomes "N redesign suggestions ready"
+  with every title joined into `detail`. `failed` still wins outright
+  regardless of how many are pending. The acknowledge POST action now
+  takes `{review_id, prompt_id}` instead of a single row id: it fetches
+  the row, finds the one matching array element by id, and PATCHes the
+  whole array back with only that element's `acknowledged_at` set — every
+  other element's fields, order and rank travel back untouched. A
+  `prompt_id` that doesn't exist on that row, or a `review_id` that
+  doesn't exist at all, is a 404; re-acknowledging an already-acknowledged
+  entry is still the same harmless no-op it was before. Grepped the whole
+  file afterward for every old column/field name — nothing left.
+- **`analytics-review.html`**: `renderRedesignCards()` replaces
+  `renderRedesignCard()`, rendering one callout per pending entry (ranked
+  best-first, "Suggestion N of M" when there's more than one, same alert
+  palette as before — no new color). Each card's own Copy prompt and Mark
+  handled work independently; acknowledging one only removes that one
+  card, leaving any others for the same row in place. Zero pending still
+  renders nothing.
+- Also removed a stray "← Admin" link from this page's own header — it
+  was the only admin subpage linking to `/admin`, unrelated to what this
+  page is about, and arguably shouldn't have been there in the first
+  place.
+
+Verified on a preview deployment (SSO protection toggled off for testing,
+restored after) rather than production: confirmed `GET`/`?summary=1` both
+report the new array shape and scale the label/detail correctly; seeded 3
+fake `redesign_prompts` entries directly via SQL on the one real row (id 3)
+and confirmed all three cards render in rank order, Copy prompt round-trips
+the exact text (module the Windows clipboard layer's own LF→CRLF
+normalization on write — not something the page's own code does or
+controls), and acknowledging the *middle* card removes only that one card
+and sets only that one element's `acknowledged_at` in the database — the
+other two entries' fields, order, and rank were confirmed byte-for-byte
+unchanged. Every validation/error path (missing `prompt_id`, non-integer
+`review_id`, nonexistent `review_id`, nonexistent `prompt_id`, and
+double-acknowledging) answered the correct 400/404/200. 375px: both
+remaining test cards fit full-width with no overflow. Test data reset to
+`'[]'::jsonb` afterward — nothing left in the live table.
+
+**One thing noticed in passing, not fixed here**: during testing, one
+`?summary=1` call on the fresh preview deployment came back with
+`status: {dot: 'unknown', label: 'Never run', ...}` even though
+`task_runs` clearly showed a recent successful run (confirmed a moment
+later — 4 straight follow-up calls all correctly showed green). Likely a
+transient blip reaching Supabase on a cold serverless invocation:
+`fetchTaskRun()` has no timeout and treats any non-ok response as
+indistinguishable from "the task has genuinely never run," which is
+actively misleading wording for what's really "couldn't check just now."
+This may be what was behind an earlier "Could not load analytics reviews.
+— Gateway Timeout" error Arjun saw live on `/analytics-review`. Didn't
+fix it as part of this migration since it's a separate, pre-existing
+concern (the same gap exists in the reviews-list fetch, which also has no
+timeout) — flagging clearly rather than leaving it unmentioned.
+
 ## 2026-09-07 — Analytics review: surface pending redesign prompts on the status dot
 
 `analytics_reviews` already had `redesign_prompt` / `redesign_prompt_title` —
