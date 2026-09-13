@@ -57,7 +57,8 @@
        number, so it gets the box treatment (border + tinted background)
        rather than just tinted text. */
     .redesign-card { background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: var(--radius-lg);
-      padding: 1.1rem 1.3rem; margin-bottom: 1.75rem; max-width: 62ch; }
+      padding: 1.1rem 1.3rem; margin-bottom: 1rem; max-width: 62ch; }
+    .redesign-card-rank { font-size: 0.75rem; color: var(--text-subtle); margin-bottom: 0.3rem; }
     .redesign-card-title { font-size: 1rem; font-weight: 700; color: #991B1B; margin-bottom: 0.7rem; }
     .redesign-card-prompt { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 0.8125rem; line-height: 1.5; color: var(--text-main); background: var(--bg-primary);
@@ -66,6 +67,10 @@
       word-break: break-word; margin: 0 0 0.9rem; }
     .redesign-card-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
     .redesign-card-msg { font-size: 0.8125rem; color: #991B1B; margin-top: 0.5rem; min-height: 1.1em; }
+    /* Each card carries a small bottom margin for spacing between stacked
+       cards; the last one (or the only one) needs the page's usual
+       section-gap instead, matching every other block on this page. */
+    #redesign-card-slot > .redesign-card:last-child { margin-bottom: 1.75rem; }
 
     /* Login — identical to review.html's, since the two share a session key. */
     #login-panel { max-width: 340px; }
@@ -136,7 +141,6 @@
   <div class="page-head">
     <h1 class="page-title"><span class="site-name"><svg class="site-name-sparkles" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 129" aria-hidden="true"><g fill="#d9662f"><path d="M11 21 C11 27.3 11 27.3 17.3 30 C11 32.7 11 32.7 11 39 C11 32.7 11 32.7 4.7 30 C11 27.3 11 27.3 11 21 Z"/><path d="M189 17 C189 23.3 189 23.3 195.3 26 C189 28.7 189 28.7 189 35 C189 28.7 189 28.7 182.7 26 C189 23.3 189 23.3 189 17 Z"/></g><g fill="#e8935f"><path d="M8 73.8 C8 78.1 8 78.1 12.3 80 C8 81.9 8 81.9 8 86.2 C8 81.9 8 81.9 3.7 80 C8 78.1 8 78.1 8 73.8 Z"/><path d="M192 69.8 C192 74.1 192 74.1 196.3 76 C192 77.9 192 77.9 192 82.2 C192 77.9 192 77.9 187.7 76 C192 74.1 192 74.1 192 69.8 Z"/><path d="M70 111.8 C70 116.1 70 116.1 74.3 118 C70 119.9 70 119.9 70 124.2 C70 119.9 70 119.9 65.7 118 C70 116.1 70 116.1 70 111.8 Z"/><path d="M133 112.8 C133 117.1 133 117.1 137.3 119 C133 120.9 133 120.9 133 125.2 C133 120.9 133 120.9 128.7 119 C133 117.1 133 117.1 133 112.8 Z"/></g></svg>e<span class="site-name-l">l<svg class="site-name-flame" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 34" aria-hidden="true"><path d="M15 34 C9 30 7.5 23 10 17 C11.2 20.5 13.5 20.5 13.5 17 C15.5 20.5 19 23 16.5 28 C20 25.5 21 19.5 17.5 13.5 C22 17 23.5 24 20 30 C18 32.5 16 34 15 34 Z" fill="#d9662f"/><path d="M15 30 C12 28 11 24.5 12.4 21.5 C13 23.3 14.2 23.3 14.2 21.5 C15.2 23.3 17 24.5 15.6 27 C17.4 25.7 18 22.5 16.2 19.5 C18.5 21.3 19.2 25 17.4 28 C16.4 29.3 15.5 30 15 30 Z" fill="#f2a03d"/></svg><svg class="site-name-torch-base" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 12" aria-hidden="true"><path d="M3 0 L17 0 L14.5 6 L5.5 6 Z" fill="#2b2420"/><rect x="4.5" y="6" width="11" height="3.2" rx="1.6" fill="#2b2420"/></svg></span>pys</span> Analytics review</h1>
     <a href="/">← Home</a>
-    <a href="/admin">← Admin</a>
   </div>
   <p class="subtitle">Monthly traffic, performance and sign-up figures, written by the scheduled analytics task. Read-only — nothing here changes any data.</p>
 
@@ -149,8 +153,9 @@
     </div>
   </div>
 
-  <!-- Populated by renderRedesignCard() when reviews[0] has a pending
-       redesign_prompt; left empty (no placeholder) the rest of the time. -->
+  <!-- Populated by renderRedesignCards() with one card per unacknowledged
+       entry in reviews[0].redesign_prompts, ranked best-first; left empty
+       (no placeholder) when there are none. -->
   <div id="redesign-card-slot"></div>
 
   <!-- Hidden from the start when a password is already stored, same as
@@ -264,89 +269,111 @@
     panel.hidden = false;
   }
 
-  // Renders the callout for a pending, unacknowledged redesign_prompt on the
-  // most recent review row, or clears it when there is none — the common
-  // case, which must render nothing at all, not an empty card.
+  // Same filter+sort api/analytics-review.js's pendingRedesignPrompts() does
+  // server-side — kept independent rather than trusting a derived field from
+  // the response, since the raw row (with its redesign_prompts array) is
+  // what's actually available here.
+  function pendingRedesignPromptsClient(row) {
+    const prompts = (row && Array.isArray(row.redesign_prompts)) ? row.redesign_prompts : [];
+    return prompts.filter(p => p && p.acknowledged_at == null).sort((a, b) => a.rank - b.rank);
+  }
+
+  // Renders one callout per pending, unacknowledged entry in the most recent
+  // review row's redesign_prompts array (ranked best-first), or clears the
+  // slot when there are none — the common case, which must render nothing at
+  // all, not an empty card.
   //
-  // The prompt text is set via .textContent, never innerHTML/esc(): esc()
+  // Each prompt's text is set via .textContent, never innerHTML/esc(): esc()
   // exists to make a string SAFE inside innerHTML, which is a different job
   // from keeping it byte-for-byte — round-tripping through HTML-escaping and
-  // back is exactly how "Copy prompt" could hand back an altered string.
-  // .textContent reads back exactly what was written, so the copy button
-  // below just re-reads it rather than keeping a second copy of the text.
-  function renderRedesignCard(row) {
+  // back is exactly how "Copy prompt" could hand back an altered string. It
+  // also means these LLM-generated prompts are never interpreted as markup.
+  // .textContent reads back exactly what was written, so each copy button
+  // just re-reads it rather than keeping a second copy of the text.
+  function renderRedesignCards(row) {
     const slot = document.getElementById('redesign-card-slot');
     slot.innerHTML = '';
-    if (!row || row.redesign_prompt == null || row.redesign_prompt_acknowledged_at != null) return;
+    const pending = pendingRedesignPromptsClient(row);
+    if (!pending.length) return;
 
-    const card = document.createElement('div');
-    card.className = 'redesign-card';
+    pending.forEach((entry, i) => {
+      const card = document.createElement('div');
+      card.className = 'redesign-card';
 
-    const title = document.createElement('p');
-    title.className = 'redesign-card-title';
-    title.textContent = row.redesign_prompt_title || 'Redesign suggestion ready';
-
-    const pre = document.createElement('pre');
-    pre.className = 'redesign-card-prompt';
-    pre.textContent = row.redesign_prompt;
-
-    const msg = document.createElement('p');
-    msg.className = 'redesign-card-msg';
-
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'btn-primary';
-    copyBtn.textContent = 'Copy prompt';
-    copyBtn.addEventListener('click', async () => {
-      if (!navigator.clipboard || !navigator.clipboard.writeText) {
-        msg.textContent = 'Clipboard access isn\'t available here — select the text above and copy it manually.';
-        return;
+      if (pending.length > 1) {
+        const rank = document.createElement('p');
+        rank.className = 'redesign-card-rank';
+        rank.textContent = 'Suggestion ' + (i + 1) + ' of ' + pending.length;
+        card.appendChild(rank);
       }
-      try {
-        await navigator.clipboard.writeText(pre.textContent);
-        msg.textContent = '';
-        const original = copyBtn.textContent;
-        copyBtn.textContent = 'Copied!';
-        setTimeout(() => { copyBtn.textContent = original; }, 1500);
-      } catch (err) {
-        msg.textContent = 'Could not copy automatically — select the text above and copy it manually.';
-      }
-    });
 
-    const ackBtn = document.createElement('button');
-    ackBtn.className = 'btn-primary';
-    ackBtn.textContent = 'Mark handled';
-    ackBtn.addEventListener('click', async () => {
-      ackBtn.disabled = true;
-      msg.textContent = '';
-      try {
-        const res = await fetch(API, {
-          method: 'POST',
-          headers: { 'x-admin-password': _password, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'acknowledge-redesign-prompt', id: row.id }),
-        });
-        if (!res.ok) {
-          const e = await res.json().catch(() => ({}));
-          throw new Error(e.error || 'HTTP ' + res.status);
+      const title = document.createElement('p');
+      title.className = 'redesign-card-title';
+      title.textContent = entry.title || 'Redesign suggestion ready';
+      card.appendChild(title);
+
+      const pre = document.createElement('pre');
+      pre.className = 'redesign-card-prompt';
+      pre.textContent = entry.prompt;
+      card.appendChild(pre);
+
+      const msg = document.createElement('p');
+      msg.className = 'redesign-card-msg';
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'btn-primary';
+      copyBtn.textContent = 'Copy prompt';
+      copyBtn.addEventListener('click', async () => {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) {
+          msg.textContent = 'Clipboard access isn\'t available here — select the text above and copy it manually.';
+          return;
         }
-        // The dot itself catches up next time the nav's own summary fetch
-        // runs (next page load) — nothing to force from here.
-        card.remove();
-      } catch (err) {
-        ackBtn.disabled = false;
-        msg.textContent = 'Could not mark this handled: ' + err.message;
-      }
+        try {
+          await navigator.clipboard.writeText(pre.textContent);
+          msg.textContent = '';
+          const original = copyBtn.textContent;
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => { copyBtn.textContent = original; }, 1500);
+        } catch (err) {
+          msg.textContent = 'Could not copy automatically — select the text above and copy it manually.';
+        }
+      });
+
+      const ackBtn = document.createElement('button');
+      ackBtn.className = 'btn-primary';
+      ackBtn.textContent = 'Mark handled';
+      ackBtn.addEventListener('click', async () => {
+        ackBtn.disabled = true;
+        msg.textContent = '';
+        try {
+          const res = await fetch(API, {
+            method: 'POST',
+            headers: { 'x-admin-password': _password, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'acknowledge-redesign-prompt', review_id: row.id, prompt_id: entry.id }),
+          });
+          if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            throw new Error(e.error || 'HTTP ' + res.status);
+          }
+          // Only this one card goes — any other pending suggestions for this
+          // row stay exactly as they were. The dot itself catches up next
+          // time the nav's own summary fetch runs (next page load).
+          card.remove();
+        } catch (err) {
+          ackBtn.disabled = false;
+          msg.textContent = 'Could not mark this handled: ' + err.message;
+        }
+      });
+
+      const actions = document.createElement('div');
+      actions.className = 'redesign-card-actions';
+      actions.appendChild(copyBtn);
+      actions.appendChild(ackBtn);
+
+      card.appendChild(actions);
+      card.appendChild(msg);
+      slot.appendChild(card);
     });
-
-    const actions = document.createElement('div');
-    actions.className = 'redesign-card-actions';
-    actions.appendChild(copyBtn);
-    actions.appendChild(ackBtn);
-
-    card.appendChild(title);
-    card.appendChild(pre);
-    card.appendChild(actions);
-    card.appendChild(msg);
-    slot.appendChild(card);
   }
 
   // ── Auth ───────────────────────────────────────────────────────────────────
@@ -414,7 +441,7 @@
       loadingPanel().style.display = 'none';
       document.getElementById('content').style.display = 'block';
       renderStatusPanel(status, taskRun);
-      renderRedesignCard(Array.isArray(reviews) && reviews[0] ? reviews[0] : null);
+      renderRedesignCards(Array.isArray(reviews) && reviews[0] ? reviews[0] : null);
 
       if (supabase && supabase.state !== 'active') {
         document.getElementById('latest').innerHTML =
