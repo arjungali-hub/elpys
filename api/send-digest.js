@@ -204,9 +204,18 @@ module.exports = async function handler(req, res) {
   // before the platform kills it, so a truncated run REPORTS itself instead of
   // vanishing.
   //
+  // Gmail's other per-message cap (100 recipients across To/Cc/Bcc) does not
+  // apply here and never will, regardless of how large the subscriber list
+  // grows: each send below is addressed to exactly one person, because the
+  // content itself is personalized per subscriber (their own matched
+  // opportunities) — there is no Bcc list to batch. Checked directly against
+  // this function before assuming otherwise (see dev-log, 2026-09-21).
+  //
   // Gmail's own cap (~500 recipients/day on a consumer account) is now the
   // binding constraint rather than the timeout, which is the right way round:
-  // it is a documented number rather than a cliff nobody sees coming.
+  // it is a documented number rather than a cliff nobody sees coming. Not
+  // tracked here — the subscriber list is nowhere close — but if it ever
+  // needs to be, this loop is where a running total per rolling 24h would go.
   const CONCURRENCY = 4;
   const BUDGET_MS   = 50 * 1000;  // 60s limit, 10s of headroom for everything else
   const startedAt   = Date.now();

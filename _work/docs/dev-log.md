@@ -7,7 +7,38 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
-## 2026-09-13 — Retired bare /admin; analytics-review stopped lying about task_runs failures
+## 2026-09-21 — Checked the digest against Gmail's 100-recipients-per-message cap: does not apply, no code change
+
+Asked to preventively split the weekly digest's recipient list into batches
+of ≤100 per outgoing message, ahead of Gmail's free-tier SMTP limits (100
+recipients/message, 500/rolling-24h), branch `smtp-recipient-batching-guard`.
+
+Read `api/send-digest.js` and its own dev-log entry (2026-09-03, "The weekly
+digest would have died mid-send, silently") before assuming the premise was
+right. It wasn't: this digest has never Bcc'd a batch of recipients into one
+message. Each subscriber's email is individually addressed and personalized
+— its content is that subscriber's own matched opportunities, built per-
+profile in the loop above the send phase — so `sendEmail({ to: <one
+address>, ... })` is called once per person, already. There is no Bcc list
+anywhere in this codebase to split into groups of 100; the 100-per-message
+cap can never bind here, at any subscriber count, because every message
+already has exactly one recipient.
+
+The only Gmail limit that is real for this architecture is the 500/rolling-
+24h cap on total sends — which the send-phase restructure from 2026-09-03
+already names as "the binding constraint," and which is nowhere close today
+(subscriber count is well under 100 total, let alone 500/day). Left the
+existing comment there as-is in substance, expanded it to record this
+finding explicitly (why 100/message doesn't apply, and where a 500/day
+running-total guard would go if the list ever grows enough to need one) —
+the only change on this branch, no functional code touched.
+
+No batching logic exists to test, so no test was written — there is nothing
+for one to exercise. Asked before building anything speculative rather than
+implementing a fix for a limit that structurally cannot be hit; confirmed
+directly rather than assumed.
+
+
 
 Two independent fixes, both requested directly after the redesign_prompts
 migration below.
