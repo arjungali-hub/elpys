@@ -7,7 +7,71 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
-## 2026-09-21 — Checked the digest against Gmail's 100-recipients-per-message cap: does not apply, no code change
+## 2026-09-22 — Moved every published contact address to hello.elpys@gmail.com
+
+Elpys now has two mailboxes with different jobs: `elpysnotifications@gmail.com`
+stays the outbound-only SMTP account the digest sends through — it is not
+read by a human and is no longer published anywhere. `hello.elpys@gmail.com`
+is the real mailbox: the address on the site, the address organizations and
+parents write to, and the address a person actually reads. This moved every
+*published* and *contact* reference to the new address and left the
+*sending identity* untouched, on branch `hello-elpys-mailbox-cutover`.
+
+**What moved** (7 occurrences, confirmed by grep before and after):
+`privacy.html` sections 8, 11 and 13 (data requests, the parent/guardian
+COPPA route, and Contact — both the `href` and the visible text of each
+`mailto:` link); `terms.html` sections 9 and 18 (rights-holder takedown
+requests and Contact, same shape); `index.html`'s JSON-LD `Organization`
+node, `contactPoint.email` only — every `@id`, `url`, `logo` and the
+`WebSite` node's `publisher` cross-reference are untouched, and the block
+still parses as valid JSON; and `lib/geocode.js`'s Nominatim `User-Agent`
+string (OpenStreetMap's usage policy expects a genuine, monitored contact —
+that's the entire point of moving it here). Also added the new Google
+account's Search Console verification `<meta>` tag to `index.html`,
+directly below the existing one.
+
+**What deliberately did not move, and why `from` and `replyTo` now
+differ**: `GMAIL_USER`/`GMAIL_APP_PASSWORD` in Vercel and the `from` header
+in `lib/sendEmail.js` are untouched — the digest still sends as
+`elpysnotifications@gmail.com`. The account that is *allowed to send* is not
+the account a person *reads*; conflating the two would mean either moving
+the SMTP credentials (real risk, no benefit) or having replies to the
+digest go nowhere anyone checks. Instead, `lib/sendEmail.js` now sets
+`replyTo: hello.elpys@gmail.com` on every send — a subscriber hitting reply
+reaches the real mailbox, while the sending identity stays exactly as it
+was. The address is a hard-coded named constant (`HELLO_ELPYS_EMAIL`), not
+a new environment variable — the published address is already hard-coded in
+the HTML, and an env var here would just be one more Vercel setting that
+can silently be forgotten.
+
+**The old Search Console verification tag is still present on the page —
+on purpose.** Removing it would un-verify the old Google account's
+property and lose access to all of Search Console's historical data for
+this site. Two verification tags can coexist on one page; Google supports
+this. **Do not remove the old tag until the new account (`hello.elpys`)
+shows as verified in Search Console** — check that in the dashboard before
+ever touching it, not by reading this file.
+
+Verified: grep for the old address across `.html`/`.js`/`.json`/`.txt`
+(excluding `_work/`, which keeps its history exactly as written) returns
+zero matches; grep for the new address returns exactly 8 — the 7
+published/contact occurrences plus the one constant in `lib/sendEmail.js`.
+The JSON-LD block was extracted and run through `JSON.parse` directly
+(not eyeballed) — parses clean, every cross-referenced field intact.
+`lib/sendEmail.js` and `lib/geocode.js` both pass `node --check`. Added
+`test/send-email.test.js`, following the plain-node pattern already used
+by `test/verification-gate.test.js` (no framework, run directly): stubs
+`nodemailer.createTransport` before `lib/sendEmail.js` is ever required, so
+no real SMTP connection is possible — there is a live digest subscriber, and
+this must never risk sending them anything. Confirms `replyTo` is always
+`hello.elpys@gmail.com` and `from` still tracks `GMAIL_USER` exactly
+(including when `GMAIL_USER` changes, replyTo does not follow it). Both
+this and the existing verification-gate test pass. Live-site checks (view
+source for both tags, the address rendering on `/privacy` and `/terms`, and
+confirming the `mailto:` hrefs themselves, not just the visible text) are
+to be run after this merges and deploys — not done from a local checkout.
+
+
 
 Asked to preventively split the weekly digest's recipient list into batches
 of ≤100 per outgoing message, ahead of Gmail's free-tier SMTP limits (100
