@@ -7,7 +7,50 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
-## 2026-09-22 — Moved every published contact address to hello.elpys@gmail.com
+## 2026-09-23 — The intermittent 404 on admin nav clicks: an expiring session cookie, not a caching bug
+
+Arjun reported that clicking "Data review" (and sometimes other admin pages)
+consistently 404s after a data check has run, and reloading fixes it.
+
+Investigated the scary possibility first: whether a signed-out visitor's
+cached 404 for a gated path could bleed through to a signed-in visitor
+hitting the same URL — this session already has a documented CDN-caching
+surprise (static-file responses staying `X-Vercel-Cache: HIT` far past the
+app's own freshness window). Tested directly: forced a signed-out 404 on
+`/review`, then immediately loaded it signed-in five times in a row — every
+one came back correct. Middleware's own 404 response carries no
+`X-Vercel-Cache` header at all, unlike the static-file case; this is not a
+shared-cache bug.
+
+Confirmed the real mechanism instead: the admin session cookie
+(`lib/adminAuth.js`, 12h `Max-Age`) only gets refreshed as a *side effect*
+of a successful authenticated API call — not just from a tab sitting open.
+Leave a tab open for a long stretch (waiting on a scheduled check, say)
+without it making any further authenticated calls, and the cookie quietly
+expires in the background. The next admin-nav click then hits a genuinely
+invalid session and 404s correctly — that part of the gate is working
+exactly as designed. Reloading fixes it only because the reload re-runs
+`supabase-auth.js`'s login check, which re-authenticates with the password
+still held in `sessionStorage` and gets a fresh `Set-Cookie` as a side
+effect. Confirmed this theory with Arjun (matches: happens after a long
+idle gap, not shortly after logging in) before writing anything.
+
+Fix: a `startSessionKeepAlive()` ping, added to `supabase-auth.js` and each
+of `admin.html`, `review.html`, `analytics-review.html`, `admin-review.html`
+— once signed in, it re-calls that page's own already-used API endpoint
+every 30 minutes for as long as the tab stays open, which is what refreshes
+the cookie's `Set-Cookie` on success. 30 minutes is well under half the
+cookie's 12h lifetime, so a tab left open indefinitely should never let it
+lapse again, regardless of how long a scheduled check takes to finish.
+Guarded (`window._elpysSessionKeepAlive`) everywhere a page's own load
+function could plausibly re-run within one page view, so this can never
+stack a second interval; `supabase-auth.js` runs fresh once per page load
+and needs no guard. Purely additive — no existing gate, cookie-signing, or
+auth logic touched. Syntax-checked all five files; the fix relies on the
+same `Set-Cookie`-on-success behavior every admin API endpoint already had
+before this, not on any new server-side behavior.
+
+
 
 Elpys now has two mailboxes with different jobs: `elpysnotifications@gmail.com`
 stays the outbound-only SMTP account the digest sends through — it is not

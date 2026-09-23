@@ -228,6 +228,21 @@
   const API = '/api/admin';
   const _password = sessionStorage.getItem('elpys_admin_pw');
   const ID = new URLSearchParams(location.search).get('id');
+
+  // Keeps the 12h admin session cookie (middleware.js) from expiring while
+  // this tab sits open and idle: the cookie only refreshes as a side effect
+  // of a successful admin API call, so a long enough gap between them lets
+  // it quietly expire. The next admin-nav click then 404s until something
+  // re-authenticates, which reads as a random, unexplained bug rather than
+  // the plain session timeout it is. 30 minutes is well under half the
+  // cookie's 12h lifetime. Guarded so calling this more than once never
+  // stacks a second interval.
+  function startSessionKeepAlive() {
+    if (window._elpysSessionKeepAlive) return;
+    window._elpysSessionKeepAlive = setInterval(function () {
+      fetch(API, { headers: { 'x-admin-password': _password } }).catch(function () {});
+    }, 30 * 60 * 1000);
+  }
   // Set once the row is found, so handleSave and the back-link know which
   // list this opportunity belongs to without re-deriving it every time.
   let CURRENT_KIND = null;
@@ -265,6 +280,7 @@
         throw new Error([e.error || 'HTTP ' + res.status, e.message].filter(Boolean).join(' — '));
       }
       const { pending, published } = await res.json();
+      startSessionKeepAlive();
 
       let row = (pending || []).find(r => String(r.id) === ID);
       if (row) {

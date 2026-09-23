@@ -189,6 +189,22 @@
   const API = '/api/analytics-review';
   let _password = '';
 
+  // Keeps the 12h admin session cookie (middleware.js) from expiring while
+  // this tab sits open and idle: the cookie only refreshes as a side effect
+  // of a successful admin API call, so a long enough gap between them —
+  // leaving this tab open overnight, say, waiting on a scheduled check —
+  // lets it quietly expire. The next admin-nav click then 404s until
+  // something re-authenticates, which reads as a random, unexplained bug
+  // rather than the plain session timeout it is. 30 minutes is well under
+  // half the cookie's 12h lifetime. Guarded so calling this more than once
+  // never stacks a second interval.
+  function startSessionKeepAlive() {
+    if (window._elpysSessionKeepAlive) return;
+    window._elpysSessionKeepAlive = setInterval(function () {
+      fetch(API, { headers: { 'x-admin-password': _password } }).catch(function () {});
+    }, 30 * 60 * 1000);
+  }
+
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -437,6 +453,7 @@
 
       const { reviews, taskRun, supabase, status } = await res.json();
       sessionStorage.setItem('elpys_admin_pw', _password);
+      startSessionKeepAlive();
       loginPanel().style.display   = 'none';
       loadingPanel().style.display = 'none';
       document.getElementById('content').style.display = 'block';

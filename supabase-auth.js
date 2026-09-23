@@ -56,6 +56,21 @@ function showModal(opts) {
   // ── Admin session (synchronous sessionStorage check) ─────────────────────
   var adminPw = sessionStorage.getItem('elpys_admin_pw');
   if (adminPw) {
+    // Keeps the 12h admin session cookie (middleware.js) from expiring while
+    // this tab sits open and idle on a PUBLIC page — this is likely where an
+    // admin spends the most idle time, e.g. leaving the homepage open while
+    // waiting on a scheduled check. The cookie only refreshes as a side
+    // effect of a successful admin API call, so without this, a long enough
+    // gap lets it quietly expire — the next admin-nav click then 404s until
+    // something re-authenticates, reading as a random bug rather than the
+    // plain session timeout it is. Reuses the same summary endpoint the dot
+    // below already calls; 30 minutes is well under half the cookie's
+    // lifetime. Runs once per page load — no guard needed, since a fresh
+    // load of this script is exactly what should start a fresh interval.
+    setInterval(function () {
+      fetch('/api/review?summary=1', { headers: { 'x-admin-password': adminPw } }).catch(function () {});
+    }, 30 * 60 * 1000);
+
     if (authEl)   authEl.style.display   = 'none';
     if (signupEl) signupEl.style.display = 'none';
     var submitEl = document.querySelector('.header-submit-link');
