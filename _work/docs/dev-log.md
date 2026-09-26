@@ -7,7 +7,47 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
-## 2026-09-23 — The intermittent 404 on admin nav clicks: an expiring session cookie, not a caching bug
+## 2026-09-26 — The admin session fix from three days ago wasn't enough: the timer itself was the weak link
+
+Arjun reported the same 404-until-reload still happening after the
+2026-09-23 keep-alive fix shipped. Right diagnosis, incomplete fix — the
+gap was in what a client-side JS timer can actually promise.
+
+The 2026-09-23 fix added a `setInterval` re-authenticating every 30 minutes
+so the 12h session cookie would never sit unrefreshed long enough to
+expire. That reasoning has a hole: it assumes the tab's JS keeps running
+for the whole gap. Browsers throttle, freeze, or fully discard backgrounded
+tabs to save memory and battery, and if the machine itself sleeps (lid
+closed) while a scheduled check runs for however long it takes, no
+JavaScript executes at all until it wakes — the interval cannot fire during
+that window regardless of how it's written. "Leave a tab open and go do
+something else while a check runs" is exactly the scenario where a
+background tab is least likely to keep ticking.
+
+Fixed at the root instead of patching the timer harder: `SESSION_MAX_AGE_S`
+in `lib/adminAuth.js` goes from 12 hours to 30 days. This removes the
+dependency on any client-side timer surviving at all — a cookie that lasts
+a month makes a missed tick, a frozen tab, or a sleeping laptop overnight
+irrelevant to whether the next click works. Confirmed this isn't a security
+loosening: the cookie only ever gated whether the page SHELL loads (see its
+own long-standing comment in `lib/adminAuth.js`) — every actual admin API
+call is still independently gated by the password header on every request,
+completely unaffected by this value.
+
+Kept the interval as a secondary safety net and added a `visibilitychange`
+listener alongside it in the same five places (`supabase-auth.js`,
+`admin.html`, `review.html`, `analytics-review.html`, `admin-review.html`):
+the moment a tab becomes visible again — which is also the moment right
+before someone is about to click something — is exactly when a missed
+refresh would matter most, so re-authenticate right then instead of only on
+the next scheduled tick. Belt-and-suspenders on top of a fix that no longer
+actually needs it to work, rather than the whole fix depending on it.
+
+Confirmed via `node -e` that `adminSessionCookie()` now produces
+`Max-Age=2592000` (30 days exactly). All six touched files pass
+`node --check` / script-syntax extraction.
+
+
 
 Arjun reported that clicking "Data review" (and sometimes other admin pages)
 consistently 404s after a data check has run, and reloading fixes it.

@@ -229,19 +229,31 @@
   const _password = sessionStorage.getItem('elpys_admin_pw');
   const ID = new URLSearchParams(location.search).get('id');
 
-  // Keeps the 12h admin session cookie (middleware.js) from expiring while
-  // this tab sits open and idle: the cookie only refreshes as a side effect
-  // of a successful admin API call, so a long enough gap between them lets
-  // it quietly expire. The next admin-nav click then 404s until something
-  // re-authenticates, which reads as a random, unexplained bug rather than
-  // the plain session timeout it is. 30 minutes is well under half the
-  // cookie's 12h lifetime. Guarded so calling this more than once never
-  // stacks a second interval.
+  // Keeps the admin session cookie (lib/adminAuth.js, 30 days) from
+  // expiring while this tab sits open: the cookie only refreshes as a side
+  // effect of a successful admin API call, so a long enough gap between
+  // them lets it quietly expire. The next admin-nav click then 404s until
+  // something re-authenticates, which reads as a random, unexplained bug
+  // rather than the plain session timeout it is.
+  //
+  // The interval alone can't be trusted to survive the whole gap — browsers
+  // throttle, freeze, or fully discard backgrounded tabs, and if the
+  // machine sleeps, no JS runs at all until it wakes. That is exactly what
+  // made the old 12h cookie bite; 30 days makes a missed tick or two
+  // harmless. The visibilitychange listener is the belt-and-suspenders on
+  // top of that: the moment this tab is looked at again is also the moment
+  // right before someone clicks something, so refresh right then instead
+  // of waiting for the next scheduled tick. Guarded so calling this more
+  // than once never stacks a second interval or a second listener.
   function startSessionKeepAlive() {
     if (window._elpysSessionKeepAlive) return;
-    window._elpysSessionKeepAlive = setInterval(function () {
+    var ping = function () {
       fetch(API, { headers: { 'x-admin-password': _password } }).catch(function () {});
-    }, 30 * 60 * 1000);
+    };
+    window._elpysSessionKeepAlive = setInterval(ping, 30 * 60 * 1000);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') ping();
+    });
   }
   // Set once the row is found, so handleSave and the back-link know which
   // list this opportunity belongs to without re-deriving it every time.

@@ -56,20 +56,33 @@ function showModal(opts) {
   // ── Admin session (synchronous sessionStorage check) ─────────────────────
   var adminPw = sessionStorage.getItem('elpys_admin_pw');
   if (adminPw) {
-    // Keeps the 12h admin session cookie (middleware.js) from expiring while
-    // this tab sits open and idle on a PUBLIC page — this is likely where an
+    // Keeps the admin session cookie (lib/adminAuth.js, 30 days) from
+    // expiring while this tab sits open on a PUBLIC page — likely where an
     // admin spends the most idle time, e.g. leaving the homepage open while
     // waiting on a scheduled check. The cookie only refreshes as a side
-    // effect of a successful admin API call, so without this, a long enough
-    // gap lets it quietly expire — the next admin-nav click then 404s until
-    // something re-authenticates, reading as a random bug rather than the
-    // plain session timeout it is. Reuses the same summary endpoint the dot
-    // below already calls; 30 minutes is well under half the cookie's
-    // lifetime. Runs once per page load — no guard needed, since a fresh
-    // load of this script is exactly what should start a fresh interval.
-    setInterval(function () {
+    // effect of a successful admin API call.
+    //
+    // The interval alone isn't enough: it depends on this tab's JS
+    // continuing to run for the whole gap, and browsers throttle, freeze, or
+    // fully discard backgrounded tabs to save memory — if the machine itself
+    // sleeps while a check runs, no JS executes at all until it wakes, so
+    // the interval simply cannot fire during that window. That gap is
+    // exactly what made 12h (the old cookie lifetime) bite; the cookie is
+    // now 30 days precisely so a missed interval or two no longer matters.
+    // The visibilitychange listener is the belt-and-suspenders on top of
+    // that: the moment this tab is looked at again is also the moment right
+    // before someone clicks something, so refresh right then rather than
+    // waiting for the next scheduled tick. Reuses the same summary endpoint
+    // the dot below already calls. Runs once per page load — no guard
+    // needed, since a fresh load of this script is exactly what should
+    // start a fresh interval/listener.
+    var pingAdminSession = function () {
       fetch('/api/review?summary=1', { headers: { 'x-admin-password': adminPw } }).catch(function () {});
-    }, 30 * 60 * 1000);
+    };
+    setInterval(pingAdminSession, 30 * 60 * 1000);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') pingAdminSession();
+    });
 
     if (authEl)   authEl.style.display   = 'none';
     if (signupEl) signupEl.style.display = 'none';
