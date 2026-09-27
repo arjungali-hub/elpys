@@ -412,8 +412,8 @@ const CATEGORY_ICON_PATHS = {
     '<circle cx="63" cy="31" r="8" fill="none" stroke="#e8935f" stroke-width="3"/>' +
     '<path d="M50 63c0-8 6-14 13-14s13 6 13 14" fill="none" stroke="#e8935f" stroke-width="3" stroke-linecap="round"/>',
   environment:
-    '<path d="M48 22c14 6 20 18 16 34-16 2-28-8-30-24-1-6 3-11 14-10z" fill="none" stroke="#d9662f" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>' +
-    '<path d="M34 56c6-10 14-18 26-28" fill="none" stroke="#2b2420" stroke-width="2" stroke-linecap="round" opacity="0.5"/>',
+    '<path d="M48 20C66 30 70 50 48 68C26 50 30 30 48 20Z" fill="none" stroke="#d9662f" stroke-width="3" stroke-linejoin="round"/>' +
+    '<path d="M48 27v34" fill="none" stroke="#2b2420" stroke-width="2" stroke-linecap="round" opacity="0.5"/>',
   food:
     '<path d="M30 20v18M34 20v14M38 20v18" fill="none" stroke="#d9662f" stroke-width="3" stroke-linecap="round"/>' +
     '<path d="M34 34v30" fill="none" stroke="#d9662f" stroke-width="3" stroke-linecap="round"/>' +
