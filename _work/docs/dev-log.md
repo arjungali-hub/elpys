@@ -47,6 +47,25 @@ Confirmed via `node -e` that `adminSessionCookie()` now produces
 `Max-Age=2592000` (30 days exactly). All six touched files pass
 `node --check` / script-syntax extraction.
 
+Verified live in production after deploy (real headless-browser login flow,
+not curl — Vercel's bot-mitigation firewall started 403-ing repeated scripted
+curl requests partway through this session, unrelated to the app itself).
+`elpys_admin_session`'s actual cookie in the browser expires 30.00 days out
+after a fresh login — the primary fix is confirmed working.
+
+The `visibilitychange` listener needed a second verification pass: an
+initial attempt using CDP's `Page.setWebLifecycleState` (frozen → active, to
+simulate backgrounding a tab) produced zero network requests on any page,
+which looked like the listener wasn't firing. It turned out to be a test
+artifact, not a bug — that CDP call doesn't actually dispatch a real
+`visibilitychange` DOM event; it's a different internal Chromium lifecycle
+signal. Dispatching `visibilitychange` directly (`document.dispatchEvent`)
+confirmed all four pages fire correctly: homepage pings
+`/api/review?summary=1`, admin.html pings `/api/admin`, review.html pings
+`/api/review`, analytics-review.html pings `/api/analytics-review`. Both
+mechanisms are now confirmed working; the 30-day cookie is the one actually
+load-bearing for the reported symptom.
+
 
 
 Arjun reported that clicking "Data review" (and sometimes other admin pages)
