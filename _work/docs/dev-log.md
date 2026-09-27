@@ -7,6 +7,158 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-27 — Cover photo + gallery, on a branch, not yet merged (schema/storage not yet live)
+
+Built on `feature/card-cover-and-gallery-photos`, off `main`, per instruction
+not to do this directly on `main` — a multi-part feature touching the
+database, both submission forms, the homepage card, and the detail page. Not
+merged yet: the database side needs a human to run a migration by hand first
+(see "Still needs doing" below) — merging before that would ship a homepage
+that 400s, since the anon key would be asked to select columns that don't
+exist in the live grant yet.
+
+### Schema
+
+`supabase/migrations/20260926000000_opportunity_photos.sql` adds
+`cover_image_url text` (nullable — null means "show the category fallback
+icon," never a stored fallback path) and `gallery_image_urls text[] not null
+default '{}'` to `public."Opportunities"`. Both added to `PUBLIC_COLUMNS` in
+supabase-client.js *and* the anon/authenticated column grant in the same
+migration — this exact two-places trap is already documented in the
+2026-08-26 entry, and it applies here just as much as it did to
+`admin_notes`/`redesign_prompts` before. `opportunity_publish_gate` and its
+trigger are untouched on purpose: a missing or empty cover/gallery must never
+block publishing.
+
+### Storage — and a deliberate deviation from "upload through the API route"
+
+The spec asked for server-side upload validation "in the API route(s) that
+handle the submission form." Built it differently: photos upload straight
+from the browser to a new public Supabase Storage bucket
+(`opportunity-images`), using the same anon key already embedded in
+supabase-client.js, and only the resulting URL travels through `/api/submit`
+or `/api/admin`. Reason: a single photo can be up to 5MB, and Vercel's
+serverless functions have an unconfigurable ~4.5MB request body limit on
+every plan — proxying the bytes through a Vercel function was never actually
+viable, not a style choice. "Server-side validation" still holds: the bucket
+itself enforces `file_size_limit` (5MB) and `allowed_mime_types`
+(jpeg/png/webp) independent of anything the client claims, a storage RLS
+policy restricts anon/authenticated to INSERT-only under `uploads/` with a
+filename matching `<uuid>.<ext>` exactly (no overwrite, no delete, no
+client-chosen name), and both `/api/submit` and `/api/admin` re-validate that
+any URL they're handed actually matches that exact bucket/path/filename
+shape before writing it to the row — a hand-rolled request can't claim an
+arbitrary external image as if it were a real upload. The admin edit form
+uses the identical upload path; there's no separate elevated route, since
+replacing a listing's photo from the panel is the same operation as a
+submitter uploading one.
+
+`uploadOpportunityImage()` (supabase-client.js) is the one shared upload
+function all three forms (submit, admin edit) call — never trusts
+`file.name`, generates the stored filename from `crypto.randomUUID()` plus an
+extension read off the validated MIME type.
+
+`/api/submit` retries the insert without the two photo columns on a
+PGRST204 naming them, mirroring the existing `schedule`-column fallback — so
+a submission still succeeds (photos just don't attach) if this deploys before
+the migration runs, rather than every submission failing outright.
+
+### Homepage card — Option C
+
+Rewrote `buildCardHtml()` in index.html: cover photo (or, when absent, a
+category fallback icon — see below) fills the top of the card with the
+category as a pill overlaid top-left, a one-time listing's date as a second
+pill top-right, org name, one condensed meta line ("Ages 13+ · Saturday
+mornings" — "Where" dropped from the card face, still on the detail page), a
+two-line-clamped description, and a single "More info" button linking to the
+detail page (confirmed the detail page already shows the real sign-up
+button prominently in `.detail-box` — moving the direct signup action off
+the card doesn't remove it from the site, just one click deeper). Removed
+the collapsible "How to sign up" block and the old Sign up/More info button
+pair from the card face entirely. The outer `.card` element's `data-*`
+attributes are untouched — verified live (mocked data, see below) that the
+category filter, age filter, and card visibility toggling all still work
+against the new inner markup. `loading.js`'s card skeleton gained a matching
+photo-shaped block so the loading state doesn't jump when real cards arrive.
+
+Dead CSS removed alongside the rewrite (`.card-top`, `.card-tag`,
+`.card-event-date`, `.card-meta`, the `.card-steps` details/summary rules,
+`.steps-count`) — confirmed each was unused anywhere else first;
+`.card-actions`, `.steps`, `.steps-label`, `.card-note` stay, since
+opportunities-detail.html still uses them.
+
+### Category fallback icon
+
+`categoryFallbackIconHtml()` (supabase-client.js) picks one hand-drawn icon
+by the listing's first tag. Checked the *actual* distinct tags in production
+via the anon REST endpoint rather than assuming a list: `community`,
+`environment`, `food`, `animals` — plus one generic sparkle catch-all (built
+from the wordmark's own sparkle-diamond path in
+`logos/elpys-logo-full.html`) for anything else. Drawn in the same accent
+palette as the wordmark (`#d9662f`/`#e8935f`/`#f2a03d`/`#2b2420`) rather than
+sourcing stock photography — licensing risk, and misleading specificity for
+a listing that isn't the org shown. The environment (leaf) icon's first
+attempt rendered as a twisted, unrecognizable blob once actually visible in
+a browser, not obvious from the path data alone — replaced with a simpler
+symmetric two-curve outline in a follow-up commit on the same branch.
+
+### Detail page gallery + lightbox
+
+Cover photo (or fallback icon, same rule as the card) large at the top of
+`opportunities-detail.html`, a thumbnail row for `gallery_image_urls` when
+present, and a dependency-free lightbox (no new front-end library, matching
+this codebase's own preference — Leaflet is still the only outside library
+here). The lightbox steps through the cover photo plus every gallery image
+in order. Accessibility, matching the bar already set elsewhere on this site:
+`role="dialog"` `aria-modal="true"`, focus moves to the close button on open
+and back to the exact thumbnail that opened it on close, Tab is trapped
+among the three controls (close/prev/next) while open, Escape closes,
+ArrowLeft/ArrowRight step, and every image (thumbnail, lightbox, cover) has
+real alt text — org name plus "cover photo" or "photo N of M" — carried as
+the accessible name of its enclosing button rather than a redundant
+`aria-label` alongside it.
+
+### QA — and what's still unverified
+
+No access to a Vercel account login in this environment, so the live preview
+deploy (behind Vercel's deployment-protection SSO) couldn't be reached
+directly — confirmed a real Vercel login prompt, not a bypassable gate, via
+both curl and a real browser. Fell back to serving this branch's own files
+locally and stubbing `fetch` for just the `Opportunities` REST call so every
+other code path (categoryFallbackIconHtml, the real card renderer, the real
+lightbox) ran unmodified against mock rows covering: a listing with a cover
+photo and a 4-image gallery, one-time + no-photo together, and one row per
+fallback icon including an unrecognized tag (generic catch-all). Confirmed
+by screenshot and direct DOM assertion: all five fallback icons render
+correctly (the leaf fix above came from this), category/age filtering still
+correctly shows/hides cards by their preserved `data-*` attributes, the
+lightbox opens/closes/steps/traps focus/restores focus correctly (verified
+programmatically, not just visually), and `uploadOpportunityImage()`'s
+client-side type/size checks reject a bad file before any network call.
+
+Genuinely not yet verified, and unable to be until the migration and bucket
+exist: a real end-to-end upload (browser → Storage → row), a submission with
+photos actually landing in the admin queue with both images visible to a
+reviewer, and the admin edit form's photo fields against a real pending row
+(admin-review.html redirects to the login flow with no session, which this
+local setup has no way to establish). No new console errors observed on any
+touched page beyond ones that already existed before this branch
+(Turnstile rejecting a non-production origin; an unrelated analytics 404).
+
+### Still needs doing, by hand, before this is safe to merge
+
+1. Run `supabase/migrations/20260926000000_opportunity_photos.sql` against
+   the database via the Supabase SQL editor — this environment has no
+   Supabase CLI link, service-role key, or MCP tool available to run it
+   directly, unlike some earlier schema changes in this log.
+2. Once that's live, re-run the QA above against the real preview deploy
+   (or ask for deployment-protection to be temporarily opened) to confirm
+   the upload → submit → admin-review path actually works end to end, not
+   just against mocked data.
+3. Then merge — this branch was deliberately not merged to `main` as part of
+   this work, unlike the mailbox-cutover PR, since there was no instruction
+   to merge and the database dependency makes an unreviewed merge risky.
+
 ## 2026-09-26 — The admin session fix from three days ago wasn't enough: the timer itself was the weak link
 
 Arjun reported the same 404-until-reload still happening after the
