@@ -24,6 +24,24 @@ function restBase(url) {
 
 const SUPABASE_URL      = restBase(process.env.SUPABASE_URL);
 const SUPABASE_KEY      = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Photos never travel through this function's own request body — a single
+// 5MB image already exceeds Vercel's serverless function body limit — the
+// browser uploads straight to Supabase Storage (supabase-client.js,
+// uploadOpportunityImage) and only sends the resulting URL here. That URL is
+// re-validated against the exact bucket/path shape the client is only ever
+// able to produce, so a hand-rolled request can't claim an arbitrary external
+// image (or an object outside uploads/) as if it were a real upload.
+const STORAGE_IMAGE_PREFIX = SUPABASE_URL
+  ? SUPABASE_URL.replace(/rest\/v1\/$/, 'storage/v1/object/public/opportunity-images/uploads/')
+  : null;
+const IMAGE_FILENAME_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|webp)$/;
+const MAX_GALLERY_IMAGES = 8;
+
+function isValidImageUrl(url) {
+  if (!STORAGE_IMAGE_PREFIX || typeof url !== 'string') return false;
+  return url.startsWith(STORAGE_IMAGE_PREFIX) && IMAGE_FILENAME_RE.test(url.slice(STORAGE_IMAGE_PREFIX.length));
+}
 // Trimmed: a trailing newline or stray space pasted into the Vercel dashboard
 // is invisible there but makes Cloudflare answer "invalid-input-secret".
 const TURNSTILE_SECRET  = (process.env.TURNSTILE_SECRET_KEY || '').trim();
@@ -313,6 +331,25 @@ async function handleSubmit(req, res) {
     if (hasEntry) schedule = clean;
   }
 
+  // ── 5c. Photos (optional — never required to submit or to publish) ───────
+  let coverImageUrl = null;
+  if (body.cover_image_url) {
+    if (!isValidImageUrl(body.cover_image_url)) {
+      return res.status(400).json({ error: 'Invalid cover photo.' });
+    }
+    coverImageUrl = body.cover_image_url;
+  }
+  let galleryImageUrls = [];
+  if (body.gallery_image_urls != null) {
+    if (!Array.isArray(body.gallery_image_urls) || body.gallery_image_urls.length > MAX_GALLERY_IMAGES) {
+      return res.status(400).json({ error: 'You can add up to ' + MAX_GALLERY_IMAGES + ' additional photos.' });
+    }
+    if (!body.gallery_image_urls.every(isValidImageUrl)) {
+      return res.status(400).json({ error: 'Invalid gallery photo.' });
+    }
+    galleryImageUrls = body.gallery_image_urls;
+  }
+
   // Geocode before inserting so the pending row already carries coordinates.
   // Deliberately awaited rather than fired off afterwards: the admin needs the
   // pin on the very first look at the card, and a failure here is non-fatal.
@@ -351,6 +388,8 @@ async function handleSubmit(req, res) {
     contact_phone:      body.contact_phone ? String(body.contact_phone).trim().slice(0, 50)  : null,
     card_note:          body.card_note   ? String(body.card_note).trim().slice(0, 500)  : null,
     admin_notes:        body.admin_notes ? String(body.admin_notes).trim().slice(0, 1000) : null,
+    cover_image_url:    coverImageUrl,
+    gallery_image_urls: galleryImageUrls,
     status:             'pending', // always set server-side, never from client
   };
 
@@ -385,6 +424,24 @@ async function handleSubmit(req, res) {
     delete retry.schedule;
     result = await insertRow(retry);
     if (result.ok) return res.status(200).json({ ok: true, warning: 'schedule-column-missing' });
+  }
+
+  // Same trap, for cover_image_url/gallery_image_urls: this deploy can land
+  // before the 20260926000000_opportunity_photos.sql migration is actually
+  // run against the database (that migration must be applied by hand — see
+  // its own header). Drop the photo fields and retry rather than lose the
+  // whole submission; the photos themselves are already sitting in Storage
+  // and are not re-uploaded here, but they'd be orphaned (never attached to a
+  // row) until the columns exist and this listing is resubmitted or edited.
+  if (!result.ok && result.parsed && result.parsed.code === 'PGRST204' &&
+      /cover_image_url|gallery_image_urls/.test(String(result.parsed.message || ''))) {
+    console.warn('Opportunities cover_image_url/gallery_image_urls column(s) missing — retrying without them. ' +
+                 'Run supabase/migrations/20260926000000_opportunity_photos.sql against the database.');
+    const retry = Object.assign({}, payload);
+    delete retry.cover_image_url;
+    delete retry.gallery_image_urls;
+    result = await insertRow(retry);
+    if (result.ok) return res.status(200).json({ ok: true, warning: 'photo-columns-missing' });
   }
 
   if (!result.ok) {

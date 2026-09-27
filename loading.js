@@ -38,6 +38,7 @@
       var w = pick(CARD_W, i);
       out.push(
         '<div class="skel-card">' +
+          '<div class="skel skel-photo"></div>' +
           '<div class="skel skel-line" style="width:' + w[0] + '"></div>' +
           '<div class="skel skel-title" style="width:' + w[1] + '"></div>' +
           '<div class="skel skel-title" style="width:' + w[2] + '"></div>' +

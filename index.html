@@ -410,38 +410,35 @@
     const isOneTime  = opp._opportunityType === 'one_time';
     const schedDays  = opp._schedule ? opp._schedule.days.join(' ')  : '';
     const schedTimes = opp._schedule ? opp._schedule.times.join(' ') : '';
-    const stepsHtml = opp._steps.map((step, i) =>
-      '<li><span class="n">' + (i + 1) + '</span><span>' + escHtml(step) + '</span></li>'
-    ).join('');
-    const dateBadge = isOneTime && opp._eventDate ? '<p class="card-event-date">' + escHtml(formatEventDate(opp._eventDate)) + '</p>' : '';
-    const noteHtml = opp._note ? '<p class="card-note">' + escHtml(opp._note) + '</p>' : '';
-    const isMailto = String(opp._signupLink || '').startsWith('mailto:');
-    const btnAttrs = isMailto ? '' : ' target="_blank" rel="noopener"';
+
+    const datePill = isOneTime && opp._eventDate
+      ? '<span class="card-pill card-pill-date">' + escHtml(formatEventDate(opp._eventDate)) + '</span>' : '';
+    const photoHtml = opp._coverImageUrl
+      ? '<img class="card-photo-img" src="' + safeUrl(opp._coverImageUrl) + '" alt="' + escHtml(opp.name) + ' cover photo" loading="lazy" />'
+      : '<span class="card-photo-fallback">' + categoryFallbackIconHtml(opp.tag) + '</span>';
+
+    // Condensed single meta line — age plus a short "when", replacing the old
+    // Age/When/Where three-row grid. "Where" moved to the detail page only.
+    const metaHtml = '<p class="card-meta-line">' +
+      '<span>' + opp._ageHtml + '</span>' +
+      (opp._when ? ' <span class="card-meta-sep">·</span> <span>' + escHtml(opp._when) + '</span>' : '') +
+    '</p>';
 
     return '<div class="card" data-tags="' + escHtml(opp._tags) + '" data-age="' + escHtml(opp._dataAge) + '"' + condAttr +
            (isOneTime ? ' data-onetime="true"' : '') +
            ' data-sched-days="' + escHtml(schedDays) + '" data-sched-times="' + escHtml(schedTimes) + '">' +
-      '<div class="card-top">' +
+      '<div class="card-photo">' +
+        photoHtml +
+        '<span class="card-pill card-pill-category">' + escHtml(opp.tag) + '</span>' +
+        datePill +
+      '</div>' +
+      '<div class="card-body">' +
         '<a class="card-name" href="' + safeUrl(opp.link) + '">' + escHtml(opp.name) + '</a>' +
-        '<span class="card-tag">' + escHtml(opp.tag) + '</span>' +
-      '</div>' +
-      dateBadge +
-      '<div class="card-meta">' +
-        '<span><strong>Age</strong> <span>' + opp._ageHtml + '</span></span>' +
-        '<span><strong>When</strong> <span>' + escHtml(opp._when) + '</span></span>' +
-        '<span><strong>Where</strong> <span>' + escHtml(opp._where) + '</span></span>' +
-      '</div>' +
-      '<p class="card-desc">' + escHtml(opp.desc) + '</p>' +
-      '<details class="card-steps">' +
-        '<summary class="steps-label">How to sign up' +
-          (opp._steps.length ? ' <span class="steps-count">' + opp._steps.length + ' step' + (opp._steps.length === 1 ? '' : 's') + '</span>' : '') +
-        '</summary>' +
-        '<ol class="steps">' + stepsHtml + '</ol>' +
-        noteHtml +
-      '</details>' +
-      '<div class="card-actions">' +
-        '<a class="btn" href="' + safeUrl(opp._signupLink) + '"' + btnAttrs + '>' + escHtml(opp._signupLabel) + '</a>' +
-        '<a class="btn btn-ghost" href="' + safeUrl(opp.link) + '">More info</a>' +
+        metaHtml +
+        '<p class="card-desc card-desc-clamp">' + escHtml(opp.desc) + '</p>' +
+        '<div class="card-actions">' +
+          '<a class="btn card-more-info" href="' + safeUrl(opp.link) + '">More info</a>' +
+        '</div>' +
       '</div>' +
     '</div>';
   }

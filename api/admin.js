@@ -12,6 +12,20 @@ const { gateReasons, VERIFY_ACTION_REASONS } = require('../lib/verificationGate'
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// Same upload path and same validation as /api/submit (see that file's own
+// comment): the admin edit form's photo fields upload straight to Supabase
+// Storage from the browser too, so what reaches here is only ever a URL.
+const STORAGE_IMAGE_PREFIX = SUPABASE_URL
+  ? SUPABASE_URL.replace(/rest\/v1\/?$/, 'storage/v1/object/public/opportunity-images/uploads/')
+  : null;
+const IMAGE_FILENAME_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|webp)$/;
+const MAX_GALLERY_IMAGES = 8;
+
+function isValidImageUrl(url) {
+  if (!STORAGE_IMAGE_PREFIX || typeof url !== 'string') return false;
+  return url.startsWith(STORAGE_IMAGE_PREFIX) && IMAGE_FILENAME_RE.test(url.slice(STORAGE_IMAGE_PREFIX.length));
+}
+
 function supabaseHeaders(extra) {
   return Object.assign({
     apikey:        SUPABASE_KEY,
@@ -240,13 +254,27 @@ module.exports = async function handler(req, res) {
                         'when','schedule','where','address','lat','lng','signup_link','signup_steps','section',
                         'card_note','signup_label','slug','admin_notes',
                         'website','contact_email','contact_phone','opportunity_type','event_date',
-                        'org_tier','org_legal_name','ein','wa_charity_number','org_domain'];
+                        'org_tier','org_legal_name','ein','wa_charity_number','org_domain',
+                        'cover_image_url','gallery_image_urls'];
       const updates = {};
       for (const key of EDITABLE) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
       }
       if (Object.keys(updates).length === 0) {
         return res.status(400).json({ error: 'No fields to update' });
+      }
+
+      // cover_image_url/gallery_image_urls: null/empty clears them (removing a
+      // photo in the panel), otherwise each URL must be exactly what the
+      // panel's own upload can produce — not an arbitrary external image.
+      if (updates.cover_image_url != null && !isValidImageUrl(updates.cover_image_url)) {
+        return res.status(400).json({ error: 'Invalid cover photo.' });
+      }
+      if (updates.gallery_image_urls !== undefined) {
+        const g = updates.gallery_image_urls;
+        if (!Array.isArray(g) || g.length > MAX_GALLERY_IMAGES || !g.every(isValidImageUrl)) {
+          return res.status(400).json({ error: 'Invalid gallery photos (up to ' + MAX_GALLERY_IMAGES + ', each from a real upload).' });
+        }
       }
 
       // An edited address needs new coordinates, or the map pin keeps pointing
