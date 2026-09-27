@@ -7,6 +7,74 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-27 — Migration applied, live end-to-end QA passed — ready to merge
+
+Follow-up to the entry directly below this one. The migration and storage
+setup that entry left as "still needs doing by hand" is now done, verified
+twice over (once by Cowork applying it, once by me independently re-checking
+and extending it), and the branch's own remaining unknowns are now closed.
+
+**Cowork applied `20260926000000_opportunity_photos.sql`** via Supabase's
+migration tool — checked the grant list first and confirmed it was the
+existing 28 columns plus the two new ones, nothing dropped. Verified:
+columns exist with the right types/defaults, the anon REST endpoint returns
+200 (not 42501) when selecting the new columns, the `opportunity-images`
+bucket exists with the right `public`/`file_size_limit`/`allowed_mime_types`,
+both storage policies exist, and a real anon upload + public fetch round-trip
+succeeded. One note from that pass: cleaning up the test object required
+deleting its `storage.objects` catalog row directly in Postgres, since anon
+has no delete policy (by design) and Cowork's Supabase connection has no
+service-role access to call the real Storage delete endpoint — this removes
+it from every listing/query, but the underlying blob in the storage backend
+itself isn't reclaimed by that route. Same trade-off applies below.
+
+**I then independently re-verified against production myself**, not just
+trusting the report — this is the "still needs doing" list from the entry
+below, now actually done:
+
+- Hit the anon REST endpoint directly (curl, not through any app code):
+  `200`, `cover_image_url`/`gallery_image_urls` both present and correctly
+  typed on real rows.
+- Re-ran this branch's own files locally against **real** production data
+  (no more `fetch` stub needed, now that the columns/grant are live) — all 13
+  published listings render correctly with the new card design: multi-category
+  pills, per-category fallback icons (confirmed live that "Animals ·
+  Environment" correctly shows the animals/paw icon, since tags are
+  alphabetized and "animals" sorts first), clamped descriptions, filter bar
+  built from live tags. No console errors beyond a pre-existing, unrelated
+  analytics 404.
+- Did a **real upload**, browser to Storage, no mocking: submit.html's cover
+  photo field, a genuine 1×1 PNG, through the actual `uploadOpportunityImage()`
+  path. Got back a real public URL
+  (`.../storage/v1/object/public/opportunity-images/uploads/<uuid>.png`),
+  confirmed it 200s with the right content-type and byte count.
+- Confirmed the RLS policies reject what they're supposed to, as raw HTTP
+  requests bypassing the client entirely, not just trusting the client-side
+  checks: a path outside `uploads/`, a non-UUID filename, a disallowed MIME
+  type, and an anon delete attempt on the file just uploaded all came back
+  `403 AccessDenied` / RLS violation.
+- Confirmed `api/submit.js`'s (and by the same logic, `api/admin.js`'s)
+  `isValidImageUrl()` accepts the real upload URL and rejects an external
+  URL, a wrong-bucket URL, a non-`uploads/` path, and a wrong extension —
+  exercised the actual regex/prefix logic, not just read it.
+- Left one orphaned test object in the bucket (`uploads/701a559e-...png`, 69
+  bytes) — same limitation as Cowork's: anon can create but not delete, and I
+  have no service-role access either. Harmless, and exactly the
+  already-documented "orphaned uploads accumulate" trade-off from the entry
+  below, not a new problem. A service-role cleanup pass (or just deleting
+  these two files from the Storage tab) can happen whenever, with zero
+  urgency.
+
+What's still *not* independently verified live: `/api/submit` and
+`/api/admin` actually inserting a row with a real photo URL end-to-end
+(no Vercel access here to invoke them for real — only their validation logic
+was exercised directly), and the admin edit form against a real pending row
+(needs an authenticated admin session this environment can't establish).
+Both were already covered by code review; neither touches anything this
+entry's new checks didn't already exercise in isolation (the upload path,
+the URL validation, the row-shape). Confidence is high enough to call this
+ready to merge, but flagging the gap rather than papering over it.
+
 ## 2026-09-27 — Cover photo + gallery, on a branch, not yet merged (schema/storage not yet live)
 
 Built on `feature/card-cover-and-gallery-photos`, off `main`, per instruction
