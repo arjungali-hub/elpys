@@ -7,6 +7,77 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-29 — "Delete unused photos", and the combined /admin page is gone (branch, not merged)
+
+Same branch as the entry below (`fix/scrub-hidden-photo-location-before-upload`,
+commit `56139e1`); still not merged.
+
+**Delete unused photos.** Until now Storage files were never deleted, and
+Krish had to delete them by hand in the Supabase dashboard (five rounds so
+far). New endpoint `api/cleanup-photos.js`, using the service-role key the
+admin API already had. It lists `opportunity-images/uploads` and reads
+`cover_image_url` and `gallery_image_urls` from every Opportunities row, of
+any status, so pending and rejected listings keep their photos. It deletes a
+file only when all three hold:
+- it's a real upload (`<uuid>.<jpg|jpeg|png|webp>`);
+- no row mentions it;
+- it's older than 24 hours. Photos upload the moment they're picked, before
+  the form is sent or the editor is saved.
+
+A failed read, or an empty listings table, aborts with "Nothing was deleted".
+`?dry=1` only reports.
+
+It runs two ways:
+- **Weekly:** a Vercel cron, Mondays 09:00 UTC, an hour after the digest.
+  Crons only run on the production deployment.
+- **From admin mode:** a new header button, **Delete unused photos**, which
+  replaces "Send digest now" (that button only existed for testing; the
+  digest still sends weekly). The button does a dry run first, then a
+  confirmation dialog shows the count, the total size and how many newer
+  files it left alone. Only Delete in that dialog actually deletes.
+
+Tests: `test/cleanup-photos.test.js`, with Supabase mocked, all passing.
+- Only an old, unused upload is deleted; a used file, a 2-hour-old file, the
+  folder placeholder and a hand-named file are all kept.
+- A dry run deletes nothing.
+- The service-role key is used for the delete.
+- The cron secret is accepted; no password, a wrong password or a wrong cron
+  secret is refused before any Supabase call.
+- A failed row read, an empty table or a failed file list deletes nothing.
+
+The header button was also checked in local Chromium: dry run, then dialog,
+then delete, then the "Deleted 2 unused photos." message.
+
+At the time of this commit, exactly six files were unused and older than 24
+hours: the six originals replaced by the re-clean in the entry below. So the
+first press should delete exactly those.
+
+**The combined /admin page is removed from the code.** `admin.html` is now
+`admin-approve.html`, and it is only ever one of the three admin-mode pages:
+- `/admin-approve` serves the file directly;
+- `vercel.json` rewrites `/admin-edit` and `/admin-feedback` onto it, and the
+  path picks the view.
+
+Removed from the file: the no-view mode that showed all three panels (the
+Pending/Published/Feedback tab bar and its scroll-spy, the counts it
+mirrored, the page's own Data review/Analytics review links, its Log out
+button and its "Send digest now" bar), plus the `?view=` query fallback.
+`middleware.js` loses its special always-404 rule for bare `/admin` and the
+`/admin` matcher entries, and `admin` leaves the catch-all exclusion list in
+both `vercel.json` and `middleware.js`. So `/admin` is now just an unknown
+path, and gets the same 404 as any non-listing URL.
+
+This also fixed a live bug. On a listing's review page, the "← Back" link's
+starting value and both expired-session fallbacks pointed at `/admin`, which
+had been a 404. They now go to `/admin-approve` and `/admin-login`. Comments
+in review.html, analytics-review.html, loading.js, lib/adminAuth.js and
+api/admin-login.js that named `admin.html` now name `admin-approve.html`.
+
+Checked in local Chromium with the rewrites simulated: each of the three paths
+shows only its own panel, with no tab bar and no page errors. Earlier entries
+in this log still say `admin.html` and `/admin`; they're left as the record of
+what was true then.
+
 ## 2026-09-29 — Photos lose their hidden location data before upload (branch, not merged)
 
 Branch `fix/scrub-hidden-photo-location-before-upload` (`92c2874`). Not merged;
