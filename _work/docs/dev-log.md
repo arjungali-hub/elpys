@@ -7,6 +7,99 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-29 — Photos lose their hidden location data before upload (branch, not merged)
+
+Branch `fix/scrub-hidden-photo-location-before-upload` (`92c2874`). Not merged;
+Krish decides when.
+
+**The problem.** Uploads were stored byte-for-byte, hidden metadata included.
+Cowork's live test (row 122) showed the public copy of the EarthCorps cover still
+carried its GPS block (latitude, longitude, altitude, time) and camera model
+(iPhone 7), so anyone who downloaded a listing photo could read where it was
+taken. Only that one live photo had GPS, and it came from EarthCorps' public blog,
+but any phone photo uploaded through `/submit` or the admin editor would have
+published its exact location.
+
+**The approach.** A new pure function, `stripImageMetadata(bytes, mime)` in
+`supabase-client.js`, runs inside `uploadOpportunityImage`, so every caller
+(submit cover and gallery, admin cover and gallery) is covered with no call-site
+changes. It's a lossless, byte-level rewrite of the file's container that never
+decodes or re-encodes the pixels, which is the approach Krish preferred. It adds
+no dependency and needs no CSP change.
+- **JPEG:** keeps APP0 (JFIF), APP2 `ICC_PROFILE`, APP14 (Adobe, needed for
+  correct colour decoding) and every coding segment. Drops every other APPn
+  (APP1 Exif and XMP, APP13 IPTC/Photoshop, APP2 MPF, and the rest), COM
+  segments, and anything after the end-of-image marker. Phones put depth and HDR
+  gain-map images there, each with its own Exif/GPS.
+- **PNG:** drops `eXIf`, `tEXt`, `iTXt`, `zTXt` and `tIME`; keeps `iCCP` and the rest.
+- **WebP:** drops `EXIF` and `XMP ` chunks, clears their `VP8X` flags, keeps
+  `ICCP`, and rewrites the RIFF size.
+- **Orientation:** if the original's EXIF Orientation isn't 1, the function
+  writes a new minimal EXIF block containing only that tag (in the same place
+  for JPEG and PNG, at the end for WebP), so the photo still displays upright.
+- **Fail-safe:** anything unexpected (wrong magic bytes for the declared type,
+  bad lengths, no end marker, scan data that never ends) throws, and the upload
+  is refused with "We couldn't read that image. Please try a different photo."
+  The original is never uploaded as a fallback. The type and 5 MB checks run as
+  before, and the size is checked again after stripping.
+
+**Tests (local Chromium, the real function, real files made with Pillow +
+exiftool 12.76):**
+- **Files:** an iPhone-style JPEG with GPS, Orientation 6, ICC, a comment, an
+  MPF block and a second JPEG after EOI carrying its own GPS; a progressive JPEG
+  with ICC and GPS; a JPEG with XMP (including GPS) and IPTC/Photoshop; a PNG
+  with tEXt, zTXt, iTXt, tIME, eXIf (GPS) and iCCP; a PNG with Orientation 6; a
+  WebP with EXIF (GPS), XMP and ICCP; a WebP with Orientation 6.
+- **Metadata:** exiftool finds no GPS, XMP, IPTC, Photoshop, camera, software,
+  date, comment or text tags in any output. ICC survives wherever it existed.
+  Orientation is the only EXIF tag left, and only on the three rotated files.
+- **Pixels:** decoded pixels are byte-identical to the originals for all seven,
+  and JPEG scan data is identical.
+- **Display:** Chrome draws every cleaned file pixel-for-pixel the same as its
+  original, rotation included. The Orientation-6 JPEG displays as 480×640 (the
+  arrow points right, as it should) on the homepage card, the detail page and
+  the admin Photos block. Chrome ignores the Orientation tag in WebP, so those
+  looked identical either way.
+- **Refused:** a truncated JPEG, and a PNG labelled as JPEG, were both refused
+  with the friendly message.
+- **Upload flows:** with Storage mocked, `/submit` and the admin editor still
+  upload, preview and save cover + gallery. The captured upload bodies had no
+  metadata left. No console errors apart from the deliberate log line for the
+  refused file.
+- `node --check supabase-client.js` passes.
+
+**EarthCorps cover (row 93).** Cleaned in a Vercel sandbox, which ran the exact
+function from the pushed branch (extracted from `supabase-client.js`) on the
+real file:
+- **Before:** 1,846,646 bytes, with 16 GPS tags, IPTC, Photoshop, XMP (including
+  117 Lightroom settings) and two embedded thumbnails.
+- **After:** 1,802,859 bytes, with only Adobe APP14 and the sRGB ICC profile.
+  Decoded pixels are identical (checked with sharp, 1800×900).
+- **New file:** uploaded as `uploads/505f035b-8279-4260-9077-a1c7c21479d2.jpg`.
+  Reading it back from the public URL returned the same bytes, and exiftool
+  found no GPS, XMP, IPTC or camera tags in it.
+- **Row 93:** now points at the new file. The row's hash without the cover is
+  unchanged (`e7825c2d2fd7c8db7c71d54b714cb91b`), and it's still published.
+
+Checking the new cover on the branch preview
+(`elpys-ohjoof715-arjungali-hubs-projects.vercel.app`) needs a real browser,
+because the preview is behind Vercel's login and this session can't reach
+`vercel.app`.
+
+**Test rows.** Row 122 ("TEST — Elpys photo test (delete me)", pending) is
+deleted. Row 115 ("TEST", pending) is kept for future admin testing, at Krish's
+request.
+
+**Still to delete in the Supabase Storage tab** (SQL confirms no row uses any of
+them):
+- `uploads/91f78b55-809a-4351-ad3a-15dd377d14ff.jpg` (old EarthCorps cover, has GPS)
+- `uploads/e22df775-ca55-4cbf-98b6-df96de0898c9.jpg` (row 122 cover)
+- `uploads/4e69f957-52c9-4681-aa58-76003d5153aa.jpg` (row 122 gallery, a copy of the old EarthCorps photo, with GPS)
+
+**Not done (optional):** the other 12 live photos still carry non-location
+metadata such as camera model and software; none has GPS, per Cowork's check.
+They could be re-cleaned the same way.
+
 ## 2026-09-29 — Admin review card shows the submission's photos
 
 Follow-up 1 from the photo QA: an admin could approve a public submission
