@@ -79,6 +79,7 @@ const PUBLIC_COLUMNS = [
   'signup_link', 'signup_label', 'signup_steps', 'section', 'slug',
   'live_url', 'card_note', 'website', 'contact_email', 'contact_phone',
   'schedule', 'opportunity_type', 'event_date',
+  'cover_image_url', 'gallery_image_urls', 'photo_credit',
 ].join(',');
 
 // Caches the in-flight PROMISE, not the resolved rows.
@@ -237,6 +238,9 @@ function _transformRow(row) {
     _website:      row.website        || null,
     _contactEmail: row.contact_email  || null,
     _contactPhone: row.contact_phone  || null,
+    _coverImageUrl:  row.cover_image_url || null,
+    _galleryImageUrls: Array.isArray(row.gallery_image_urls) ? row.gallery_image_urls : [],
+    _photoCredit:  row.photo_credit   || null,
   };
 }
 
@@ -335,4 +339,104 @@ function makeMarkerIcon(height, withShadow) {
     options.shadowSize = [height, height];
   }
   return L.icon(options);
+}
+
+// ── Photo upload (submission form + admin edit) ─────────────────────────────
+//
+// Uploads go straight from the browser to Supabase Storage, using the same
+// public anon key already embedded above for reads — not through a Vercel
+// function. A single 5MB photo already exceeds Vercel's serverless function
+// request body limit (~4.5MB, unconfigurable, applies to every plan), so
+// proxying the bytes through /api/submit or /api/admin was never viable for
+// this feature. Only the resulting public URL — a short string — travels
+// through the normal JSON payload those endpoints already accept. Size and
+// MIME type are enforced again independently, server-side, by the bucket's
+// own file_size_limit/allowed_mime_types (see the migration) — this
+// client-side check is for fast feedback, not the actual gate.
+const STORAGE_ROOT = SUPABASE_URL.replace(/rest\/v1\/$/, '');
+const IMAGE_BUCKET = 'opportunity-images';
+const ALLOWED_IMAGE_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_GALLERY_IMAGES = 8;
+
+function _uuidV4() {
+  if (window.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => {
+    const r = Math.random() * 16 | 0;
+    const v = ch === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// Never trusts file.name for the stored path — only its declared MIME type,
+// checked against an allowlist, to pick an extension. Throws a message
+// that's safe to show the submitter directly.
+async function uploadOpportunityImage(file) {
+  const ext = ALLOWED_IMAGE_EXT[file.type];
+  if (!ext) throw new Error('Please choose a JPG, PNG, or WEBP image.');
+  if (file.size > MAX_IMAGE_BYTES) throw new Error('That image is larger than 5MB. Please choose a smaller file.');
+
+  const path = 'uploads/' + _uuidV4() + '.' + ext;
+  const res = await fetch(STORAGE_ROOT + 'storage/v1/object/' + IMAGE_BUCKET + '/' + path, {
+    method:  'POST',
+    headers: {
+      apikey:         SUPABASE_ANON_KEY,
+      Authorization:  'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': file.type,
+    },
+    body: file,
+  });
+  if (!res.ok) {
+    console.error('Image upload failed:', res.status, await res.text().catch(() => ''));
+    throw new Error('Upload failed. Please try again.');
+  }
+  return STORAGE_ROOT + 'storage/v1/object/public/' + IMAGE_BUCKET + '/' + path;
+}
+
+// ── Category fallback icon ───────────────────────────────────────────────────
+//
+// Shown in place of a cover photo when a listing has none. One simple
+// line-art icon per category tag actually in use in production (checked
+// directly against the live table on 2026-09-26 — not assumed: community,
+// environment, food, animals), plus one generic catch-all for anything else
+// or an unrecognized first tag on a multi-category listing. Drawn in the same
+// hand-drawn line-art language and accent palette as the wordmark's own
+// torch/sparkle marks (logos/elpys-logo-full.html: #d9662f, #e8935f, #f2a03d,
+// #2b2420) rather than a stock photo — licensing risk, and misleading
+// specificity for a listing that isn't the org shown.
+const CATEGORY_ICON_BG = '#F3F4F6'; // var(--surface)
+
+const CATEGORY_ICON_PATHS = {
+  community:
+    '<circle cx="37" cy="35" r="10" fill="none" stroke="#d9662f" stroke-width="3"/>' +
+    '<path d="M19 67c0-10 8-18 18-18s18 8 18 18" fill="none" stroke="#d9662f" stroke-width="3" stroke-linecap="round"/>' +
+    '<circle cx="63" cy="31" r="8" fill="none" stroke="#e8935f" stroke-width="3"/>' +
+    '<path d="M50 63c0-8 6-14 13-14s13 6 13 14" fill="none" stroke="#e8935f" stroke-width="3" stroke-linecap="round"/>',
+  environment:
+    '<path d="M48 20C66 30 70 50 48 68C26 50 30 30 48 20Z" fill="none" stroke="#d9662f" stroke-width="3" stroke-linejoin="round"/>' +
+    '<path d="M48 27v34" fill="none" stroke="#2b2420" stroke-width="2" stroke-linecap="round" opacity="0.5"/>',
+  food:
+    '<path d="M30 20v18M34 20v14M38 20v18" fill="none" stroke="#d9662f" stroke-width="3" stroke-linecap="round"/>' +
+    '<path d="M34 34v30" fill="none" stroke="#d9662f" stroke-width="3" stroke-linecap="round"/>' +
+    '<path d="M63 20c5 6 5 15 0 19-1.5 1.5-3.5 1.5-5 0V20c1.5-1.5 3.5-1.5 5 0z" fill="#e8935f"/>' +
+    '<path d="M60 41v23" fill="none" stroke="#e8935f" stroke-width="3" stroke-linecap="round"/>',
+  animals:
+    '<ellipse cx="48" cy="59" rx="16" ry="11" fill="none" stroke="#d9662f" stroke-width="3"/>' +
+    '<ellipse cx="29" cy="35" rx="6.5" ry="8.5" fill="none" stroke="#d9662f" stroke-width="3"/>' +
+    '<ellipse cx="48" cy="27" rx="6.5" ry="8.5" fill="none" stroke="#d9662f" stroke-width="3"/>' +
+    '<ellipse cx="67" cy="35" rx="6.5" ry="8.5" fill="none" stroke="#d9662f" stroke-width="3"/>',
+  __generic:
+    '<path d="M46 28c0 8 0 8 8 10.5-8 2.5-8 2.5-8 10.5-0-8 0-8-8-10.5 8-2.5 8-2.5 8-10.5z" fill="#d9662f"/>' +
+    '<path d="M68 46c0 5 0 5 5 6.5-5 1.5-5 1.5-5 6.5 0-5 0-5-5-6.5 5-1.5 5-1.5 5-6.5z" fill="#e8935f"/>' +
+    '<path d="M28 50c0 5 0 5 5 6.5-5 1.5-5 1.5-5 6.5 0-5 0-5-5-6.5 5-1.5 5-1.5 5-6.5z" fill="#f2a03d"/>',
+};
+
+// tagString is the already-normalized "community · food" shape (see
+// _transformRow's `tag`), or the raw comma/·-joined category column.
+function categoryFallbackIconHtml(tagString) {
+  const firstTag = String(tagString || '').toLowerCase().split(/[·,]/)[0].trim();
+  const inner = CATEGORY_ICON_PATHS[firstTag] || CATEGORY_ICON_PATHS.__generic;
+  return '<svg viewBox="0 0 96 96" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-hidden="true" focusable="false">' +
+    '<rect width="96" height="96" fill="' + CATEGORY_ICON_BG + '"/>' + inner +
+  '</svg>';
 }

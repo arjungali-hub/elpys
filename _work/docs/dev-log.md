@@ -7,6 +7,417 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-29 — Photo credit on listings (0b83a45, on the branch)
+
+King County Parks' new cover comes from their Flickr under a license that
+requires a credit, so listings can now carry one.
+
+- **Data:** new nullable `photo_credit text` column on `Opportunities` (1–200
+  chars, CHECK constraint), in
+  `supabase/migrations/20260929000000_opportunity_photo_credit.sql`. The
+  migration is **already applied to production** as `opportunity_photo_credit`.
+  That's safe before the merge because main never reads or writes the column.
+  Anon gets a column grant, and the column is added to `PUBLIC_COLUMNS` (the
+  2026-08-26 trap). Checked by running as the anon role that the column is
+  readable.
+- **Display:** shown as "Photo: <credit>". On the homepage card it's small white
+  text on a translucent strip in the photo's bottom-right corner, truncated
+  with an ellipsis if too long, so the card isn't any taller. On the detail
+  page it's a small grey line under the cover/gallery. It's shown only when
+  there's a photo; the fallback icon never gets a credit.
+- **Editing:** a "Photo credit" field in the admin editor (emptying it clears
+  the credit) and an optional "Photo credit" field on `/submit`, next to the
+  photo-rights checkbox. The server collapses whitespace, caps it at 200
+  characters, and drops it when the submission has no photos.
+- **Data set:** King County Parks (id 96) → `King County Parks`; EarthCorps
+  (id 93) → `EarthCorps`. The license name isn't included yet because the exact
+  Flickr license and version haven't been confirmed. Add it (e.g.
+  `King County Parks (CC BY-NC 2.0)`) once they are.
+- **Checked:** local Chromium with mocked Supabase responses. A card with a
+  credit shows it, one without shows nothing, and a listing with no photo but a
+  credit shows nothing. On the detail page, cover + credit, gallery-only +
+  credit, and no photo (no line) all render correctly. The submit field posts
+  as `photo_credit`. `node --check` passes on the changed JS and inline
+  scripts.
+- **Preview check (Cowork, real Chrome, same day): passed.** Cowork read the
+  license off the Flickr page as CC BY-NC 2.0 and set King County Parks' credit
+  to `King County Parks (CC BY-NC 2.0)` in the admin editor. That was the first
+  real use of the new admin field. The listing stayed published and nothing else
+  changed; I confirmed both credits by SQL. On the preview, the two credited
+  cards show "Photo: …" uncut in the photo corner, the other 11 cards show none,
+  and all 13 photos load. `/king-county-parks` and `/earthcorps` show the grey
+  line under the photo, and `/submit` shows the new field. No console errors
+  apart from the known Turnstile 110200 on preview hosts.
+
+**Status:** the branch is ready to merge. Krish decides when.
+
+## 2026-09-29 — New covers for King County Parks and EarthCorps (data only)
+
+Cowork replaced the two weak covers flagged in the QA entry below (follow-ups 2
+and 3), through the admin editor. No code change. Both rows are still
+`published` with empty galleries, and Cowork compared each row before and after
+to confirm nothing else changed.
+
+- **King County Parks (id 96):** now `uploads/391c229e-3e0e-4f9c-a683-0137eb20ca7f.jpg`,
+  2000×1333 (a scaled-down copy of a 6000×4000, 26 MB original). Adult
+  volunteers pulling ivy and blackberry at Lake Geneva Park. Source: King County
+  Parks' official Flickr. **Its license requires a photo credit, and Elpys doesn't
+  show photo credits yet.**
+- **EarthCorps (id 93):** now `uploads/91f78b55-809a-4351-ad3a-15dd377d14ff.jpg`,
+  1800×900, uploaded as-is. Adult volunteers pulling blackberry at Herring's
+  House Park. Source: an EarthCorps blog post. Cowork passed over a larger photo
+  because it showed a child's face.
+- Deleted the old covers `faf1a198…png` and `8304e069…jpg` after SQL confirmed
+  no listing used them. Checked by SQL on 2026-09-29: the bucket has 13 files,
+  all in use, and neither old file remains.
+- On the branch preview, both new covers load sharp on the cards and on
+  `/king-county-parks` and `/earthcorps`, with the subject in frame in both
+  crops. All 13 homepage covers load with no errors.
+
+**Open before merge:** the King County photo needs its credit shown once the
+covers go live on main. The merge is what makes covers visible on
+elpys.vercel.app.
+
+## 2026-09-28 — Bucket listing closed; Cowork real-browser QA passed on the preview
+
+**Bucket listing (`ce5d3f1`).** Closes the Supabase advisor warning from the
+entry below. The `opportunity-images public read` SELECT policy on
+`storage.objects` let anyone with the anon key list every object in the bucket,
+including photos from rejected or replaced listings. The site never needed it:
+public URLs (`/storage/v1/object/public/...`) are served for a public bucket
+without checking policies, and uploads are plain INSERTs (no upsert). Dropped
+it in `supabase/migrations/20260928000000_opportunity_images_no_listing.sql`,
+applied to production as `opportunity_images_no_listing`. Checked with the anon
+key before and after: list went from 15 objects to 0; public GET of an existing
+photo 200; new upload 200 and its public URL 200; upsert and delete still 403.
+
+**Cowork QA, real Chrome, build `ce5d3f1`** (same page code as `6c320a5`),
+previews `elpys-748zd4pez…` and `elpys-1p5xs62ju…`. Nothing merged, no code
+changed. All passed:
+
+- Homepage: 12/12 covers load, zero CSP violations. Sophia Way shows its
+  category icon. The two Keep Bellevue Beautiful cleanups are hidden because
+  their dates (Sep 5, Sep 12) have passed — expected.
+- Sammamish: no white bar. An edge scan of all 12 covers found no blank strips;
+  the same scan does flag the bar on the old image, so the scan works.
+- Detail pages `/earthcorps`, `/king-county-parks`, `/sammamish-park-events`:
+  covers load.
+- Response header: `img-src` includes `https://ukrykzmehvghedrvmkjj.supabase.co`.
+- Admin edit (`admin-review?id=115`, a pending "TEST" row): cover and gallery
+  upload previews render; Save writes `cover_image_url` and
+  `gallery_image_urls` and the row stays pending; removing both and saving
+  sets `cover_image_url = null`, `gallery_image_urls = []`. Row 115 was put
+  back to its original state.
+- Storage cleanup through the Supabase dashboard (real Storage deletes, so no
+  `storage.protect_delete` problem): removed the old Sammamish image
+  `656ee057…jpg`, earlier test files `701a559e…png` and `94180443…jpg`, and the
+  admin test uploads `5d6c6722…jpg` and `a45cae89…jpg`.
+
+**Follow-ups (none block the merge):**
+
+1. The read-only admin review screen doesn't show a submission's photos; they
+   only appear after clicking Edit, so an admin can approve a public
+   submission without seeing them. Should show cover + gallery on the review
+   view.
+2. King County Parks' cover is 370×247 and visibly soft in the 1016×420 detail
+   hero. Needs a larger source photo.
+3. EarthCorps' cover is 1800×312; the hero shows only the middle ~42% of the
+   width and it's slightly soft. Acceptable, but a less panoramic photo would
+   look better.
+4. Two unreferenced objects remain (checked against every `cover_image_url`
+   and `gallery_image_urls` on 2026-09-29): `uploads/162fd29f…png` (69 bytes,
+   03:20Z) is Claude Code's own upload test from the bucket-listing check above
+   and can be deleted. `uploads/0c95e22e-b783-4eb6-81eb-fc549956d235.jpg`
+   (3.6 MB, 03:08Z) has no known owner — probably an abandoned form upload;
+   delete it once nobody claims it.
+   **Done 2026-09-29:** Cowork deleted both through the Storage tab after
+   confirming no listing used them. The bucket now holds 13 photos, every one
+   used by a listing (checked by SQL), and the preview shows all 13 covers with
+   no errors (13 rather than 12 because The Sophia Way got a photo on 09-28).
+5. Live `/api/submit` test with photos is still not done. It needs the merge,
+   or the preview hostname added to Turnstile's allowed domains (the preview
+   gets Turnstile error 110200).
+6. QA note for next time: in a background tab, lazy-loaded images never start
+   and `naturalWidth` reads 0. Force eager loading or use a visible tab before
+   deciding images are broken.
+
+**Status:** the branch is ready to merge. Krish decides when.
+
+## 2026-09-28 — CSP blocked every photo; fixed on the branch (37a9f32)
+
+**The bug.** The site-wide `Content-Security-Policy` in `vercel.json` had
+`img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com`, which
+has no Supabase host. `connect-src` already allowed `https://*.supabase.co`, so
+uploads and `fetch()` of a photo URL worked (200 `image/webp`), but every `<img>`
+pointing at the `opportunity-images` bucket was refused. Cowork caught it on the
+branch preview on 2026-09-27: all 12 homepage cards with a `cover_image_url`
+rendered broken (`complete` true, `naturalWidth` 0), and a fresh `new Image()`
+fired `onerror`.
+
+**Why local QA missed it.** The earlier QA served the pages locally, where
+`vercel.json` headers aren't applied, so no CSP was in force. That's also why the
+submit-form upload preview looked fine in testing.
+
+**The fix.** Added the exact project host `https://ukrykzmehvghedrvmkjj.supabase.co`
+to `img-src`. I used the exact host, not `*.supabase.co`, because images only ever
+come from this one project. Every other directive is unchanged. I searched the
+repo for any other place a CSP is set (`middleware.js`, `api/*`, every
+`<meta http-equiv>`, `404.html`), and `vercel.json` is the only one. The upload
+preview uses the public URL (no `blob:`/`data:`), so nothing else was needed.
+Pushed as `37a9f32` through the GitHub connector, because git push from the cloud
+session was refused with a 403.
+
+**Preview check: only partly done.** The session's network policy blocks
+`*.vercel.app` and `*.supabase.co` (CONNECT 403), so the Playwright check
+couldn't open the preview, and the Vercel connector's fetch stops at the
+deployment-protection SSO redirect. The deploy for `37a9f32`
+(`elpys-epja6yye0-arjungali-hubs-projects.vercel.app`) is READY. Krish then saw
+a cover photo rendering on the City of Sammamish card on the preview, which can
+only happen with the new `img-src`. The per-card `naturalWidth` sweep, the
+detail pages (EarthCorps crop, King County Parks' 370px source), the response
+header and the console check are still to be done in a real browser. The admin
+review page renders photos but is behind the admin password, so it's untested.
+
+**Sammamish white bar: fixed in the data.** Krish reported a white bar across
+the top of the City of Sammamish card photo. It was baked into the uploaded image
+(`uploads/656ee057…jpg`, 1000×600): rows 0–17 and 580–599 were pure-white
+padding, not sky. I cropped it to rows 20–577 (1000×558) in a Vercel sandbox,
+because this session can't reach Supabase directly. I uploaded the result with
+the anon key as `uploads/d62da591-9554-4688-a650-bf1f01e395bb.jpg` (public GET
+200, byte-identical round-trip) and pointed row 92's `cover_image_url` at it. The
+old `656ee057…jpg` object is now unreferenced; anon has no delete policy, so it
+stays until someone with service-role access removes it. No code change.
+
+**Also 2026-09-28, on main:** removed the
+`google-site-verification` tag `VY3_4…` from `index.html` at Krish's request
+(`2302242`). The other verification tag (`I1Daqn…`) stays.
+
+**Still open from Cowork's pass:** a live `/api/submit` end-to-end test with
+photos. It's blocked on the preview because Turnstile rejects the preview domain
+(110200), so it runs after merge or once the preview hostname is allowed in
+Cloudflare. Also open: the Supabase advisor warning that the public-read
+policy lets anyone list the bucket.
+
+## 2026-09-27 — Migration applied, live end-to-end QA passed — ready to merge
+
+Follow-up to the entry directly below this one. The migration and storage
+setup that entry left as "still needs doing by hand" is now done, verified
+twice over (once by Cowork applying it, once by me independently re-checking
+and extending it), and the branch's own remaining unknowns are now closed.
+
+**Cowork applied `20260926000000_opportunity_photos.sql`** via Supabase's
+migration tool — checked the grant list first and confirmed it was the
+existing 28 columns plus the two new ones, nothing dropped. Verified:
+columns exist with the right types/defaults, the anon REST endpoint returns
+200 (not 42501) when selecting the new columns, the `opportunity-images`
+bucket exists with the right `public`/`file_size_limit`/`allowed_mime_types`,
+both storage policies exist, and a real anon upload + public fetch round-trip
+succeeded. One note from that pass: cleaning up the test object required
+deleting its `storage.objects` catalog row directly in Postgres, since anon
+has no delete policy (by design) and Cowork's Supabase connection has no
+service-role access to call the real Storage delete endpoint — this removes
+it from every listing/query, but the underlying blob in the storage backend
+itself isn't reclaimed by that route. Same trade-off applies below.
+
+**I then independently re-verified against production myself**, not just
+trusting the report — this is the "still needs doing" list from the entry
+below, now actually done:
+
+- Hit the anon REST endpoint directly (curl, not through any app code):
+  `200`, `cover_image_url`/`gallery_image_urls` both present and correctly
+  typed on real rows.
+- Re-ran this branch's own files locally against **real** production data
+  (no more `fetch` stub needed, now that the columns/grant are live) — all 13
+  published listings render correctly with the new card design: multi-category
+  pills, per-category fallback icons (confirmed live that "Animals ·
+  Environment" correctly shows the animals/paw icon, since tags are
+  alphabetized and "animals" sorts first), clamped descriptions, filter bar
+  built from live tags. No console errors beyond a pre-existing, unrelated
+  analytics 404.
+- Did a **real upload**, browser to Storage, no mocking: submit.html's cover
+  photo field, a genuine 1×1 PNG, through the actual `uploadOpportunityImage()`
+  path. Got back a real public URL
+  (`.../storage/v1/object/public/opportunity-images/uploads/<uuid>.png`),
+  confirmed it 200s with the right content-type and byte count.
+- Confirmed the RLS policies reject what they're supposed to, as raw HTTP
+  requests bypassing the client entirely, not just trusting the client-side
+  checks: a path outside `uploads/`, a non-UUID filename, a disallowed MIME
+  type, and an anon delete attempt on the file just uploaded all came back
+  `403 AccessDenied` / RLS violation.
+- Confirmed `api/submit.js`'s (and by the same logic, `api/admin.js`'s)
+  `isValidImageUrl()` accepts the real upload URL and rejects an external
+  URL, a wrong-bucket URL, a non-`uploads/` path, and a wrong extension —
+  exercised the actual regex/prefix logic, not just read it.
+- Left one orphaned test object in the bucket (`uploads/701a559e-...png`, 69
+  bytes) — same limitation as Cowork's: anon can create but not delete, and I
+  have no service-role access either. Harmless, and exactly the
+  already-documented "orphaned uploads accumulate" trade-off from the entry
+  below, not a new problem. A service-role cleanup pass (or just deleting
+  these two files from the Storage tab) can happen whenever, with zero
+  urgency.
+
+What's still *not* independently verified live: `/api/submit` and
+`/api/admin` actually inserting a row with a real photo URL end-to-end
+(no Vercel access here to invoke them for real — only their validation logic
+was exercised directly), and the admin edit form against a real pending row
+(needs an authenticated admin session this environment can't establish).
+Both were already covered by code review; neither touches anything this
+entry's new checks didn't already exercise in isolation (the upload path,
+the URL validation, the row-shape). Confidence is high enough to call this
+ready to merge, but flagging the gap rather than papering over it.
+
+## 2026-09-27 — Cover photo + gallery, on a branch, not yet merged (schema/storage not yet live)
+
+Built on `feature/card-cover-and-gallery-photos`, off `main`, per instruction
+not to do this directly on `main` — a multi-part feature touching the
+database, both submission forms, the homepage card, and the detail page. Not
+merged yet: the database side needs a human to run a migration by hand first
+(see "Still needs doing" below) — merging before that would ship a homepage
+that 400s, since the anon key would be asked to select columns that don't
+exist in the live grant yet.
+
+### Schema
+
+`supabase/migrations/20260926000000_opportunity_photos.sql` adds
+`cover_image_url text` (nullable — null means "show the category fallback
+icon," never a stored fallback path) and `gallery_image_urls text[] not null
+default '{}'` to `public."Opportunities"`. Both added to `PUBLIC_COLUMNS` in
+supabase-client.js *and* the anon/authenticated column grant in the same
+migration — this exact two-places trap is already documented in the
+2026-08-26 entry, and it applies here just as much as it did to
+`admin_notes`/`redesign_prompts` before. `opportunity_publish_gate` and its
+trigger are untouched on purpose: a missing or empty cover/gallery must never
+block publishing.
+
+### Storage — and a deliberate deviation from "upload through the API route"
+
+The spec asked for server-side upload validation "in the API route(s) that
+handle the submission form." Built it differently: photos upload straight
+from the browser to a new public Supabase Storage bucket
+(`opportunity-images`), using the same anon key already embedded in
+supabase-client.js, and only the resulting URL travels through `/api/submit`
+or `/api/admin`. Reason: a single photo can be up to 5MB, and Vercel's
+serverless functions have an unconfigurable ~4.5MB request body limit on
+every plan — proxying the bytes through a Vercel function was never actually
+viable, not a style choice. "Server-side validation" still holds: the bucket
+itself enforces `file_size_limit` (5MB) and `allowed_mime_types`
+(jpeg/png/webp) independent of anything the client claims, a storage RLS
+policy restricts anon/authenticated to INSERT-only under `uploads/` with a
+filename matching `<uuid>.<ext>` exactly (no overwrite, no delete, no
+client-chosen name), and both `/api/submit` and `/api/admin` re-validate that
+any URL they're handed actually matches that exact bucket/path/filename
+shape before writing it to the row — a hand-rolled request can't claim an
+arbitrary external image as if it were a real upload. The admin edit form
+uses the identical upload path; there's no separate elevated route, since
+replacing a listing's photo from the panel is the same operation as a
+submitter uploading one.
+
+`uploadOpportunityImage()` (supabase-client.js) is the one shared upload
+function all three forms (submit, admin edit) call — never trusts
+`file.name`, generates the stored filename from `crypto.randomUUID()` plus an
+extension read off the validated MIME type.
+
+`/api/submit` retries the insert without the two photo columns on a
+PGRST204 naming them, mirroring the existing `schedule`-column fallback — so
+a submission still succeeds (photos just don't attach) if this deploys before
+the migration runs, rather than every submission failing outright.
+
+### Homepage card — Option C
+
+Rewrote `buildCardHtml()` in index.html: cover photo (or, when absent, a
+category fallback icon — see below) fills the top of the card with the
+category as a pill overlaid top-left, a one-time listing's date as a second
+pill top-right, org name, one condensed meta line ("Ages 13+ · Saturday
+mornings" — "Where" dropped from the card face, still on the detail page), a
+two-line-clamped description, and a single "More info" button linking to the
+detail page (confirmed the detail page already shows the real sign-up
+button prominently in `.detail-box` — moving the direct signup action off
+the card doesn't remove it from the site, just one click deeper). Removed
+the collapsible "How to sign up" block and the old Sign up/More info button
+pair from the card face entirely. The outer `.card` element's `data-*`
+attributes are untouched — verified live (mocked data, see below) that the
+category filter, age filter, and card visibility toggling all still work
+against the new inner markup. `loading.js`'s card skeleton gained a matching
+photo-shaped block so the loading state doesn't jump when real cards arrive.
+
+Dead CSS removed alongside the rewrite (`.card-top`, `.card-tag`,
+`.card-event-date`, `.card-meta`, the `.card-steps` details/summary rules,
+`.steps-count`) — confirmed each was unused anywhere else first;
+`.card-actions`, `.steps`, `.steps-label`, `.card-note` stay, since
+opportunities-detail.html still uses them.
+
+### Category fallback icon
+
+`categoryFallbackIconHtml()` (supabase-client.js) picks one hand-drawn icon
+by the listing's first tag. Checked the *actual* distinct tags in production
+via the anon REST endpoint rather than assuming a list: `community`,
+`environment`, `food`, `animals` — plus one generic sparkle catch-all (built
+from the wordmark's own sparkle-diamond path in
+`logos/elpys-logo-full.html`) for anything else. Drawn in the same accent
+palette as the wordmark (`#d9662f`/`#e8935f`/`#f2a03d`/`#2b2420`) rather than
+sourcing stock photography — licensing risk, and misleading specificity for
+a listing that isn't the org shown. The environment (leaf) icon's first
+attempt rendered as a twisted, unrecognizable blob once actually visible in
+a browser, not obvious from the path data alone — replaced with a simpler
+symmetric two-curve outline in a follow-up commit on the same branch.
+
+### Detail page gallery + lightbox
+
+Cover photo (or fallback icon, same rule as the card) large at the top of
+`opportunities-detail.html`, a thumbnail row for `gallery_image_urls` when
+present, and a dependency-free lightbox (no new front-end library, matching
+this codebase's own preference — Leaflet is still the only outside library
+here). The lightbox steps through the cover photo plus every gallery image
+in order. Accessibility, matching the bar already set elsewhere on this site:
+`role="dialog"` `aria-modal="true"`, focus moves to the close button on open
+and back to the exact thumbnail that opened it on close, Tab is trapped
+among the three controls (close/prev/next) while open, Escape closes,
+ArrowLeft/ArrowRight step, and every image (thumbnail, lightbox, cover) has
+real alt text — org name plus "cover photo" or "photo N of M" — carried as
+the accessible name of its enclosing button rather than a redundant
+`aria-label` alongside it.
+
+### QA — and what's still unverified
+
+No access to a Vercel account login in this environment, so the live preview
+deploy (behind Vercel's deployment-protection SSO) couldn't be reached
+directly — confirmed a real Vercel login prompt, not a bypassable gate, via
+both curl and a real browser. Fell back to serving this branch's own files
+locally and stubbing `fetch` for just the `Opportunities` REST call so every
+other code path (categoryFallbackIconHtml, the real card renderer, the real
+lightbox) ran unmodified against mock rows covering: a listing with a cover
+photo and a 4-image gallery, one-time + no-photo together, and one row per
+fallback icon including an unrecognized tag (generic catch-all). Confirmed
+by screenshot and direct DOM assertion: all five fallback icons render
+correctly (the leaf fix above came from this), category/age filtering still
+correctly shows/hides cards by their preserved `data-*` attributes, the
+lightbox opens/closes/steps/traps focus/restores focus correctly (verified
+programmatically, not just visually), and `uploadOpportunityImage()`'s
+client-side type/size checks reject a bad file before any network call.
+
+Genuinely not yet verified, and unable to be until the migration and bucket
+exist: a real end-to-end upload (browser → Storage → row), a submission with
+photos actually landing in the admin queue with both images visible to a
+reviewer, and the admin edit form's photo fields against a real pending row
+(admin-review.html redirects to the login flow with no session, which this
+local setup has no way to establish). No new console errors observed on any
+touched page beyond ones that already existed before this branch
+(Turnstile rejecting a non-production origin; an unrelated analytics 404).
+
+### Still needs doing, by hand, before this is safe to merge
+
+1. Run `supabase/migrations/20260926000000_opportunity_photos.sql` against
+   the database via the Supabase SQL editor — this environment has no
+   Supabase CLI link, service-role key, or MCP tool available to run it
+   directly, unlike some earlier schema changes in this log.
+2. Once that's live, re-run the QA above against the real preview deploy
+   (or ask for deployment-protection to be temporarily opened) to confirm
+   the upload → submit → admin-review path actually works end to end, not
+   just against mocked data.
+3. Then merge — this branch was deliberately not merged to `main` as part of
+   this work, unlike the mailbox-cutover PR, since there was no instruction
+   to merge and the database dependency makes an unreviewed merge risky.
+
 ## 2026-09-26 — The admin session fix from three days ago wasn't enough: the timer itself was the weak link
 
 Arjun reported the same 404-until-reload still happening after the

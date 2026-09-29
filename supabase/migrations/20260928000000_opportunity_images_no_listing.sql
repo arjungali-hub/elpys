@@ -1,0 +1,17 @@
+-- Stops anyone from listing every file in the opportunity-images bucket,
+-- without changing how photos are shown or uploaded.
+--
+-- 20260926000000_opportunity_photos.sql created a SELECT policy on
+-- storage.objects that allowed anyone to read any row in this bucket. The
+-- site never needed it: photos are served from the bucket's public URL
+-- (/storage/v1/object/public/...), which a public bucket answers without
+-- consulting storage.objects policies at all, and uploads are plain INSERTs
+-- (no upsert), which only need the separate "anon upload" policy. What the
+-- SELECT policy did add was the Storage list endpoint: anyone with the anon
+-- key could enumerate every object, including photos attached to listings
+-- that were later rejected or replaced, which no page links to.
+--
+-- After this, a photo opens only if you already have its exact URL (a random
+-- UUID filename). Anon keeps its INSERT-only upload policy; there is still no
+-- anon UPDATE or DELETE.
+drop policy if exists "opportunity-images public read" on storage.objects;

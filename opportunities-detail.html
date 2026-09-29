@@ -63,6 +63,16 @@
 
 </main>
 
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" hidden>
+  <button type="button" class="lightbox-close" id="lightbox-close" aria-label="Close photo viewer">×</button>
+  <button type="button" class="lightbox-btn lightbox-prev" id="lightbox-prev" aria-label="Previous photo">‹</button>
+  <figure class="lightbox-figure">
+    <img class="lightbox-img" id="lightbox-img" src="" alt="" />
+    <figcaption class="lightbox-counter" id="lightbox-counter"></figcaption>
+  </figure>
+  <button type="button" class="lightbox-btn lightbox-next" id="lightbox-next" aria-label="Next photo">›</button>
+</div>
+
 <footer>
   <div class="wrap">
     <div class="footer-inner">
@@ -145,6 +155,67 @@
     const canonical = document.head.querySelector('link[rel="canonical"]');
     if (canonical) canonical.setAttribute('href', url);
   }
+
+  // ── Lightbox ──────────────────────────────────────────────────────────────
+  // Plain, dependency-free — no new front-end library for "show one image at
+  // a time with next/prev." One instance for the whole page (there's only
+  // ever one listing on this page), wired once here rather than rebuilt per
+  // listing.
+  const lightbox         = document.getElementById('lightbox');
+  const lightboxImg      = document.getElementById('lightbox-img');
+  const lightboxCounter  = document.getElementById('lightbox-counter');
+  const lightboxClose    = document.getElementById('lightbox-close');
+  const lightboxPrev     = document.getElementById('lightbox-prev');
+  const lightboxNext     = document.getElementById('lightbox-next');
+  let lightboxImages = [];
+  let lightboxIndex  = 0;
+  let lightboxOpener = null;
+
+  function showLightboxImage(i) {
+    lightboxIndex = (i + lightboxImages.length) % lightboxImages.length;
+    const img = lightboxImages[lightboxIndex];
+    lightboxImg.src = img.url;
+    lightboxImg.alt = img.alt;
+    lightboxCounter.textContent = 'Photo ' + (lightboxIndex + 1) + ' of ' + lightboxImages.length;
+  }
+
+  function openLightbox(images, index, opener) {
+    lightboxImages = images;
+    lightboxOpener = opener || null;
+    showLightboxImage(index);
+    lightbox.hidden = false;
+    lightboxClose.focus();
+    document.addEventListener('keydown', onLightboxKeydown);
+  }
+
+  function closeLightbox() {
+    lightbox.hidden = true;
+    document.removeEventListener('keydown', onLightboxKeydown);
+    if (lightboxOpener) lightboxOpener.focus();
+  }
+
+  // Escape closes; ArrowLeft/ArrowRight step; Tab is trapped among the three
+  // controls so focus can't escape to the page behind the overlay.
+  function onLightboxKeydown(e) {
+    if (e.key === 'Escape') { closeLightbox(); return; }
+    if (e.key === 'ArrowLeft')  { showLightboxImage(lightboxIndex - 1); return; }
+    if (e.key === 'ArrowRight') { showLightboxImage(lightboxIndex + 1); return; }
+    if (e.key === 'Tab') {
+      const focusable = [lightboxClose, lightboxPrev, lightboxNext];
+      const idx = focusable.indexOf(document.activeElement);
+      e.preventDefault();
+      const next = e.shiftKey
+        ? focusable[(idx <= 0 ? focusable.length : idx) - 1]
+        : focusable[(idx + 1) % focusable.length];
+      next.focus();
+    }
+  }
+
+  lightboxClose.addEventListener('click', closeLightbox);
+  lightboxPrev.addEventListener('click', () => showLightboxImage(lightboxIndex - 1));
+  lightboxNext.addEventListener('click', () => showLightboxImage(lightboxIndex + 1));
+  // Clicking the dark backdrop (not the figure itself) closes, same as Escape.
+  lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
 
   // Skeleton first, so the page has its shape before the row arrives.
   (function () {
@@ -255,8 +326,42 @@
 
     document.getElementById('loading-msg').remove();
 
+    // Cover photo + gallery. Same fallback-by-category rule as the homepage
+    // card (categoryFallbackIconHtml, supabase-client.js) when there's no
+    // cover photo — the fallback isn't clickable, since there's no photo to
+    // view larger. allPhotos is what the lightbox steps through: the cover
+    // (if any) first, then the gallery, in order.
+    const galleryUrls = opp._galleryImageUrls || [];
+    const allPhotos = [];
+    if (opp._coverImageUrl) allPhotos.push({ url: opp._coverImageUrl, alt: opp.name + ' — cover photo' });
+    galleryUrls.forEach((url, i) => allPhotos.push({ url: url, alt: opp.name + ' — photo ' + (i + 1) + ' of ' + galleryUrls.length }));
+
+    const coverHtml = opp._coverImageUrl
+      ? '<div class="detail-cover"><button type="button" class="detail-cover-btn" id="detail-cover-btn">' +
+          '<img class="detail-cover-img" src="' + safeUrl(opp._coverImageUrl) + '" alt="' + esc(opp.name) + ' — cover photo" />' +
+        '</button></div>'
+      : '<div class="detail-cover"><span class="detail-cover-fallback">' + categoryFallbackIconHtml(opp.tag) + '</span></div>';
+
+    const galleryHtml = galleryUrls.length
+      ? '<div class="detail-gallery" role="group" aria-label="More photos of ' + esc(opp.name) + '">' +
+          galleryUrls.map((url, i) =>
+            '<button type="button" class="gallery-thumb" data-photo-index="' + (opp._coverImageUrl ? i + 1 : i) + '">' +
+              '<img src="' + safeUrl(url) + '" alt="' + esc(opp.name) + ' — photo ' + (i + 1) + ' of ' + galleryUrls.length + '" loading="lazy" />' +
+            '</button>'
+          ).join('') +
+        '</div>'
+      : '';
+
+    // Only when there's a photo to credit: the fallback icon is our own.
+    const creditHtml = opp._photoCredit && (opp._coverImageUrl || galleryUrls.length)
+      ? '<p class="detail-photo-credit">Photo: ' + esc(opp._photoCredit) + '</p>'
+      : '';
+
     const content = document.createElement('div');
     content.innerHTML =
+      coverHtml +
+      galleryHtml +
+      creditHtml +
       '<div class="detail-layout">' +
         '<div class="detail-main">' +
           '<span class="detail-tag">' + esc(opp.tag) + '</span>' +
@@ -285,6 +390,14 @@
       safetyHtml(opp);
 
     section.appendChild(content);
+
+    if (opp._coverImageUrl) {
+      const coverBtn = document.getElementById('detail-cover-btn');
+      if (coverBtn) coverBtn.addEventListener('click', () => openLightbox(allPhotos, 0, coverBtn));
+    }
+    section.querySelectorAll('.gallery-thumb').forEach(btn => {
+      btn.addEventListener('click', () => openLightbox(allPhotos, parseInt(btn.dataset.photoIndex, 10), btn));
+    });
 
     renderSingleMiniMap('mini-map', slug, '/map');
   })();
