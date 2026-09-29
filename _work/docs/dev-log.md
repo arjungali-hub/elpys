@@ -7,6 +7,28 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-29 — "Submit an opportunity" stays visible on phones
+
+Krish: don't hide "Submit an opportunity", and don't use the footer link from
+`fix/mobile-submit-doorway`. That branch stays unmerged and can be deleted.
+
+Below 640px, `styles.css` used to hide `.header-submit-link` (`display: none`),
+leaving phones with no link to `/submit`. Now it stays, at the same smaller
+size as Log in / Sign up:
+- **Up to 389px:** button padding and gap tightened so the wordmark and all
+  three links still fit on one row down to 375px.
+- **Below 375px:** the wordmark takes the first row alone and the three links
+  share the second, instead of "Sign up" wrapping onto a row by itself. This
+  uses `margin-right: 100%` on `.header-inner > .site-name`, skipped in admin
+  mode (`:has(+ .admin-badge)`).
+- **No markup changes.** Admin mode still hides the link via `supabase-auth.js`
+  and uses its own admin nav, as before.
+
+**Checked:** local Chromium at 320, 360, 374, 375, 390, 430, 641 and 1280px on
+all 10 pages that carry the link. It's visible everywhere with no horizontal
+overflow. The header is 92px tall below 375px and 61px from 375 to 640px; the
+desktop layout is unchanged.
+
 ## 2026-09-29 — Branch audit: only fix/mobile-submit-doorway is unmerged
 
 GitHub had 23 branches and none had been deleted after merging.
@@ -29,6 +51,8 @@ GitHub had 23 branches and none had been deleted after merging.
   plus 404, because `.header-submit-link` is `display: none` below 640px.
   Still true on main: phone visitors have no visible link to `/submit`. Its
   dev-log entry says "not yet merged", and the project doc doesn't mention it.
+  Krish decided against the footer link and fixed the header instead (entry
+  above), so this branch will not be merged.
 
 ## 2026-09-29 — Photos merged to main (f3c7720)
 

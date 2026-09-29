@@ -198,8 +198,9 @@ header {
    .header-inner is a single non-wrapping flex row. On a 375px phone the
    wordmark, badge and three nav items add up to roughly 494px, so the row
    either clipped or forced the whole page to scroll sideways. Below 640px the
-   nav wraps onto its own line under the wordmark and the longest link
-   ("Submit an opportunity") gives way to the page's own CTA. */
+   nav wraps onto its own line under the wordmark. "Submit an opportunity"
+   stays visible at the same smaller size as the other links: hiding it left
+   phone visitors with no route to /submit at all. */
 @media (max-width: 640px) {
   header { padding: 1rem 0 0.85rem; }
   .header-inner {
@@ -208,9 +209,7 @@ header {
     column-gap: 0.6rem;
   }
   .site-name { font-size: 1.375rem; }
-  /* margin-right:auto on the badge is what breaks the row: everything after
-     it lands on the second line, right-aligned as a group. */
-  .header-submit-link { display: none; }
+  .header-submit-link,
   .header-auth-link,
   .header-signup-btn,
   .header-admin-link,
@@ -219,6 +218,22 @@ header {
     padding: 0.28rem 0.6rem;
   }
   .header-admin-sub { flex-wrap: wrap; row-gap: 0.5rem; }
+}
+/* Tightened so the wordmark and all three links still share one row down to
+   a 375px phone. */
+@media (max-width: 389px) {
+  .header-submit-link,
+  .header-auth-link,
+  .header-signup-btn { padding: 0.28rem 0.5rem; }
+  .header-inner { column-gap: 0.4rem; }
+}
+/* Narrower than that, the wordmark takes the first row alone and the links
+   share the second, rather than "Sign up" wrapping onto a row of its own.
+   The 100% right margin forces the break without widening the wordmark's
+   link area. Not in admin mode, where the Admin badge sits beside the
+   wordmark. */
+@media (max-width: 374px) {
+  .header-inner > .site-name:not(:has(+ .admin-badge)) { margin-right: 100%; }
 }
 
 /* ── Alerts ──
