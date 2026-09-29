@@ -59,6 +59,10 @@ changed. All passed:
    and can be deleted. `uploads/0c95e22e-b783-4eb6-81eb-fc549956d235.jpg`
    (3.6 MB, 03:08Z) has no known owner — probably an abandoned form upload;
    delete it once nobody claims it.
+   **Done 2026-09-29:** Cowork deleted both through the Storage tab after
+   confirming no listing used them. The bucket now holds 13 photos, every one
+   used by a listing (checked by SQL), and the preview shows all 13 covers with
+   no errors (13 rather than 12 because The Sophia Way got a photo on 09-28).
 5. Live `/api/submit` test with photos is still not done. It needs the merge,
    or the preview hostname added to Turnstile's allowed domains (the preview
    gets Turnstile error 110200).
