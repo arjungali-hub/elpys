@@ -7,6 +7,33 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-29 — New covers for King County Parks and EarthCorps (data only)
+
+Cowork replaced the two weak covers flagged in the QA entry below (follow-ups 2
+and 3), through the admin editor. No code change. Both rows are still
+`published` with empty galleries, and Cowork compared each row before and after
+to confirm nothing else changed.
+
+- **King County Parks (id 96):** now `uploads/391c229e-3e0e-4f9c-a683-0137eb20ca7f.jpg`,
+  2000×1333 (a scaled-down copy of a 6000×4000, 26 MB original). Adult
+  volunteers pulling ivy and blackberry at Lake Geneva Park. Source: King County
+  Parks' official Flickr. **Its license requires a photo credit, and Elpys doesn't
+  show photo credits yet.**
+- **EarthCorps (id 93):** now `uploads/91f78b55-809a-4351-ad3a-15dd377d14ff.jpg`,
+  1800×900, uploaded as-is. Adult volunteers pulling blackberry at Herring's
+  House Park. Source: an EarthCorps blog post. Cowork passed over a larger photo
+  because it showed a child's face.
+- Deleted the old covers `faf1a198…png` and `8304e069…jpg` after SQL confirmed
+  no listing used them. Checked by SQL on 2026-09-29: the bucket has 13 files,
+  all in use, and neither old file remains.
+- On the branch preview, both new covers load sharp on the cards and on
+  `/king-county-parks` and `/earthcorps`, with the subject in frame in both
+  crops. All 13 homepage covers load with no errors.
+
+**Open before merge:** the King County photo needs its credit shown once the
+covers go live on main. The merge is what makes covers visible on
+elpys.vercel.app.
+
 ## 2026-09-28 — Bucket listing closed; Cowork real-browser QA passed on the preview
 
 **Bucket listing (`ce5d3f1`).** Closes the Supabase advisor warning from the
