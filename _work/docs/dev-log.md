@@ -38,7 +38,18 @@ requires a credit, so listings can now carry one.
   credit shows nothing. On the detail page, cover + credit, gallery-only +
   credit, and no photo (no line) all render correctly. The submit field posts
   as `photo_credit`. `node --check` passes on the changed JS and inline
-  scripts. Not yet checked on the preview.
+  scripts.
+- **Preview check (Cowork, real Chrome, same day): passed.** Cowork read the
+  license off the Flickr page as CC BY-NC 2.0 and set King County Parks' credit
+  to `King County Parks (CC BY-NC 2.0)` in the admin editor. That was the first
+  real use of the new admin field. The listing stayed published and nothing else
+  changed; I confirmed both credits by SQL. On the preview, the two credited
+  cards show "Photo: …" uncut in the photo corner, the other 11 cards show none,
+  and all 13 photos load. `/king-county-parks` and `/earthcorps` show the grey
+  line under the photo, and `/submit` shows the new field. No console errors
+  apart from the known Turnstile 110200 on preview hosts.
+
+**Status:** the branch is ready to merge. Krish decides when.
 
 ## 2026-09-29 — New covers for King County Parks and EarthCorps (data only)
 
