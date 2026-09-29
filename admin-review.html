@@ -134,6 +134,15 @@
                            line-height: 16px; text-align: center; border-radius: 50%; border: none;
                            cursor: pointer; background: rgba(17,24,39,0.75); color: #fff; font-size: 0.6875rem; }
     .photo-upload-status { font-size: 0.75rem; margin-top: 0.2rem; color: var(--text-muted); }
+    /* Read-only photos on the pending card, so a submission's photos are seen
+       before approving without opening the editor. Each opens full size. */
+    .sub-photos { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; margin-bottom: 0.4rem; }
+    .sub-photos a { display: block; border-radius: var(--radius); overflow: hidden;
+                    border: 1px solid var(--border-strong); background: var(--bg-secondary); }
+    .sub-photos img { display: block; object-fit: cover; }
+    .sub-photo-cover img { width: 192px; height: 120px; }
+    .sub-photo-thumb img { width: 64px; height: 64px; }
+    .sub-photos-meta { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.75rem; }
     .photo-upload-status.error { color: #B91C1C; }
 
     /* Organization verification — the gate a pending listing can't be
@@ -396,6 +405,37 @@
 
   // ── Pending ────────────────────────────────────────────────────────────────
 
+  // The submission's photos and credit, read-only. Wrapped in a stable
+  // container so handleSave can swap it after an edit changes the photos.
+  function reviewPhotosHtml(row) {
+    const cover   = row.cover_image_url || null;
+    const gallery = Array.isArray(row.gallery_image_urls) ? row.gallery_image_urls : [];
+    let inner;
+    if (!cover && !gallery.length) {
+      inner = '<p class="sub-photos-meta">No photos submitted — the listing will show its category icon.</p>';
+    } else {
+      inner =
+        '<div class="sub-photos">' +
+          (cover
+            ? '<a class="sub-photo-cover" href="' + esc(cover) + '" target="_blank" rel="noopener" title="Cover photo — open full size">' +
+                '<img src="' + esc(cover) + '" alt="Cover photo" /></a>'
+            : '') +
+          gallery.map((url, i) =>
+            '<a class="sub-photo-thumb" href="' + esc(url) + '" target="_blank" rel="noopener" title="Gallery photo ' + (i + 1) + ' — open full size">' +
+              '<img src="' + esc(url) + '" alt="Gallery photo ' + (i + 1) + '" loading="lazy" /></a>'
+          ).join('') +
+        '</div>' +
+        '<p class="sub-photos-meta">' +
+          (cover ? 'Cover' : 'No cover (card shows the category icon)') +
+          (gallery.length ? ' + ' + gallery.length + ' gallery photo' + (gallery.length === 1 ? '' : 's') : '') +
+          ' · Credit: ' + (row.photo_credit ? esc(row.photo_credit) : '<em>none</em>') +
+        '</p>';
+    }
+    return '<div class="sub-photos-slot">' +
+             '<p style="font-size:0.8125rem;font-weight:600;margin-bottom:0.3rem;">Photos</p>' + inner +
+           '</div>';
+  }
+
   function buildPendingCard(row) {
     const card = document.createElement('div');
     card.className = 'submission-card';
@@ -415,6 +455,7 @@
       '<div class="sub-meta">' + metaHtml(row, 'pending') + '</div>' +
       '<p class="sub-desc">' + esc(row.description || '') + '</p>' +
       (row.long_description ? '<p style="font-size:0.8125rem;font-weight:600;margin:0.5rem 0 0.2rem;">Full description</p><p class="sub-desc" style="color:var(--text-muted);">' + esc(row.long_description) + '</p>' : '') +
+      reviewPhotosHtml(row) +
       '<p style="font-size:0.8125rem;font-weight:600;margin-bottom:0.3rem;">Sign-up steps</p>' +
       stepsHtml + noteHtml + adminNoteHtml +
       '<div class="sub-links">' +
@@ -1472,6 +1513,17 @@
       // category, age, when, where or slug stayed stale until a reload.
       const metaEl = card.querySelector('.sub-meta');
       if (metaEl) metaEl.innerHTML = metaHtml(payload, CURRENT_KIND);
+      // Same for the read-only photos (pending cards only). The payload always
+      // carries both photo fields; the credit only when its field is on the card.
+      const photosEl = card.querySelector('.sub-photos-slot');
+      if (photosEl && 'cover_image_url' in payload) {
+        const creditEl = document.getElementById('e-photocredit-' + id);
+        photosEl.outerHTML = reviewPhotosHtml({
+          cover_image_url:    payload.cover_image_url,
+          gallery_image_urls: payload.gallery_image_urls,
+          photo_credit:       'photo_credit' in payload ? payload.photo_credit : (creditEl ? creditEl.value.trim() : null),
+        });
+      }
       // (the 3s self-clear is set by setCardMsg above)
     } catch (err) {
       setCardMsg(id, 'Error: ' + err.message, '#111827');

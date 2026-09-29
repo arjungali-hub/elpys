@@ -7,6 +7,31 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-29 — Admin review card shows the submission's photos
+
+Follow-up 1 from the photo QA: an admin could approve a public submission
+without seeing its photos, which only appeared inside the Edit form. The
+pending card in `admin-review.html` now has a read-only **Photos** block
+between the descriptions and the sign-up steps:
+- The cover at 192×120 and gallery photos at 64×64. Each one opens full size in
+  a new tab.
+- A summary line, e.g. "Cover + 2 gallery photos · Credit: …", with "none" when
+  there's no credit.
+- "No photos submitted — the listing will show its category icon" when there
+  are none.
+
+Saving an edit doesn't rebuild the card (only the name and summary line were
+updated in place), so `handleSave` now swaps the Photos block as well. The
+block never goes stale after a photo or credit change. Published cards are
+unchanged: they show only the name and summary line, and photos live in their
+Edit form as before.
+
+**Checked:** local Chromium with a mocked `/api/admin` covering cover + 2
+gallery photos + credit, no photos, and gallery only. Removing a gallery photo
+and changing the credit then saving posts the right payload and updates the
+block in place. A credit containing HTML renders as escaped text. No page
+errors.
+
 ## 2026-09-29 — Branches cleaned up; GitHub Pages switched off
 
 Krish deleted the 21 branches from the audit below on GitHub's Branches page:
