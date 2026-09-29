@@ -96,9 +96,41 @@ them):
 - `uploads/e22df775-ca55-4cbf-98b6-df96de0898c9.jpg` (row 122 cover)
 - `uploads/4e69f957-52c9-4681-aa58-76003d5153aa.jpg` (row 122 gallery, a copy of the old EarthCorps photo, with GPS)
 
-**Not done (optional):** the other 12 live photos still carry non-location
-metadata such as camera model and software; none has GPS, per Cowork's check.
-They could be re-cleaned the same way.
+Krish has since deleted those three files.
+
+**The other 12 live covers, re-cleaned the same day** at Krish's request. A
+Vercel sandbox cloned the pushed branch and ran the same function on each file.
+Six had no metadata at all: the function returned them byte-for-byte unchanged,
+so they were left alone. Those are `c1cb29d0`, `20dd1410`, `35725988`,
+`3dbb5fc1`, `391c229e` and `45f45479`. The other six had camera, software or
+editing metadata but no GPS. Their clean copies decode to identical pixels, keep
+their ICC profile where one existed, and have no GPS, EXIF, XMP, IPTC,
+Photoshop or comment tags left; each was read back from the bucket and matched
+what was uploaded. Every row is still published, with its fingerprint (the row
+minus the photo fields) unchanged.
+
+| Row | Old file (metadata tags) | New file |
+|---|---|---|
+| 104 | `9480dc49-8df8-4573-94cf-707ca055ced4.jpg` (9) | `9a7df063-7a24-42de-a3bb-46f24413b02d.jpg` |
+| 102 | `de10edd0-c7d0-4159-ba98-60cebc861087.webp` (147) | `20032fdb-580e-4e83-9479-e1e9666669a3.webp` |
+| 91 | `787f43c1-1ea6-4cc6-8797-55d5748fccfe.webp` (11) | `7d51681f-5fe0-4835-852c-5f5125012e14.webp` |
+| 92 | `d62da591-9554-4688-a650-bf1f01e395bb.jpg` (non-tag block) | `9d3213ce-3a50-470c-8d98-7303e49daa6a.jpg` |
+| 101 | `92eeeea3-2ec1-4219-830d-252512fbc1a4.jpg` (17) | `e5f163c8-47e8-401f-b6a6-67ab77629e7b.jpg` |
+| 103 | `5b1fe1d4-1b59-49a0-94f1-22c715360886.jpg` (49) | `3e1e0d69-fdf7-4eff-b9fd-cc1cd6048737.jpg` |
+
+The six old files are now unused and still to delete. Because listing photos
+come from the database, every live cover on elpys.vercel.app is now metadata-free,
+even before this branch merges.
+
+**Why unused photos pile up.** Nothing ever deletes a Storage file. It stays
+public (though no longer listable) in all of these cases: a photo uploaded on
+the form and never submitted, a photo removed or replaced in the admin editor,
+a cover replaced by hand, and a listing deleted. Rejected listings keep their
+row, so their photos stay referenced. anon has no delete policy, and
+`storage.protect_delete` blocks SQL deletes, so today someone has to click
+Delete in the Storage tab. `api/admin.js` already holds the service-role key,
+which the Storage API accepts for deletes, so a server-side "delete unused
+photos" action is possible.
 
 ## 2026-09-29 — Admin review card shows the submission's photos
 
