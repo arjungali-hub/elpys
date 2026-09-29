@@ -697,6 +697,7 @@
         efArea('Card note', 'e-note-' + row.id, esc(row.card_note || ''), false) +
         efArea('Admin notes (not shown on site)', 'e-adminnotes-' + row.id, esc(row.admin_notes || ''), false) +
         efPhotos(row.id) +
+        ef('Photo credit (shown as "Photo: …")', 'text', 'e-photocredit-' + row.id, esc(row.photo_credit || '')) +
         (opts.withVerification ? '<div class="edit-field full">' + verificationHtml(row) + '</div>' : '') +
       '</div>' +
       '<div class="edit-actions">' +
@@ -1350,6 +1351,10 @@
     set('section',          g('e-section-' + id));
     set('card_note',        orNull('e-note-' + id));
     set('admin_notes',      orNull('e-adminnotes-' + id));
+    // Not via set(): that skips null, so an emptied field could never clear a
+    // credit. Absent field (null) still leaves it untouched.
+    const creditVal = text('e-photocredit-' + id);
+    if (creditVal !== null) payload.photo_credit = creditVal || null;
 
     // Read from photoState, not the file inputs — uploads already happened
     // on selection, so this is just whatever is currently in the preview.

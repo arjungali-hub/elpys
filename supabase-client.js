@@ -79,7 +79,7 @@ const PUBLIC_COLUMNS = [
   'signup_link', 'signup_label', 'signup_steps', 'section', 'slug',
   'live_url', 'card_note', 'website', 'contact_email', 'contact_phone',
   'schedule', 'opportunity_type', 'event_date',
-  'cover_image_url', 'gallery_image_urls',
+  'cover_image_url', 'gallery_image_urls', 'photo_credit',
 ].join(',');
 
 // Caches the in-flight PROMISE, not the resolved rows.
@@ -240,6 +240,7 @@ function _transformRow(row) {
     _contactPhone: row.contact_phone  || null,
     _coverImageUrl:  row.cover_image_url || null,
     _galleryImageUrls: Array.isArray(row.gallery_image_urls) ? row.gallery_image_urls : [],
+    _photoCredit:  row.photo_credit   || null,
   };
 }
 

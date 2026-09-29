@@ -363,6 +363,12 @@
         <div class="photo-preview" id="gallery-photos-preview"></div>
       </div>
 
+      <div class="field">
+        <label for="f-photo-credit">Photo credit <span class="optional-label">(optional)</span></label>
+        <span class="hint">Shown in small print under your photos. Name the photographer or your organization, and the license if the photo requires one (e.g. "Jane Doe" or "Jane Doe (CC BY 4.0)"). Leave blank for no credit.</span>
+        <input id="f-photo-credit" name="photo_credit" type="text" maxlength="200" placeholder="e.g. Jane Doe" />
+      </div>
+
       <label class="checkbox-label">
         <input type="checkbox" id="f-photo-rights" />
         I have the right to share the photos I'm uploading (my own photos, or ones I have permission to use).
@@ -689,6 +695,7 @@
       section:             section.value,
       cover_image_url:     coverImageUrl,
       gallery_image_urls:  galleryImageUrls,
+      photo_credit:        form.elements.photo_credit.value.trim() || null,
       // status is NOT sent — the server always sets it to 'pending'
     };
 

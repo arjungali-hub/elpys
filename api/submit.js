@@ -349,6 +349,10 @@ async function handleSubmit(req, res) {
     }
     galleryImageUrls = body.gallery_image_urls;
   }
+  // Plain text, rendered escaped. Dropped when there's no photo to credit.
+  const photoCredit = (coverImageUrl || galleryImageUrls.length) && body.photo_credit
+    ? String(body.photo_credit).replace(/\s+/g, ' ').trim().slice(0, 200) || null
+    : null;
 
   // Geocode before inserting so the pending row already carries coordinates.
   // Deliberately awaited rather than fired off afterwards: the admin needs the
@@ -390,6 +394,7 @@ async function handleSubmit(req, res) {
     admin_notes:        body.admin_notes ? String(body.admin_notes).trim().slice(0, 1000) : null,
     cover_image_url:    coverImageUrl,
     gallery_image_urls: galleryImageUrls,
+    photo_credit:       photoCredit,
     status:             'pending', // always set server-side, never from client
   };
 

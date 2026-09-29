@@ -414,7 +414,8 @@
     const datePill = isOneTime && opp._eventDate
       ? '<span class="card-pill card-pill-date">' + escHtml(formatEventDate(opp._eventDate)) + '</span>' : '';
     const photoHtml = opp._coverImageUrl
-      ? '<img class="card-photo-img" src="' + safeUrl(opp._coverImageUrl) + '" alt="' + escHtml(opp.name) + ' cover photo" loading="lazy" />'
+      ? '<img class="card-photo-img" src="' + safeUrl(opp._coverImageUrl) + '" alt="' + escHtml(opp.name) + ' cover photo" loading="lazy" />' +
+        (opp._photoCredit ? '<span class="card-photo-credit">Photo: ' + escHtml(opp._photoCredit) + '</span>' : '')
       : '<span class="card-photo-fallback">' + categoryFallbackIconHtml(opp.tag) + '</span>';
 
     // Condensed single meta line — age plus a short "when", replacing the old

@@ -352,10 +352,16 @@
         '</div>'
       : '';
 
+    // Only when there's a photo to credit: the fallback icon is our own.
+    const creditHtml = opp._photoCredit && (opp._coverImageUrl || galleryUrls.length)
+      ? '<p class="detail-photo-credit">Photo: ' + esc(opp._photoCredit) + '</p>'
+      : '';
+
     const content = document.createElement('div');
     content.innerHTML =
       coverHtml +
       galleryHtml +
+      creditHtml +
       '<div class="detail-layout">' +
         '<div class="detail-main">' +
           '<span class="detail-tag">' + esc(opp.tag) + '</span>' +
