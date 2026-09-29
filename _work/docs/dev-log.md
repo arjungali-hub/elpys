@@ -7,6 +7,29 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-29 — Branch audit: only fix/mobile-submit-doorway is unmerged
+
+GitHub had 23 branches and none had been deleted after merging.
+
+- **Deleting from a cloud Claude Code session doesn't work:** `git push
+  --delete` got HTTP 403 from the session's git proxy. Delete branches on
+  GitHub's Branches page instead.
+- **16 are plain merges into main** (`git merge-base --is-ancestor`): the photo
+  branch, 14 older ones, and `claude/friendly-volta-tu08v2`.
+- **Five look unmerged to git but aren't:** `feature/accounts`,
+  `feature/notifications`, `launch-fixes`, `meta-desc-and-banner-region`,
+  `map-a11y`. Main's history restarts at a single root commit, `8988b57`
+  (2026-09-02), so these share no history with main. All four others are
+  ancestors of `map-a11y`, and `map-a11y`'s tip matches `8988b57` except for
+  one dev-log entry. Their code is all in main, so they're safe to delete.
+  This matches the project doc ("feature/accounts and feature/notifications
+  merged Aug 2026; notifications retired").
+- **Genuinely unmerged:** `fix/mobile-submit-doorway` (`3a27589`, 2026-09-06).
+  It adds a standalone "Submit an opportunity" footer link on 9 public pages
+  plus 404, because `.header-submit-link` is `display: none` below 640px.
+  Still true on main: phone visitors have no visible link to `/submit`. Its
+  dev-log entry says "not yet merged", and the project doc doesn't mention it.
+
 ## 2026-09-29 — Photos merged to main (f3c7720)
 
 Merged `feature/card-cover-and-gallery-photos` into main with a real merge
