@@ -7,6 +7,67 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-28 — Bucket listing closed; Cowork real-browser QA passed on the preview
+
+**Bucket listing (`ce5d3f1`).** Closes the Supabase advisor warning from the
+entry below. The `opportunity-images public read` SELECT policy on
+`storage.objects` let anyone with the anon key list every object in the bucket,
+including photos from rejected or replaced listings. The site never needed it:
+public URLs (`/storage/v1/object/public/...`) are served for a public bucket
+without checking policies, and uploads are plain INSERTs (no upsert). Dropped
+it in `supabase/migrations/20260928000000_opportunity_images_no_listing.sql`,
+applied to production as `opportunity_images_no_listing`. Checked with the anon
+key before and after: list went from 15 objects to 0; public GET of an existing
+photo 200; new upload 200 and its public URL 200; upsert and delete still 403.
+
+**Cowork QA, real Chrome, build `ce5d3f1`** (same page code as `6c320a5`),
+previews `elpys-748zd4pez…` and `elpys-1p5xs62ju…`. Nothing merged, no code
+changed. All passed:
+
+- Homepage: 12/12 covers load, zero CSP violations. Sophia Way shows its
+  category icon. The two Keep Bellevue Beautiful cleanups are hidden because
+  their dates (Sep 5, Sep 12) have passed — expected.
+- Sammamish: no white bar. An edge scan of all 12 covers found no blank strips;
+  the same scan does flag the bar on the old image, so the scan works.
+- Detail pages `/earthcorps`, `/king-county-parks`, `/sammamish-park-events`:
+  covers load.
+- Response header: `img-src` includes `https://ukrykzmehvghedrvmkjj.supabase.co`.
+- Admin edit (`admin-review?id=115`, a pending "TEST" row): cover and gallery
+  upload previews render; Save writes `cover_image_url` and
+  `gallery_image_urls` and the row stays pending; removing both and saving
+  sets `cover_image_url = null`, `gallery_image_urls = []`. Row 115 was put
+  back to its original state.
+- Storage cleanup through the Supabase dashboard (real Storage deletes, so no
+  `storage.protect_delete` problem): removed the old Sammamish image
+  `656ee057…jpg`, earlier test files `701a559e…png` and `94180443…jpg`, and the
+  admin test uploads `5d6c6722…jpg` and `a45cae89…jpg`.
+
+**Follow-ups (none block the merge):**
+
+1. The read-only admin review screen doesn't show a submission's photos; they
+   only appear after clicking Edit, so an admin can approve a public
+   submission without seeing them. Should show cover + gallery on the review
+   view.
+2. King County Parks' cover is 370×247 and visibly soft in the 1016×420 detail
+   hero. Needs a larger source photo.
+3. EarthCorps' cover is 1800×312; the hero shows only the middle ~42% of the
+   width and it's slightly soft. Acceptable, but a less panoramic photo would
+   look better.
+4. Two unreferenced objects remain (checked against every `cover_image_url`
+   and `gallery_image_urls` on 2026-09-29): `uploads/162fd29f…png` (69 bytes,
+   03:20Z) is Claude Code's own upload test from the bucket-listing check above
+   and can be deleted. `uploads/0c95e22e-b783-4eb6-81eb-fc549956d235.jpg`
+   (3.6 MB, 03:08Z) has no known owner — probably an abandoned form upload;
+   delete it once nobody claims it.
+5. Live `/api/submit` test with photos is still not done. It needs the merge,
+   or the preview hostname added to Turnstile's allowed domains (the preview
+   gets Turnstile error 110200).
+6. QA note for next time: in a background tab, lazy-loaded images never start
+   and `naturalWidth` reads 0. Force eager loading or use a visible tab before
+   deciding images are broken.
+
+**Status:** the branch is ready to merge. Krish decides when.
+
 ## 2026-09-28 — CSP blocked every photo; fixed on the branch (37a9f32)
 
 **The bug.** The site-wide `Content-Security-Policy` in `vercel.json` had
@@ -1290,8 +1351,8 @@ Arjun pushed back on the previous entry's "known limitation" and was right to.
 `/opportunities-detail?slug=wta` was landing on `/wta?slug=wta` — right page,
 pointless leftover parameter on a URL whose whole purpose was to be clean. The
 earlier conclusion that this was unfixable was wrong: it ruled out ONE
-approach (`preserveQueryParams`, which really is a Bulk Redirects API field and
-not a `vercel.json` key) and stopped there. `middleware.js` already runs on
+approach (`preserveQueryParams`, which really is a Bulk Redirects API field
+and not a `vercel.json` key) and stopped there. `middleware.js` already runs on
 those paths and builds its own `Location` header, so it can simply omit the
 query.
 
