@@ -7,6 +7,22 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-29 — Photos merged to main (f3c7720)
+
+Merged `feature/card-cover-and-gallery-photos` into main with a real merge
+commit (`--no-ff`) at Krish's go-ahead, after every preview check in the
+entries below had passed. It merged cleanly. `index.html` auto-merged and kept
+main's removal of the `VY3_4…` verification tag (the `I1Daqn…` tag stays).
+Before pushing I checked that `vercel.json` parses and ran `node --check` on
+the changed API/client JS. All three migrations (`opportunity_photos`,
+`opportunity_images_no_listing`, `opportunity_photo_credit`) were already
+applied to production, so the deploy needs no database step.
+
+**Still to do after the deploy:** the live `/api/submit` test with photos and a
+photo credit (Turnstile works on elpys.vercel.app), and showing photos and
+credit on the read-only admin review view. The feature branch is not deleted
+yet.
+
 ## 2026-09-29 — Photo credit on listings (0b83a45, on the branch)
 
 King County Parks' new cover comes from their Flickr under a license that
