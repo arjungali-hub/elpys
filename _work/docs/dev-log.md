@@ -7,6 +7,39 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-29 — Photo credit on listings (0b83a45, on the branch)
+
+King County Parks' new cover comes from their Flickr under a license that
+requires a credit, so listings can now carry one.
+
+- **Data:** new nullable `photo_credit text` column on `Opportunities` (1–200
+  chars, CHECK constraint), in
+  `supabase/migrations/20260929000000_opportunity_photo_credit.sql`. The
+  migration is **already applied to production** as `opportunity_photo_credit`.
+  That's safe before the merge because main never reads or writes the column.
+  Anon gets a column grant, and the column is added to `PUBLIC_COLUMNS` (the
+  2026-08-26 trap). Checked by running as the anon role that the column is
+  readable.
+- **Display:** shown as "Photo: <credit>". On the homepage card it's small white
+  text on a translucent strip in the photo's bottom-right corner, truncated
+  with an ellipsis if too long, so the card isn't any taller. On the detail
+  page it's a small grey line under the cover/gallery. It's shown only when
+  there's a photo; the fallback icon never gets a credit.
+- **Editing:** a "Photo credit" field in the admin editor (emptying it clears
+  the credit) and an optional "Photo credit" field on `/submit`, next to the
+  photo-rights checkbox. The server collapses whitespace, caps it at 200
+  characters, and drops it when the submission has no photos.
+- **Data set:** King County Parks (id 96) → `King County Parks`; EarthCorps
+  (id 93) → `EarthCorps`. The license name isn't included yet because the exact
+  Flickr license and version haven't been confirmed. Add it (e.g.
+  `King County Parks (CC BY-NC 2.0)`) once they are.
+- **Checked:** local Chromium with mocked Supabase responses. A card with a
+  credit shows it, one without shows nothing, and a listing with no photo but a
+  credit shows nothing. On the detail page, cover + credit, gallery-only +
+  credit, and no photo (no line) all render correctly. The submit field posts
+  as `photo_credit`. `node --check` passes on the changed JS and inline
+  scripts. Not yet checked on the preview.
+
 ## 2026-09-29 — New covers for King County Parks and EarthCorps (data only)
 
 Cowork replaced the two weak covers flagged in the QA entry below (follow-ups 2
