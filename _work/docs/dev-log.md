@@ -7,6 +7,20 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-29 — Branches cleaned up; GitHub Pages switched off
+
+Krish deleted the 21 branches from the audit below on GitHub's Branches page:
+the 15 plain merges, the 5 from before main's history restart, and
+`fix/mobile-submit-doorway`. Only `main` and `claude/friendly-volta-tu08v2`
+(this session's working branch) remain; I checked with `git ls-remote`.
+
+GitHub Pages had been on the whole time, publishing a second, broken copy of the
+site (no API functions and no `vercel.json` headers) at
+arjungali-hub.github.io/elpys from every push to main. Its "deploy" check is the
+red X that showed on some older commits: a run cancelled because a newer push
+replaced it. Krish unpublished the site and set Settings → Pages → Branch to
+None. The GitHub API now reports `has_pages: false`. Vercel is the only host.
+
 ## 2026-09-29 — "Submit an opportunity" stays visible on phones
 
 Krish: don't hide "Submit an opportunity", and don't use the footer link from
