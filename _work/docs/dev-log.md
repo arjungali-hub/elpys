@@ -38,7 +38,9 @@ run, and its note now says so.
 
 The Sophia Way cover was already checked by Cowork (2026-09-30): nothing
 better on sophiaway.org's 818-image media library. Facebook and Instagram
-need a login and are still unchecked.
+need a login and weren't checked. **Decision (Krish, 2026-09-30): keep the
+current cover** (`uploads/45f45479-7f4a-47d6-91a6-393bc1392343.jpg`,
+841×314). Don't search for a replacement again unless asked.
 
 ## 2026-09-30 — Signed-out admin visits go to /admin-login and back
 
