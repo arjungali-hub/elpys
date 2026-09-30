@@ -7,6 +7,69 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-30 — Photo branch merged (79d2d18); the older open items fixed on main
+
+**Merge.** Krish said merge, so `fix/scrub-hidden-photo-location-before-upload`
+went into main with a real merge commit (`79d2d18`, `--no-ff`). It merged
+cleanly, 7/7 tests passed, and the production deploy is READY. That puts four
+things live:
+- metadata stripping on every upload;
+- Delete unused photos: the admin-header button, plus the weekly cron on
+  Mondays at 09:00 UTC, which only runs on production;
+- `/admin` gone from the code;
+- the pre-merge fixes.
+
+**The older open items from the list below, fixed on main the same day:**
+- **Stacked pins on `/map`** (`90f7540`): pins at an identical point sit a
+  fixed 34px apart on screen, recomputed every zoom, side by side first. That
+  clears a selected pin too, which grows to about 31px. Local Chromium with
+  three co-located listings: 34px apart at the default, +2 and −1 zooms, and
+  each of the three pins opens its own popup when clicked, including while
+  another is selected.
+- **Event dates on `/map`** (`90f7540`): one-time events show their date in
+  the sidebar and the pin popup (`formatEventDate`, the same format as the
+  card's date pill).
+- **Phone scroll trap on `/map`** (`90f7540`): on a coarse pointer, one-finger
+  map dragging is off, so the page scrolls. Leaflet's pinch handler still
+  pans and zooms with two fingers, and a one-finger move shows "Use two
+  fingers to move the map" for 1.5s. Checked with a touch-emulated 375px
+  phone: dragging off, pinch on, `touch-action: pan-x pan-y`, the hint shows
+  then fades, and no sideways scroll. Mouse dragging is unchanged.
+- **Intro copy on `/map`** (`90f7540`): it said "Click a name on the left",
+  but on phones the list is above the map; it now says "in the list".
+- **Rejected list** (`cd1c766`): the Approve page has a read-only Rejected
+  section (name, rejected date, domain, reason). `GET /api/admin` now also
+  returns `rejected`.
+- **Past events** (`cd1c766`): on the Edit page, published one-time events
+  whose date has passed (Pacific day, the same rule as the public site) move
+  into their own Past events section, with "Delete all N past events" behind
+  a confirmation. It uses the existing hard `delete` action, because
+  Unpublish would put them back in the Approve queue.
+- **Retention didn't cover rejected rows** (`cd1c766`,
+  `supabase/migrations/20260930000000_retention_covers_rejected.sql`, applied
+  as `retention_covers_rejected`), found while writing the Rejected section.
+  `privacy.html` promises declined submissions are deleted within 12 months,
+  but `enforce_retention()` predated soft-reject and only cleared stale
+  pending rows. It now also deletes rejected rows 12 months after
+  `rejected_at` (or `created_at` if that's missing). Same signature and
+  grants; the monthly pg_cron job is unchanged. No rows qualify yet.
+
+The admin sections were checked in local Chromium with a mocked API:
+- Rejected rows render, and aren't links.
+- The live list excludes past events, and its count badge matches.
+- The past list and the bulk delete send one delete per row, then the
+  section hides.
+- The dialog lists the names, and shows `<` in a name correctly.
+- No page errors.
+
+**Left, none of it code:**
+- Production checks in a real browser (Cowork).
+- The Sophia Way cover, which needs a better photo.
+- Cowork's step-2 test upload, which the weekly cleanup removes once it's
+  over 24 hours old.
+- Vercel's login screen covering 404s on previews, and Turnstile rejecting
+  preview hostnames. Both are preview-only settings.
+
 ## 2026-09-30 — Preview check passed; every small issue found on this branch fixed (`00cd88d`, not merged)
 
 Cowork's real-Chrome check of the branch preview passed all five steps:
