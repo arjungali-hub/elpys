@@ -7,6 +7,42 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-30 — Signed-out admin visits go to /admin-login and back
+
+Krish: admin pages should send you to the admin login page when you're not
+signed in, not show the old password box with its "Load" button.
+
+**Before.** There were two signed-out cases, and neither reached the login page:
+- **No session cookie:** `middleware.js` served a 404.
+- **A cookie but no saved password in this tab** (a new tab, or a rejected
+  password): Approve/Edit/Feedback, Data review and Analytics review showed
+  their own inline password box with a "Load" button. The listing review
+  page already redirected, but to plain `/admin-login`.
+
+**Now.** Every case goes to `/admin-login?next=<the page>`:
+- the middleware's 302 for a missing or invalid cookie;
+- each page's check when there's no saved password;
+- a 401 from the admin API.
+
+After a successful sign-in, `admin-login.html` goes to `next`, but only when
+it's one of the admin pages as a same-site path (`/admin-review` needs a
+numeric `id`). Anything else goes to the homepage, as before: other sites,
+`//host`, `javascript:` and public pages. The inline password boxes and their
+Load/busy code are gone; each page keeps its message area for rate-limit and
+server errors. `/admin-login` is linked publicly from `/login`, so
+redirecting to it reveals nothing the 404 was hiding.
+
+**Checked:**
+- **Middleware, run under Node:** all 7 gated paths (including `.html` and
+  `?id=`) redirect with the right `next`. A real session cookie passes
+  through, and a forged one redirects.
+- **Local Chromium, each of the 6 pages:** with no saved password, and with a
+  rejected one, the page lands on the login page with its own `next`.
+- **Login page:** it returns to `/admin-review?id=42` and to `/admin-edit`,
+  and sends `https://evil.example/…`, `//evil.example`, `/privacy` and
+  `javascript:` to `/`.
+- **Signed in:** a signed-in page shows no password box and no page errors.
+
 ## 2026-09-30 — Cleanup stays weekly: this Vercel plan allows at most daily jobs
 
 Krish asked for Delete unused photos to run hourly if there was no downside.
