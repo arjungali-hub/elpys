@@ -156,7 +156,7 @@
       <h2>Past events</h2>
       <span class="count-badge" id="past-count-badge"></span>
     </div>
-    <p class="section-note">These one-time events have already happened, so they no longer appear anywhere on the site. Delete them once you no longer need them — deleting can't be undone.</p>
+    <p class="section-note">These one-time events have already happened, so they no longer appear anywhere on the site. They're deleted automatically overnight; you can also delete them now. Deleting can't be undone.</p>
     <button class="btn-primary" id="delete-past-btn" type="button"></button>
     <span class="sub-action-msg" id="delete-past-msg"></span>
     <div id="past-list"></div>
@@ -416,9 +416,10 @@
     return row.opportunity_type === 'one_time' && row.event_date && row.event_date < pacificToday();
   }
 
-  // Past one-time events stay published in the database after they drop off
-  // the site, so they get their own list under the live ones rather than
-  // cluttering it, with a way to clear them.
+  // Past one-time events are deleted nightly by the database
+  // (delete_past_events, pg_cron 10:07 UTC). Between an event's day ending and
+  // that run they'd otherwise sit in the live list, so they get their own list
+  // under it, with a way to clear them straight away.
   let pastRows = [];
   function renderPublished(rows) {
     const live = rows.filter(r => !isPastEvent(r));

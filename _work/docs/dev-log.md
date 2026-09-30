@@ -7,6 +7,39 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-30 — Past one-time events are deleted automatically overnight
+
+Krish asked for events to be deleted once they're done, rather than left
+published. New `public.delete_past_events()`
+(`supabase/migrations/20260930000001_delete_past_events.sql`, applied as
+`delete_past_events`). It deletes rows that meet all four conditions:
+- `status = 'published'`;
+- `opportunity_type = 'one_time'`;
+- `event_date` is set;
+- `event_date` is before today's Pacific date. That's the same rule the site
+  already uses to hide an event and 404 its URL from the day after.
+
+It runs nightly from pg_cron as `elpys-delete-past-events` at `7 10 * * *`,
+which is 3:07am PDT / 2:07am PST. It's in the database rather than Vercel,
+so it isn't bound by the Hobby plan's daily-cron limit and doesn't depend
+on a deploy. Execute is granted to `service_role` only.
+
+Only published rows are affected. A pending submission for a date that has
+passed stays for an admin to reject, and rejected rows follow
+`enforce_retention()`'s 12 months. The only table that references listings,
+`data_review_flags`, is ON DELETE CASCADE; the two events had no flags.
+Photos of deleted events become unused and go in the weekly cleanup.
+
+Run once by hand to confirm it works: it returned 2, deleting BelRed
+Cleanup (117, Sep 5) and Eastgate Cleanup (118, Sep 12). 13 published
+listings remain, none of them one-time. The Edit page's Past events section
+stays as a fallback for the hours between an event ending and the nightly
+run, and its note now says so.
+
+The Sophia Way cover was already checked by Cowork (2026-09-30): nothing
+better on sophiaway.org's 818-image media library. Facebook and Instagram
+need a login and are still unchecked.
+
 ## 2026-09-30 — Signed-out admin visits go to /admin-login and back
 
 Krish: admin pages should send you to the admin login page when you're not
