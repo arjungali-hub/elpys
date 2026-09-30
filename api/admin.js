@@ -53,12 +53,15 @@ module.exports = async function handler(req, res) {
     // A paused or unreachable Supabase project makes fetch reject outright,
     // which is the case this whole path exists for — unhandled, it produced a
     // bodyless 500 and the panel had nothing to show.
-    let pendingRes, publishedRes, feedbackRes;
+    let pendingRes, publishedRes, feedbackRes, rejectedRes;
     try {
-      [pendingRes, publishedRes, feedbackRes] = await Promise.all([
+      [pendingRes, publishedRes, feedbackRes, rejectedRes] = await Promise.all([
         fetch(SUPABASE_URL + 'Opportunities?status=eq.pending&select=*&order=created_at.asc',  { headers: supabaseHeaders() }),
         fetch(SUPABASE_URL + 'Opportunities?status=eq.published&select=*&order=name.asc', { headers: supabaseHeaders() }),
         fetch(SUPABASE_URL + 'Feedback?select=*&order=created_at.desc&limit=200', { headers: supabaseHeaders() }),
+        // Read-only record on the Approve page of why each was turned down.
+        fetch(SUPABASE_URL + 'Opportunities?status=eq.rejected&select=id,name,org_domain,website,created_at,rejected_at,rejection_reason&order=rejected_at.desc.nullslast&limit=200',
+              { headers: supabaseHeaders() }),
       ]);
     } catch (err) {
       console.error('Admin GET could not reach Supabase:', err && err.stack ? err.stack : err);
@@ -81,14 +84,15 @@ module.exports = async function handler(req, res) {
       return { ok: true, rows: parsed };
     }
 
-    const [pending, published, feedback] = await Promise.all([
+    const [pending, published, feedback, rejected] = await Promise.all([
       rows(pendingRes,   'pending'),
       rows(publishedRes, 'published'),
       rows(feedbackRes,  'feedback'),
+      rows(rejectedRes,  'rejected'),
     ]);
 
-    // Feedback is a side panel — losing it should not blank the queue the
-    // admin actually came for. The two opportunity lists are the page.
+    // Feedback and the rejected list are side panels — losing either should
+    // not blank the queue the admin actually came for. The two opportunity lists are the page.
     if (!pending.ok || !published.ok) {
       const bad = !pending.ok ? pending : published;
       return res.status(502).json({
@@ -101,6 +105,7 @@ module.exports = async function handler(req, res) {
       pending:   pending.rows,
       published: published.rows,
       feedback:  feedback.ok ? feedback.rows : [],
+      rejected:  rejected.ok ? rejected.rows : [],
     });
   }
 

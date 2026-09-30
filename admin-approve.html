@@ -105,6 +105,15 @@
     .btn-delete:hover { background: var(--text-main); color: #fff; }
 
     .empty-state { color: var(--text-muted); font-size: 0.9375rem; padding: 1.5rem 0; }
+    /* Rejected (Approve page) and Past events (Edit page): secondary lists
+       under the main one. Rejected rows are a read-only record, not links. */
+    .sub-section { margin-top: 2.5rem; }
+    .section-note { font-size: 0.875rem; color: var(--muted); margin: -0.75rem 0 1rem; max-width: 70ch; line-height: 1.5; }
+    .list-row.list-row-static { cursor: default; }
+    .list-row.list-row-static:hover { transform: none; box-shadow: none; border-color: var(--border); }
+    #delete-past-btn { margin-bottom: 1rem; background: #991B1B; border-color: #991B1B; }
+    #delete-past-btn:disabled { opacity: 0.6; cursor: default; }
+    #delete-past-msg { font-size: 0.8125rem; color: var(--text-muted); font-weight: 600; margin-left: 0.75rem; }
   </style>
 </head>
 <body>
@@ -131,6 +140,15 @@
     <span class="count-badge" id="count-badge"></span>
   </div>
   <div id="submissions-list"></div>
+
+  <div id="rejected-section" class="sub-section" style="display:none;">
+    <div class="section-header">
+      <h2>Rejected</h2>
+      <span class="count-badge" id="rejected-count-badge"></span>
+    </div>
+    <p class="section-note">Kept as the record of why each one was turned down, so the same organization isn't approved later by someone who never saw the reason. Deleted automatically 12 months after rejection, as the privacy policy says.</p>
+    <div id="rejected-list"></div>
+  </div>
 </div>
 
 <div id="published-panel">
@@ -139,6 +157,17 @@
     <span class="count-badge" id="published-count-badge"></span>
   </div>
   <div id="published-list"></div>
+
+  <div id="past-section" class="sub-section" style="display:none;">
+    <div class="section-header">
+      <h2>Past events</h2>
+      <span class="count-badge" id="past-count-badge"></span>
+    </div>
+    <p class="section-note">These one-time events have already happened, so they no longer appear anywhere on the site. Delete them once you no longer need them — deleting can't be undone.</p>
+    <button class="btn-primary" id="delete-past-btn" type="button"></button>
+    <span class="sub-action-msg" id="delete-past-msg"></span>
+    <div id="past-list"></div>
+  </div>
 </div>
 
 <div id="feedback-panel">
@@ -330,7 +359,7 @@
         throw new Error([e.error || 'HTTP ' + res.status, e.message].filter(Boolean).join(' — '));
       }
 
-      const { pending, published, feedback } = await res.json();
+      const { pending, published, feedback, rejected } = await res.json();
       document.getElementById('login-panel').style.display = 'none';
       // Persisted so a page reached by clicking a row (admin-review.html) has
       // a session too — previously only the dedicated admin-login.html wrote
@@ -340,6 +369,7 @@
       startSessionKeepAlive();
       renderPending(pending);
       renderPublished(published);
+      renderRejected(rejected || []);
       renderFeedback(feedback || []);
 
       applyViewVisibility();
@@ -401,13 +431,83 @@
     rows.forEach(row => list.appendChild(buildListRow(row, 'pending')));
   }
 
+  // The Bellevue calendar day, the same rule the public site uses
+  // (supabase-client.js _todayIso): a one-time event drops off the site the
+  // day after it happens.
+  function pacificToday() {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    } catch (_) { return new Date().toISOString().slice(0, 10); }
+  }
+  function isPastEvent(row) {
+    return row.opportunity_type === 'one_time' && row.event_date && row.event_date < pacificToday();
+  }
+
+  // Past one-time events stay published in the database after they drop off
+  // the site, so they get their own list under the live ones rather than
+  // cluttering it, with a way to clear them.
+  let pastRows = [];
   function renderPublished(rows) {
-    document.getElementById('published-count-badge').textContent = rows.length;
+    const live = rows.filter(r => !isPastEvent(r));
+    pastRows = rows.filter(isPastEvent);
+    document.getElementById('published-count-badge').textContent = live.length;
     const list = document.getElementById('published-list');
     Loading.clear(list);
-    if (rows.length === 0) { list.innerHTML = '<p class="empty-state">No published listings yet.</p>'; return; }
+    list.innerHTML = live.length ? '' : '<p class="empty-state">No published listings yet.</p>';
+    live.forEach(row => list.appendChild(buildListRow(row, 'published')));
+    renderPast();
+  }
+  function renderPast() {
+    const section = document.getElementById('past-section');
+    section.style.display = pastRows.length ? 'block' : 'none';
+    document.getElementById('past-count-badge').textContent = pastRows.length;
+    document.getElementById('delete-past-btn').textContent =
+      'Delete ' + (pastRows.length === 1 ? 'this past event' : 'all ' + pastRows.length + ' past events');
+    const list = document.getElementById('past-list');
     list.innerHTML = '';
-    rows.forEach(row => list.appendChild(buildListRow(row, 'published')));
+    pastRows.forEach(row => list.appendChild(buildListRow(row, 'published')));
+  }
+  document.getElementById('delete-past-btn').addEventListener('click', function () {
+    const n = pastRows.length;
+    if (!n) return;
+    confirmAction('Delete ' + n + ' past event' + (n === 1 ? '' : 's') + '?',
+      pastRows.map(r => r.name + ' (' + r.event_date + ')').join(', ') +   // showModal escapes the body
+        '. They are removed permanently. Their photos are cleared by the next "Delete unused photos".',
+      'Delete permanently', async function () {
+        const btn = document.getElementById('delete-past-btn');
+        const msg = document.getElementById('delete-past-msg');
+        btn.disabled = true;
+        const failed = [];
+        for (const row of pastRows.slice()) {
+          const res = await postAction({ action: 'delete', id: row.id }).catch(() => null);
+          if (res && res.ok) pastRows = pastRows.filter(r => r.id !== row.id);
+          else failed.push(row.name);
+        }
+        btn.disabled = false;
+        renderPast();
+        msg.textContent = failed.length ? 'Could not delete: ' + failed.join(', ') + '. Try again.' : '✓ Deleted.';
+      });
+  });
+
+  function renderRejected(rows) {
+    const section = document.getElementById('rejected-section');
+    section.style.display = rows.length ? 'block' : 'none';
+    document.getElementById('rejected-count-badge').textContent = rows.length;
+    const list = document.getElementById('rejected-list');
+    list.innerHTML = '';
+    rows.forEach(row => {
+      const div = document.createElement('div');
+      div.className = 'list-row list-row-static';
+      const when = row.rejected_at ? new Date(row.rejected_at).toLocaleDateString() : 'date not recorded';
+      div.innerHTML =
+        '<span class="list-row-name">' + esc(row.name) + '</span>' +
+        '<span class="list-row-meta">' + [
+          'Rejected ' + esc(when),
+          row.org_domain ? esc(row.org_domain) : (row.website ? esc(row.website) : null),
+          'Reason: ' + (row.rejection_reason ? esc(row.rejection_reason) : '<em>none given</em>'),
+        ].filter(Boolean).join(' · ') + '</span>';
+      list.appendChild(div);
+    });
   }
 
   // ── Shared helpers ─────────────────────────────────────────────────────────
