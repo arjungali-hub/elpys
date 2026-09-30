@@ -55,7 +55,7 @@
   <section class="map-section">
     <a href="/" class="back-link">← Back to all opportunities</a>
     <h1 style="font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.75rem;">Opportunities near you</h1>
-    <p class="map-intro">Every verified opportunity is pinned below. Some organizations operate at one fixed address; others run events at multiple parks or serve several cities — those pins mark a representative location, not an exact site. Click a name on the left (or a pin), then enter where you're starting from to estimate the drive and show the route.</p>
+    <p class="map-intro">Every verified opportunity is pinned below. Some organizations operate at one fixed address; others run events at multiple parks or serve several cities — those pins mark a representative location, not an exact site. Click a name in the list (or a pin), then enter where you're starting from to estimate the drive and show the route.</p>
     <form class="route-search" id="route-form">
       <label for="route-origin">Starting place</label>
       <div class="route-search-row">
@@ -97,7 +97,27 @@
 <script src="loading.js"></script>
 <script src="supabase-client.js"></script>
 <script>
-  const map = L.map('map', { worldCopyJump: true });
+  // On a touch screen the map is nearly full-width and most of the screen
+  // tall, so one-finger drag panning it trapped the page: there was no room
+  // left to scroll past it. One finger now scrolls the page; two fingers move
+  // and zoom the map (Leaflet's pinch handler pans as well as zooms), with a
+  // hint when someone tries one finger. Mouse users are unaffected.
+  const COARSE_POINTER = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  const map = L.map('map', { worldCopyJump: true, dragging: !COARSE_POINTER });
+  if (COARSE_POINTER) {
+    const hint = document.createElement('div');
+    hint.className = 'map-touch-hint';
+    hint.setAttribute('aria-hidden', 'true');
+    hint.textContent = 'Use two fingers to move the map';
+    map.getContainer().appendChild(hint);
+    let hintTimer = null;
+    map.getContainer().addEventListener('touchmove', e => {
+      if (e.touches.length !== 1) { hint.classList.remove('show'); return; }
+      hint.classList.add('show');
+      clearTimeout(hintTimer);
+      hintTimer = setTimeout(() => hint.classList.remove('show'), 1500);
+    }, { passive: true });
+  }
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -280,25 +300,34 @@
   async function initMap() {
     const sidebar = document.getElementById('map-sidebar');
     const bounds = [];
-    // Three approximate "Bellevue, WA" listings geocode to the identical point, so
-    // their pins stack and only the last one drawn is clickable - the sidebar shows
-    // 15 opportunities while the map offers about 12. Nudge each repeat of a
-    // coordinate onto a small ring (~40m) around it so every pin can be reached.
-    // The first at any point keeps its exact position, so nothing that was already
-    // distinct moves.
+    // Several approximate "Bellevue, WA" listings geocode to the identical
+    // point, so their pins stack and only the top one can be clicked. Each
+    // repeat of a point goes on a small ring around it, a fixed number of
+    // SCREEN pixels out, recomputed on every zoom. The old fixed ~40m offset
+    // was under one pixel at the map's default fit-all zoom, so the pins still
+    // covered each other exactly. The first pin at any point keeps its real
+    // position, so nothing that was already distinct moves.
     const seenPoints = new Map();
-    function spread(lat, lng) {
+    const repeats = [];                         // { marker, base, n }
+    // 34px apart, side by side first: clears a selected pin too, which grows
+    // to ~31px wide (half of 31 + half of 21 = 26px needed).
+    const RING_PX = 34;
+    const RING_ANGLES = [0, Math.PI, -Math.PI / 3, -2 * Math.PI / 3, Math.PI / 3, 2 * Math.PI / 3];
+    function ringIndex(lat, lng) {
       const key = lat.toFixed(6) + ',' + lng.toFixed(6);
       const n = seenPoints.get(key) || 0;
       seenPoints.set(key, n + 1);
-      if (n === 0) return [lat, lng];
-      const R = 0.00036;                       // ~40m in degrees of latitude
-      const angle = (n - 1) * (2 * Math.PI / 6) + Math.PI / 6;
-      return [
-        lat + R * Math.sin(angle),
-        lng + R * Math.cos(angle) / Math.max(0.2, Math.cos(lat * Math.PI / 180)),
-      ];
+      return n;
     }
+    function layoutRepeats() {
+      const z = map.getZoom();
+      repeats.forEach(({ marker, base, n }) => {
+        const angle = RING_ANGLES[(n - 1) % RING_ANGLES.length] + Math.floor((n - 1) / RING_ANGLES.length) * Math.PI / 6;
+        const p = map.project(base, z).add([RING_PX * Math.cos(angle), RING_PX * Math.sin(angle)]);
+        marker.setLatLng(map.unproject(p, z));
+      });
+    }
+    map.on('zoomend', layoutRepeats);
 
     // The sidebar was simply blank until the fetch resolved.
     Loading.show(sidebar, Loading.rows(5));
@@ -334,9 +363,13 @@
       const actionLink = (opp.approx && opp.liveUrl)
         ? '<a href="' + safeUrl(opp.liveUrl) + '" target="_blank" rel="noopener">Find exact locations on their website</a>'
         : '<a href="' + escHtml(directionsUrl) + '" target="_blank" rel="noopener">Get directions</a>';
+      // One-time events show their date, in the popup and the list, the same
+      // way the homepage card's date pill does.
+      const eventDate = opp._opportunityType === 'one_time' && opp._eventDate ? formatEventDate(opp._eventDate) : '';
       const popupHtml =
         '<div class="map-popup">' +
           '<a class="map-popup-title" href="' + safeUrl(opp.link) + '">' + escHtml(opp.name) + '</a>' +
+          (eventDate ? '<span class="map-popup-tag map-popup-date">' + escHtml(eventDate) + '</span>' : '') +
           '<span class="map-popup-tag">' + escHtml(opp.tag) + '</span>' +
           approxNote +
           actionLink +
@@ -348,8 +381,10 @@
       // A row without usable coordinates still gets a sidebar entry, but no
       // pin — L.marker at NaN throws.
       if (isFinite(opp.lat) && isFinite(opp.lng)) {
-        const at = spread(opp.lat, opp.lng);
+        const at = [opp.lat, opp.lng];
         opp.marker = L.marker(at, { icon: pinIcon(false) }).addTo(map).bindPopup(popupHtml);
+        const n = ringIndex(opp.lat, opp.lng);
+        if (n > 0) repeats.push({ marker: opp.marker, base: L.latLng(at), n });
         bounds.push(at);
       }
 
@@ -372,6 +407,7 @@
       item.className = 'map-list-item';
       item.innerHTML =
         '<a class="map-list-name" href="' + safeUrl(opp.link) + '">' + escHtml(opp.name) + '</a>' +
+        (eventDate ? '<span class="map-list-date">' + escHtml(eventDate) + '</span>' : '') +
         '<span class="map-list-desc">' + escHtml(opp.desc) + '</span>';
 
       const showBtn = document.createElement('button');
@@ -421,6 +457,7 @@
     // and leave the map with no view at all.
     if (bounds.length) {
       map.fitBounds(bounds, { padding: [30, 30] });
+      layoutRepeats();
     } else {
       map.setView(BELLEVUE_CENTRE, 11);
       sidebar.innerHTML = '<div class="load-error"><p class="load-error-title">No opportunities to show yet</p>' +

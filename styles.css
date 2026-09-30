@@ -1240,6 +1240,11 @@ footer a {
 .map-list-name:hover {
   text-decoration: underline;
 }
+.map-list-date {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--body);
+}
 .map-list-desc {
   font-size: 0.75rem;
   line-height: 1.4;
@@ -1300,6 +1305,25 @@ footer a {
   .route-search-row { flex-direction: column; }
   .route-search button { width: 100%; }
 }
+/* Touch screens: shown briefly when one finger tries to move the map. */
+.map-touch-hint {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.map-touch-hint.show { opacity: 1; }
 #map {
   width: 100%;
   height: 65vh;
