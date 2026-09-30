@@ -5,8 +5,10 @@
 // surface. No admin data loads without the password (each has its own inline
 // login form backed by lib/adminAuth.js's checkAdminPassword, unchanged by
 // this file), but without this the page SHELL — and the fact that an admin
-// system exists at these URLs at all — would be visible to anyone. This makes
-// an unauthenticated request 404 before any of that HTML ships.
+// system exists at these URLs at all — would be visible to anyone. This sends
+// an unauthenticated request to /admin-login (which is linked publicly from
+// /login anyway) before any of that HTML ships, with ?next= so a successful
+// sign-in lands back on the page that was asked for.
 //
 // /admin-feedback and /admin-edit are vercel.json rewrites onto
 // admin-approve.html (the page picks its view from the path), so they need
@@ -36,8 +38,8 @@
 // module, because the Edge runtime doesn't have the latter. The two
 // implementations must be changed together if either ever is.
 //
-// A bug in this file can only make these pages 404 or (if the check is ever
-// loosened incorrectly) publicly loadable again — it does not touch
+// A bug in this file can only make these pages unreachable or (if the check
+// is ever loosened incorrectly) publicly loadable again — it does not touch
 // checkAdminPassword or the data endpoints, so it cannot by itself expose
 // admin data. Losing this file entirely is a visibility regression, not a
 // security one.
@@ -299,6 +301,8 @@ export default async function middleware(request) {
 
   // ── Admin surface: gate ───────────────────────────────────────────────────
   if (!(await hasValidSession(request))) {
-    return notFound(request);
+    const login = new URL('/admin-login', url.origin);
+    login.searchParams.set('next', path + url.search);
+    return Response.redirect(login, 302);
   }
 }

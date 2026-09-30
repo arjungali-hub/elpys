@@ -82,6 +82,23 @@
   var btn      = document.getElementById('submit-btn');
   var statusEl = document.getElementById('form-status');
 
+  // An admin page that sent you here to sign in passes ?next=<its address>,
+  // so you land back on it. Only the admin pages themselves are accepted, as a
+  // same-site path, so the link can't be used to bounce someone elsewhere;
+  // anything else goes to the homepage, as before.
+  function nextPage() {
+    try {
+      var raw = new URLSearchParams(location.search).get('next');
+      if (!raw) return '/';
+      var u = new URL(raw, location.origin);
+      if (u.origin !== location.origin) return '/';
+      var path = u.pathname.replace(/\.html$/, '').replace(/\/$/, '');
+      if (/^\/(admin-approve|admin-edit|admin-feedback|review|analytics-review)$/.test(path)) return path;
+      if (path === '/admin-review' && /^\d+$/.test(u.searchParams.get('id') || '')) return path + '?id=' + u.searchParams.get('id');
+    } catch (_) { /* fall through */ }
+    return '/';
+  }
+
   function showError(msg) {
     statusEl.textContent   = msg;
     statusEl.className     = 'form-status error';
@@ -112,7 +129,7 @@
       if (!res.ok) throw new Error('HTTP ' + res.status);
 
       sessionStorage.setItem('elpys_admin_pw', password);
-      location.replace('/');
+      location.replace(nextPage());
     } catch (err) {
       showError(err.message || 'Something went wrong. Please try again.');
       Loading.clearBusy(btn);

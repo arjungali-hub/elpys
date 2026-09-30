@@ -74,7 +74,6 @@
 
     /* Login — identical to review.html's, since the two share a session key. */
     #login-panel { max-width: 340px; }
-    .login-row { display: flex; gap: 0.5rem; }
     input[type=password] {
       font-family: inherit; font-size: 0.875rem; color: var(--text-main); background: var(--bg-primary);
       border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.45rem 0.6rem; width: 100%;
@@ -158,15 +157,9 @@
        (no placeholder) when there are none. -->
   <div id="redesign-card-slot"></div>
 
-  <!-- Hidden from the start when a password is already stored, same as
-       review.html: the load begins immediately in that case, and showing a
-       password box you never have to touch reads as being asked to log in
-       again. Revealed if the stored password turns out to be wrong. -->
-  <div id="login-panel">
-    <div class="login-row">
-      <input type="password" id="password-input" placeholder="Admin password" autocomplete="current-password" />
-      <button class="btn-primary" id="login-btn">Load</button>
-    </div>
+  <!-- Error messages only (rate limit, server errors). Signing in happens on
+       /admin-login; this page sends you there if you aren't signed in. -->
+  <div id="login-panel" style="display:none;">
     <div class="msg" id="login-msg"></div>
   </div>
 
@@ -424,33 +417,23 @@
     loginPanel().style.display   = 'block';
   }
 
+  // Signing in only happens on /admin-login. With no saved password, or one
+  // the server rejects, go there; it sends you back here afterwards.
+  function goToAdminLogin() {
+    sessionStorage.removeItem('elpys_admin_pw');
+    location.replace('/admin-login?next=' + encodeURIComponent(location.pathname + location.search));
+  }
+
   (function () {
     const stored = sessionStorage.getItem('elpys_admin_pw');
-    if (stored) { _password = stored; showAutoLoading(); loadAll(); }
+    if (!stored) { goToAdminLogin(); return; }
+    _password = stored; showAutoLoading(); loadAll();
   }());
 
-  document.getElementById('login-btn').addEventListener('click', () => loadAll());
-  document.getElementById('password-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') loadAll();
-  });
-
   async function loadAll() {
-    if (!_password) _password = document.getElementById('password-input').value;
-    if (!_password) { showLoginMsg('Enter a password.', 'error'); return; }
-
-    const btn = document.getElementById('login-btn');
-    btn.disabled = true;
-    btn.textContent = 'Loading…';
-
     try {
       const res = await fetch(API, { headers: { 'x-admin-password': _password } });
-      if (res.status === 401) {
-        _password = '';
-        sessionStorage.removeItem('elpys_admin_pw');
-        revealLogin();
-        showLoginMsg('Incorrect password.', 'error');
-        return;
-      }
+      if (res.status === 401) { goToAdminLogin(); return; }
       if (res.status === 429) {
         revealLogin();
         const e = await res.json().catch(() => ({}));
@@ -491,9 +474,6 @@
     } catch (err) {
       revealLogin();
       showLoginMsg('Error: ' + err.message, 'error');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Load';
     }
   }
 

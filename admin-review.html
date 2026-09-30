@@ -287,7 +287,7 @@
     // successful load, so a missing session here means it expired or was
     // never persisted — back to the admin login page rather than duplicating
     // a login form.
-    location.replace('/admin-login');
+    location.replace('/admin-login?next=' + encodeURIComponent(location.pathname + location.search));
   } else if (!ID) {
     showStatus('No opportunity was specified.', true);
   } else {
@@ -308,7 +308,7 @@
       const res = await fetch(API, { headers: { 'x-admin-password': _password } });
       if (res.status === 401) {
         sessionStorage.removeItem('elpys_admin_pw');
-        location.replace('/admin-login');
+        location.replace('/admin-login?next=' + encodeURIComponent(location.pathname + location.search));
         return;
       }
       if (!res.ok) {

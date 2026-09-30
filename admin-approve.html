@@ -44,11 +44,8 @@
     .page-head a:hover, .page-head button:hover { color: var(--body); }
     .subtitle { color: var(--muted); font-size: 0.9375rem; margin-bottom: 2rem; max-width: 62ch; }
 
-    /* Login */
-    #login-panel { max-width: 340px; }
-    .login-row { display: flex; gap: 0.5rem; }
-    .login-row input { flex: 1; font-family: inherit; font-size: 0.9375rem; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 0.6rem 0.85rem; background: var(--bg-primary); }
-    .login-row input:focus { outline: 2px solid var(--text-main); outline-offset: 2px; }
+    /* Error messages only; signing in happens on /admin-login. */
+    #login-panel { max-width: 62ch; }
     .btn-primary { font-family: inherit; font-size: 0.875rem; font-weight: 600; color: #fff; background: var(--text-main); border: 1px solid var(--text-main); border-radius: var(--radius); padding: 0.55rem 1rem; cursor: pointer; white-space: nowrap; transition: opacity 0.12s ease; }
     .btn-primary:hover { opacity: 0.85; }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -126,10 +123,6 @@
 <p class="subtitle" id="page-subtitle">Review pending submissions</p>
 
 <div id="login-panel">
-  <div class="login-row">
-    <input type="password" id="password-input" placeholder="Admin password" autocomplete="current-password" />
-    <button class="btn-primary" id="login-btn">Load</button>
-  </div>
   <div class="msg" id="login-msg"></div>
 </div>
 
@@ -303,29 +296,22 @@
     document.getElementById('feedback-panel').style.display    = VIEW === 'feedback' ? 'block' : 'none';
   }
 
-  // ── Auto-login from sessionStorage ────────────────────────────────────────
+  // ── Sign-in ─────────────────────────────────────────────────────────────────
+  // Signing in only happens on /admin-login. With no saved password, or one
+  // the server rejects, go there; it sends you back here afterwards.
+  function goToAdminLogin() {
+    sessionStorage.removeItem('elpys_admin_pw');
+    location.replace('/admin-login?next=' + encodeURIComponent(location.pathname + location.search));
+  }
+
   (function () {
     var stored = sessionStorage.getItem('elpys_admin_pw');
-    if (stored) {
-      _password = stored;
-      document.getElementById('login-panel').style.display = 'none';
-      loadAll();
-    }
+    if (!stored) { goToAdminLogin(); return; }
+    _password = stored;
+    loadAll();
   }());
 
-  // ── Login ──────────────────────────────────────────────────────────────────
-
-  document.getElementById('login-btn').addEventListener('click', loadAll);
-  document.getElementById('password-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') loadAll();
-  });
-
   async function loadAll() {
-    if (!_password) _password = document.getElementById('password-input').value;
-    if (!_password) { showLoginMsg('Enter a password.', 'error'); return; }
-
-    const btn = document.getElementById('login-btn');
-    Loading.setBusy(btn, 'Loading');
     // Queue skeletons while the fetch runs, so the panel has its shape rather
     // than three empty headings.
     applyViewVisibility();
@@ -338,15 +324,10 @@
 
     try {
       const res = await fetch(API, { headers: { 'x-admin-password': _password } });
-      if (res.status === 401) {
-        sessionStorage.removeItem('elpys_admin_pw');
-        _password = '';
-        showLoginMsg('Incorrect password.', 'error');
-        return;
-      }
+      if (res.status === 401) { goToAdminLogin(); return; }
       if (res.status === 429) {
-        // The shared admin limiter refused this attempt — retyping the password
-        // won't help until the window passes, so say that rather than
+        // The shared admin limiter refused this attempt, and it won't help to
+        // try again until the window passes, so say that rather than
         // "HTTP 429".
         const e = await res.json().catch(() => ({}));
         showLoginMsg(e.error || 'Too many incorrect attempts. Please wait and try again.', 'error');
@@ -360,12 +341,6 @@
       }
 
       const { pending, published, feedback, rejected } = await res.json();
-      document.getElementById('login-panel').style.display = 'none';
-      // Persisted so a page reached by clicking a row (admin-review.html) has
-      // a session too — previously only the dedicated admin-login.html wrote
-      // this, so typing the password directly into this page's own form left
-      // nothing to read on the next page, or even on a refresh of this one.
-      sessionStorage.setItem('elpys_admin_pw', _password);
       startSessionKeepAlive();
       renderPending(pending);
       renderPublished(published);
@@ -375,8 +350,6 @@
       applyViewVisibility();
     } catch (err) {
       showLoginMsg('Error: ' + err.message, 'error');
-    } finally {
-      Loading.clearBusy(btn);
     }
   }
 
