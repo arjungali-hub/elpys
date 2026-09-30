@@ -7,6 +7,67 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-30 — Preview check passed; every small issue found on this branch fixed (`00cd88d`, not merged)
+
+Cowork's real-Chrome check of the branch preview passed all five steps:
+- **Photos:** all 13 covers load.
+- **Upload:** a portrait test photo with GPS kept only Orientation
+  (`exifBlockBytes: 34`, no XMP or Photoshop blocks); the downloaded copy
+  had no location.
+- **`/admin`:** it's a plain "not found". On a preview, Vercel's own login
+  screen stands in for every 404.
+- **Admin pages:** each shows only its own list.
+- **Delete unused photos:** deleted exactly the six old originals, and every
+  photo a listing uses still exists.
+
+Krish then asked for every issue found, however small, to be fixed before the
+merge. Fixed in `00cd88d`:
+- **Rejected photo while one is attached** (`submit.html`,
+  `admin-review.html`): the file box clears but the earlier photo stays
+  attached and shown. The error now says "Your previous cover photo is still
+  attached."
+- **Admin page subtitles:** each page now names its one list: "Review pending
+  submissions", "Edit published listings" or "Read feedback from visitors".
+- **Cleanup message** in the admin header: now on its own line under the
+  buttons (`.header-cleanup-msg`, full-width flex item), and shorter ("No
+  unused photos (1 newer one kept for now)."), so it no longer knocks the
+  buttons out of line.
+- **Admin header row 1** (Approve / Submit / Edit / Log out), already broken
+  on main: it was a fixed ~530px inline-styled row that ran off every phone
+  screen (page scrollWidth 528 at 320–430px). It's now `.header-admin-main`
+  and wraps. No sideways scroll at 320, 375, 390 or 430px, and row 1 on
+  desktop is pixel-identical to main.
+- **Admin editor couldn't clear optional fields,** already broken on main:
+  `handleSave`'s `set()` drops nulls, so emptying the full description,
+  sign-up label, card note or admin notes left the old text in place. Those
+  fields, and the photo credit, now go through `clearable()`, which sends
+  null.
+
+Checked in local Chromium: each fix at desktop and phone widths, with no page
+errors. `node --test test/*.test.js` gives 7/7 passing, including the email
+test, which needed `npm install` in this environment.
+
+**Not code, so nothing to fix on this branch:**
+- Vercel's login screen covering 404s on previews (Deployment Protection).
+- Cloudflare Turnstile rejecting preview hostnames (110200).
+- The Sophia Way cover is small (841×314) and a little soft; it needs a
+  better photo from the org.
+- Cowork's step-2 test upload (from 2026-09-30) is under 24 hours old, so the
+  button kept it. The first weekly cleanup after the merge, or a press of the
+  button after a day, deletes it.
+
+**Older open items, found before this branch and unrelated to it, still
+open** (none depend on the merge):
+- The full-width map on `/map` is a scroll trap on phones: dragging pans the
+  map, not the page (2026-09-04 and -06 entries; left as a product call).
+- At the default zoom on `/map`, not every pin can be reached (same entries).
+- The `/map` sidebar doesn't show event dates for one-time events
+  (2026-08-25).
+- The admin Published list has no way to clear past one-time events, which
+  stay published after they drop off the public site (2026-08-25).
+- There's no admin view of rejected listings; the rows are kept but can only
+  be seen by SQL (2026-08-29).
+
 ## 2026-09-29 — "Delete unused photos", and the combined /admin page is gone (branch, not merged)
 
 Same branch as the entry below (`fix/scrub-hidden-photo-location-before-upload`,
