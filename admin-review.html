@@ -18,7 +18,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
   <style>
-    /* Layered on styles.css, same token remap as admin.html — these two pages
+    /* Layered on styles.css, same token remap as admin-approve.html — these two pages
        are meant to look like one tool split across two screens. */
     :root {
       --bg-primary:    var(--white);
@@ -235,7 +235,7 @@
 
 <div class="page-head">
   <h1 class="page-title"><span class="site-name"><svg class="site-name-sparkles" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 129" aria-hidden="true"><g fill="#d9662f"><path d="M11 21 C11 27.3 11 27.3 17.3 30 C11 32.7 11 32.7 11 39 C11 32.7 11 32.7 4.7 30 C11 27.3 11 27.3 11 21 Z"/><path d="M189 17 C189 23.3 189 23.3 195.3 26 C189 28.7 189 28.7 189 35 C189 28.7 189 28.7 182.7 26 C189 23.3 189 23.3 189 17 Z"/></g><g fill="#e8935f"><path d="M8 73.8 C8 78.1 8 78.1 12.3 80 C8 81.9 8 81.9 8 86.2 C8 81.9 8 81.9 3.7 80 C8 78.1 8 78.1 8 73.8 Z"/><path d="M192 69.8 C192 74.1 192 74.1 196.3 76 C192 77.9 192 77.9 192 82.2 C192 77.9 192 77.9 187.7 76 C192 74.1 192 74.1 192 69.8 Z"/><path d="M70 111.8 C70 116.1 70 116.1 74.3 118 C70 119.9 70 119.9 70 124.2 C70 119.9 70 119.9 65.7 118 C70 116.1 70 116.1 70 111.8 Z"/><path d="M133 112.8 C133 117.1 133 117.1 137.3 119 C133 120.9 133 120.9 133 125.2 C133 120.9 133 120.9 128.7 119 C133 117.1 133 117.1 133 112.8 Z"/></g></svg>e<span class="site-name-l">l<svg class="site-name-flame" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 34" aria-hidden="true"><path d="M15 34 C9 30 7.5 23 10 17 C11.2 20.5 13.5 20.5 13.5 17 C15.5 20.5 19 23 16.5 28 C20 25.5 21 19.5 17.5 13.5 C22 17 23.5 24 20 30 C18 32.5 16 34 15 34 Z" fill="#d9662f"/><path d="M15 30 C12 28 11 24.5 12.4 21.5 C13 23.3 14.2 23.3 14.2 21.5 C15.2 23.3 17 24.5 15.6 27 C17.4 25.7 18 22.5 16.2 19.5 C18.5 21.3 19.2 25 17.4 28 C16.4 29.3 15.5 30 15 30 Z" fill="#f2a03d"/></svg><svg class="site-name-torch-base" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 12" aria-hidden="true"><path d="M3 0 L17 0 L14.5 6 L5.5 6 Z" fill="#2b2420"/><rect x="4.5" y="6" width="11" height="3.2" rx="1.6" fill="#2b2420"/></svg></span>pys</span> Admin</h1>
-  <a href="/admin" id="back-link">← Back</a>
+  <a href="/admin-approve" id="back-link">← Back</a>
   <a href="/">Home</a>
 </div>
 <p class="subtitle" id="page-subtitle">Loading…</p>
@@ -283,10 +283,11 @@
   let CURRENT_KIND = null;
 
   if (!_password) {
-    // Only reachable from a link inside admin.html after a successful load,
-    // so a missing session here means it expired or was never persisted —
-    // back to the one login surface rather than duplicating a login form.
-    location.replace('/admin');
+    // Only reachable from a link on the Approve or Edit page after a
+    // successful load, so a missing session here means it expired or was
+    // never persisted — back to the admin login page rather than duplicating
+    // a login form.
+    location.replace('/admin-login');
   } else if (!ID) {
     showStatus('No opportunity was specified.', true);
   } else {
@@ -307,7 +308,7 @@
       const res = await fetch(API, { headers: { 'x-admin-password': _password } });
       if (res.status === 401) {
         sessionStorage.removeItem('elpys_admin_pw');
-        location.replace('/admin');
+        location.replace('/admin-login');
         return;
       }
       if (!res.ok) {
@@ -1288,7 +1289,7 @@
         coverStatus.textContent = '';
         renderCover();
       } catch (err) {
-        coverStatus.textContent = err.message;
+        coverStatus.textContent = err.message + (state.cover ? ' The previous cover photo is still attached.' : '');
         coverStatus.className = 'photo-upload-status error';
       }
     });
@@ -1368,13 +1369,16 @@
     const payload = { action: 'update', id };
     const set = (key, val) => { if (val !== null && val !== undefined) payload[key] = val; };
     const text = fid => { const v = g(fid); return v === null ? null : v.trim(); };
-    const orNull = fid => { const v = text(fid); return v === null ? null : (v || null); };
+    // Optional fields: blank means "clear it". set() skips null, which is right
+    // for a field that isn't on this card but meant an emptied field was never
+    // sent at all, so the old text silently stayed.
+    const clearable = (key, fid) => { const v = text(fid); if (v !== null) payload[key] = v || null; };
 
     set('name',             text('e-name-' + id));
     set('description',      text('e-desc-' + id));
     // The column is long_description; sending detail_description silently
     // dropped every full-description edit, since the API ignores unknown keys.
-    set('long_description', orNull('e-detaildesc-' + id));
+    clearable('long_description', 'e-detaildesc-' + id);
     set('age_display',      text('e-age-' + id));
     set('when',             text('e-when-' + id));
     set('opportunity_type', g('e-type-' + id));
@@ -1388,14 +1392,11 @@
     set('where',            text('e-where-' + id));
     set('address',          text('e-addr-' + id));
     set('signup_link',      text('e-link-' + id));
-    set('signup_label',     orNull('e-label-' + id));
+    clearable('signup_label', 'e-label-' + id);
     set('section',          g('e-section-' + id));
-    set('card_note',        orNull('e-note-' + id));
-    set('admin_notes',      orNull('e-adminnotes-' + id));
-    // Not via set(): that skips null, so an emptied field could never clear a
-    // credit. Absent field (null) still leaves it untouched.
-    const creditVal = text('e-photocredit-' + id);
-    if (creditVal !== null) payload.photo_credit = creditVal || null;
+    clearable('card_note', 'e-note-' + id);
+    clearable('admin_notes', 'e-adminnotes-' + id);
+    clearable('photo_credit', 'e-photocredit-' + id);
 
     // Read from photoState, not the file inputs — uploads already happened
     // on selection, so this is just whatever is currently in the preview.

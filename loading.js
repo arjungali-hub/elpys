@@ -212,7 +212,7 @@
   }
 
   // ── Card stacks (Aug 2026 corrections pass) ───────────────────────────────
-  // admin.html and review.html render "header → body → footer actions" cards,
+  // admin-approve.html and review.html render "header → body → footer actions" cards,
   // not tables, so skeletonTable was the wrong shape for both. It stays
   // exported for any genuinely tabular view added later.
 
@@ -257,7 +257,7 @@
     return out.join('');
   }
 
-  // admin.html. 'pending' cards carry the approve panel — slug/lat/lng inputs,
+  // admin-approve.html. 'pending' cards carry the approve panel — slug/lat/lng inputs,
   // the Leaflet map and its hint — which makes them tall, so two or three is
   // plenty. 'published' cards are just a name, a meta line and two buttons.
   function skeletonSubmissionCards(opts) {

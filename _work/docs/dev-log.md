@@ -7,6 +7,263 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-30 — Preview check passed; every small issue found on this branch fixed (`00cd88d`, not merged)
+
+Cowork's real-Chrome check of the branch preview passed all five steps:
+- **Photos:** all 13 covers load.
+- **Upload:** a portrait test photo with GPS kept only Orientation
+  (`exifBlockBytes: 34`, no XMP or Photoshop blocks); the downloaded copy
+  had no location.
+- **`/admin`:** it's a plain "not found". On a preview, Vercel's own login
+  screen stands in for every 404.
+- **Admin pages:** each shows only its own list.
+- **Delete unused photos:** deleted exactly the six old originals, and every
+  photo a listing uses still exists.
+
+Krish then asked for every issue found, however small, to be fixed before the
+merge. Fixed in `00cd88d`:
+- **Rejected photo while one is attached** (`submit.html`,
+  `admin-review.html`): the file box clears but the earlier photo stays
+  attached and shown. The error now says "Your previous cover photo is still
+  attached."
+- **Admin page subtitles:** each page now names its one list: "Review pending
+  submissions", "Edit published listings" or "Read feedback from visitors".
+- **Cleanup message** in the admin header: now on its own line under the
+  buttons (`.header-cleanup-msg`, full-width flex item), and shorter ("No
+  unused photos (1 newer one kept for now)."), so it no longer knocks the
+  buttons out of line.
+- **Admin header row 1** (Approve / Submit / Edit / Log out), already broken
+  on main: it was a fixed ~530px inline-styled row that ran off every phone
+  screen (page scrollWidth 528 at 320–430px). It's now `.header-admin-main`
+  and wraps. No sideways scroll at 320, 375, 390 or 430px, and row 1 on
+  desktop is pixel-identical to main.
+- **Admin editor couldn't clear optional fields,** already broken on main:
+  `handleSave`'s `set()` drops nulls, so emptying the full description,
+  sign-up label, card note or admin notes left the old text in place. Those
+  fields, and the photo credit, now go through `clearable()`, which sends
+  null.
+
+Checked in local Chromium: each fix at desktop and phone widths, with no page
+errors. `node --test test/*.test.js` gives 7/7 passing, including the email
+test, which needed `npm install` in this environment.
+
+**Not code, so nothing to fix on this branch:**
+- Vercel's login screen covering 404s on previews (Deployment Protection).
+- Cloudflare Turnstile rejecting preview hostnames (110200).
+- The Sophia Way cover is small (841×314) and a little soft; it needs a
+  better photo from the org.
+- Cowork's step-2 test upload (from 2026-09-30) is under 24 hours old, so the
+  button kept it. The first weekly cleanup after the merge, or a press of the
+  button after a day, deletes it.
+
+**Older open items, found before this branch and unrelated to it, still
+open** (none depend on the merge):
+- The full-width map on `/map` is a scroll trap on phones: dragging pans the
+  map, not the page (2026-09-04 entries; left as a product call).
+- At the default zoom on `/map`, not every pin can be reached (same entries).
+- The `/map` sidebar doesn't show event dates for one-time events
+  (2026-08-25).
+- The admin Published list has no way to clear past one-time events, which
+  stay published after they drop off the public site (2026-08-25).
+- There's no admin view of rejected listings; the rows are kept but can only
+  be seen by SQL (2026-09-01).
+
+## 2026-09-29 — "Delete unused photos", and the combined /admin page is gone (branch, not merged)
+
+Same branch as the entry below (`fix/scrub-hidden-photo-location-before-upload`,
+commit `56139e1`); still not merged.
+
+**Delete unused photos.** Until now Storage files were never deleted, and
+Krish had to delete them by hand in the Supabase dashboard (five rounds so
+far). New endpoint `api/cleanup-photos.js`, using the service-role key the
+admin API already had. It lists `opportunity-images/uploads` and reads
+`cover_image_url` and `gallery_image_urls` from every Opportunities row, of
+any status, so pending and rejected listings keep their photos. It deletes a
+file only when all three hold:
+- it's a real upload (`<uuid>.<jpg|jpeg|png|webp>`);
+- no row mentions it;
+- it's older than 24 hours. Photos upload the moment they're picked, before
+  the form is sent or the editor is saved.
+
+A failed read, or an empty listings table, aborts with "Nothing was deleted".
+`?dry=1` only reports.
+
+It runs two ways:
+- **Weekly:** a Vercel cron, Mondays 09:00 UTC, an hour after the digest.
+  Crons only run on the production deployment.
+- **From admin mode:** a new header button, **Delete unused photos**, which
+  replaces "Send digest now" (that button only existed for testing; the
+  digest still sends weekly). The button does a dry run first, then a
+  confirmation dialog shows the count, the total size and how many newer
+  files it left alone. Only Delete in that dialog actually deletes.
+
+Tests: `test/cleanup-photos.test.js`, with Supabase mocked, all passing.
+- Only an old, unused upload is deleted; a used file, a 2-hour-old file, the
+  folder placeholder and a hand-named file are all kept.
+- A dry run deletes nothing.
+- The service-role key is used for the delete.
+- The cron secret is accepted; no password, a wrong password or a wrong cron
+  secret is refused before any Supabase call.
+- A failed row read, an empty table or a failed file list deletes nothing.
+
+The header button was also checked in local Chromium: dry run, then dialog,
+then delete, then the "Deleted 2 unused photos." message.
+
+At the time of this commit, exactly six files were unused and older than 24
+hours: the six originals replaced by the re-clean in the entry below. So the
+first press should delete exactly those.
+
+**The combined /admin page is removed from the code.** `admin.html` is now
+`admin-approve.html`, and it is only ever one of the three admin-mode pages:
+- `/admin-approve` serves the file directly;
+- `vercel.json` rewrites `/admin-edit` and `/admin-feedback` onto it, and the
+  path picks the view.
+
+Removed from the file: the no-view mode that showed all three panels (the
+Pending/Published/Feedback tab bar and its scroll-spy, the counts it
+mirrored, the page's own Data review/Analytics review links, its Log out
+button and its "Send digest now" bar), plus the `?view=` query fallback.
+`middleware.js` loses its special always-404 rule for bare `/admin` and the
+`/admin` matcher entries, and `admin` leaves the catch-all exclusion list in
+both `vercel.json` and `middleware.js`. So `/admin` is now just an unknown
+path, and gets the same 404 as any non-listing URL.
+
+This also fixed a live bug. On a listing's review page, the "← Back" link's
+starting value and both expired-session fallbacks pointed at `/admin`, which
+had been a 404. They now go to `/admin-approve` and `/admin-login`. Comments
+in review.html, analytics-review.html, loading.js, lib/adminAuth.js and
+api/admin-login.js that named `admin.html` now name `admin-approve.html`.
+
+Checked in local Chromium with the rewrites simulated: each of the three paths
+shows only its own panel, with no tab bar and no page errors. Earlier entries
+in this log still say `admin.html` and `/admin`; they're left as the record of
+what was true then.
+
+## 2026-09-29 — Photos lose their hidden location data before upload (branch, not merged)
+
+Branch `fix/scrub-hidden-photo-location-before-upload` (`92c2874`). Not merged;
+Krish decides when.
+
+**The problem.** Uploads were stored byte-for-byte, hidden metadata included.
+Cowork's live test (row 122) showed the public copy of the EarthCorps cover still
+carried its GPS block (latitude, longitude, altitude, time) and camera model
+(iPhone 7), so anyone who downloaded a listing photo could read where it was
+taken. Only that one live photo had GPS, and it came from EarthCorps' public blog,
+but any phone photo uploaded through `/submit` or the admin editor would have
+published its exact location.
+
+**The approach.** A new pure function, `stripImageMetadata(bytes, mime)` in
+`supabase-client.js`, runs inside `uploadOpportunityImage`, so every caller
+(submit cover and gallery, admin cover and gallery) is covered with no call-site
+changes. It's a lossless, byte-level rewrite of the file's container that never
+decodes or re-encodes the pixels, which is the approach Krish preferred. It adds
+no dependency and needs no CSP change.
+- **JPEG:** keeps APP0 (JFIF), APP2 `ICC_PROFILE`, APP14 (Adobe, needed for
+  correct colour decoding) and every coding segment. Drops every other APPn
+  (APP1 Exif and XMP, APP13 IPTC/Photoshop, APP2 MPF, and the rest), COM
+  segments, and anything after the end-of-image marker. Phones put depth and HDR
+  gain-map images there, each with its own Exif/GPS.
+- **PNG:** drops `eXIf`, `tEXt`, `iTXt`, `zTXt` and `tIME`; keeps `iCCP` and the rest.
+- **WebP:** drops `EXIF` and `XMP ` chunks, clears their `VP8X` flags, keeps
+  `ICCP`, and rewrites the RIFF size.
+- **Orientation:** if the original's EXIF Orientation isn't 1, the function
+  writes a new minimal EXIF block containing only that tag (in the same place
+  for JPEG and PNG, at the end for WebP), so the photo still displays upright.
+- **Fail-safe:** anything unexpected (wrong magic bytes for the declared type,
+  bad lengths, no end marker, scan data that never ends) throws, and the upload
+  is refused with "We couldn't read that image. Please try a different photo."
+  The original is never uploaded as a fallback. The type and 5 MB checks run as
+  before, and the size is checked again after stripping.
+
+**Tests (local Chromium, the real function, real files made with Pillow +
+exiftool 12.76):**
+- **Files:** an iPhone-style JPEG with GPS, Orientation 6, ICC, a comment, an
+  MPF block and a second JPEG after EOI carrying its own GPS; a progressive JPEG
+  with ICC and GPS; a JPEG with XMP (including GPS) and IPTC/Photoshop; a PNG
+  with tEXt, zTXt, iTXt, tIME, eXIf (GPS) and iCCP; a PNG with Orientation 6; a
+  WebP with EXIF (GPS), XMP and ICCP; a WebP with Orientation 6.
+- **Metadata:** exiftool finds no GPS, XMP, IPTC, Photoshop, camera, software,
+  date, comment or text tags in any output. ICC survives wherever it existed.
+  Orientation is the only EXIF tag left, and only on the three rotated files.
+- **Pixels:** decoded pixels are byte-identical to the originals for all seven,
+  and JPEG scan data is identical.
+- **Display:** Chrome draws every cleaned file pixel-for-pixel the same as its
+  original, rotation included. The Orientation-6 JPEG displays as 480×640 (the
+  arrow points right, as it should) on the homepage card, the detail page and
+  the admin Photos block. Chrome ignores the Orientation tag in WebP, so those
+  looked identical either way.
+- **Refused:** a truncated JPEG, and a PNG labelled as JPEG, were both refused
+  with the friendly message.
+- **Upload flows:** with Storage mocked, `/submit` and the admin editor still
+  upload, preview and save cover + gallery. The captured upload bodies had no
+  metadata left. No console errors apart from the deliberate log line for the
+  refused file.
+- `node --check supabase-client.js` passes.
+
+**EarthCorps cover (row 93).** Cleaned in a Vercel sandbox, which ran the exact
+function from the pushed branch (extracted from `supabase-client.js`) on the
+real file:
+- **Before:** 1,846,646 bytes, with 16 GPS tags, IPTC, Photoshop, XMP (including
+  117 Lightroom settings) and two embedded thumbnails.
+- **After:** 1,802,859 bytes, with only Adobe APP14 and the sRGB ICC profile.
+  Decoded pixels are identical (checked with sharp, 1800×900).
+- **New file:** uploaded as `uploads/505f035b-8279-4260-9077-a1c7c21479d2.jpg`.
+  Reading it back from the public URL returned the same bytes, and exiftool
+  found no GPS, XMP, IPTC or camera tags in it.
+- **Row 93:** now points at the new file. The row's hash without the cover is
+  unchanged (`e7825c2d2fd7c8db7c71d54b714cb91b`), and it's still published.
+
+Checking the new cover on the branch preview
+(`elpys-ohjoof715-arjungali-hubs-projects.vercel.app`) needs a real browser,
+because the preview is behind Vercel's login and this session can't reach
+`vercel.app`.
+
+**Test rows.** Row 122 ("TEST — Elpys photo test (delete me)", pending) is
+deleted. Row 115 ("TEST", pending) is kept for future admin testing, at Krish's
+request.
+
+**Still to delete in the Supabase Storage tab** (SQL confirms no row uses any of
+them):
+- `uploads/91f78b55-809a-4351-ad3a-15dd377d14ff.jpg` (old EarthCorps cover, has GPS)
+- `uploads/e22df775-ca55-4cbf-98b6-df96de0898c9.jpg` (row 122 cover)
+- `uploads/4e69f957-52c9-4681-aa58-76003d5153aa.jpg` (row 122 gallery, a copy of the old EarthCorps photo, with GPS)
+
+Krish has since deleted those three files.
+
+**The other 12 live covers, re-cleaned the same day** at Krish's request. A
+Vercel sandbox cloned the pushed branch and ran the same function on each file.
+Six had no metadata at all: the function returned them byte-for-byte unchanged,
+so they were left alone. Those are `c1cb29d0`, `20dd1410`, `35725988`,
+`3dbb5fc1`, `391c229e` and `45f45479`. The other six had camera, software or
+editing metadata but no GPS. Their clean copies decode to identical pixels, keep
+their ICC profile where one existed, and have no GPS, EXIF, XMP, IPTC,
+Photoshop or comment tags left; each was read back from the bucket and matched
+what was uploaded. Every row is still published, with its fingerprint (the row
+minus the photo fields) unchanged.
+
+| Row | Old file (metadata tags) | New file |
+|---|---|---|
+| 104 | `9480dc49-8df8-4573-94cf-707ca055ced4.jpg` (9) | `9a7df063-7a24-42de-a3bb-46f24413b02d.jpg` |
+| 102 | `de10edd0-c7d0-4159-ba98-60cebc861087.webp` (147) | `20032fdb-580e-4e83-9479-e1e9666669a3.webp` |
+| 91 | `787f43c1-1ea6-4cc6-8797-55d5748fccfe.webp` (11) | `7d51681f-5fe0-4835-852c-5f5125012e14.webp` |
+| 92 | `d62da591-9554-4688-a650-bf1f01e395bb.jpg` (non-tag block) | `9d3213ce-3a50-470c-8d98-7303e49daa6a.jpg` |
+| 101 | `92eeeea3-2ec1-4219-830d-252512fbc1a4.jpg` (17) | `e5f163c8-47e8-401f-b6a6-67ab77629e7b.jpg` |
+| 103 | `5b1fe1d4-1b59-49a0-94f1-22c715360886.jpg` (49) | `3e1e0d69-fdf7-4eff-b9fd-cc1cd6048737.jpg` |
+
+The six old files are now unused and still to delete. Because listing photos
+come from the database, every live cover on elpys.vercel.app is now metadata-free,
+even before this branch merges.
+
+**Why unused photos pile up.** Nothing ever deletes a Storage file. It stays
+public (though no longer listable) in all of these cases: a photo uploaded on
+the form and never submitted, a photo removed or replaced in the admin editor,
+a cover replaced by hand, and a listing deleted. Rejected listings keep their
+row, so their photos stay referenced. anon has no delete policy, and
+`storage.protect_delete` blocks SQL deletes, so today someone has to click
+Delete in the Storage tab. `api/admin.js` already holds the service-role key,
+which the Storage API accepts for deletes, so a server-side "delete unused
+photos" action is possible.
+
 ## 2026-09-29 — Admin review card shows the submission's photos
 
 Follow-up 1 from the photo QA: an admin could approve a public submission

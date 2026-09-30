@@ -15,7 +15,7 @@ module.exports = async function handler(req, res) {
     return res.status(denied.status).json(body);
   }
 
-  // Lets middleware.js serve admin.html/admin-review.html/review.html to this
+  // Lets middleware.js serve admin-approve.html/admin-review.html/review.html to this
   // browser instead of 404ing them — see adminSessionCookie's own comment.
   const cookie = adminSessionCookie();
   if (cookie) res.setHeader('Set-Cookie', cookie);

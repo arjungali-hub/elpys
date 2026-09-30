@@ -106,7 +106,7 @@ function showModal(opts) {
 
       // ── Row 1: admin nav links ───────────────────────────────────────────
       var adminGroup = document.createElement('div');
-      adminGroup.style.cssText = 'display:flex;gap:0.5rem;align-items:center;margin-left:auto;';
+      adminGroup.className = 'header-admin-main';
 
       function makeAdminLink(text, href) {
         var a = document.createElement('a');
@@ -199,38 +199,81 @@ function showModal(opts) {
       subSubmit.textContent = 'Submit an opportunity';
       subSubmit.className   = 'header-admin-link';
 
-      var digestMsg = document.createElement('span');
-      digestMsg.className = 'header-digest-msg';
+      // Deletes photos in Storage that no listing uses any more (see
+      // api/cleanup-photos.js). Asks the server what it would delete first,
+      // then confirms before anything goes. Replaced "Send digest now", which
+      // only existed for testing; the digest itself still runs weekly.
+      var cleanupMsg = document.createElement('span');
+      cleanupMsg.className = 'header-cleanup-msg';
 
-      var digestBtn = document.createElement('button');
-      digestBtn.textContent = 'Send digest now';
-      digestBtn.className   = 'header-logout-btn';
-      digestBtn.addEventListener('click', function () {
-        digestBtn.disabled    = true;
-        digestBtn.textContent = 'Sending…';
-        digestMsg.textContent = '';
-        digestMsg.style.color = '#555';
-        fetch('/api/send-digest', { headers: { 'x-admin-password': adminPw } })
-          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-          .then(function (d) {
-            if (!d.ok) throw new Error(d.j.error || 'HTTP error');
-            digestMsg.textContent = d.j.message || ('Sent to ' + d.j.sent + ', skipped ' + d.j.skipped + '.');
-            digestMsg.style.color = '#15803D';
-          })
-          .catch(function (err) {
-            digestMsg.textContent = 'Error: ' + err.message;
-            digestMsg.style.color = '#991B1B';
-          })
-          .then(function () {
-            digestBtn.disabled    = false;
-            digestBtn.textContent = 'Send digest now';
+      var cleanupBtn = document.createElement('button');
+      cleanupBtn.textContent = 'Delete unused photos';
+      cleanupBtn.className   = 'header-logout-btn';
+
+      function callCleanup(dry) {
+        return fetch('/api/cleanup-photos' + (dry ? '?dry=1' : ''), {
+          method: 'POST', headers: { 'x-admin-password': adminPw },
+        }).then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (j) {
+            if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+            return j;
           });
+        });
+      }
+      function setCleanupMsg(text, color) {
+        cleanupMsg.textContent = text;
+        cleanupMsg.style.color = color;
+      }
+      function resetCleanupBtn() {
+        cleanupBtn.disabled    = false;
+        cleanupBtn.textContent = 'Delete unused photos';
+      }
+
+      cleanupBtn.addEventListener('click', function () {
+        cleanupBtn.disabled    = true;
+        cleanupBtn.textContent = 'Checking…';
+        setCleanupMsg('', '#555');
+        callCleanup(true).then(function (d) {
+          var n = d.wouldDelete.length;
+          var recentNote = d.keptRecent
+            ? ' ' + d.keptRecent + ' newer photo' + (d.keptRecent === 1 ? ' was' : 's were') +
+              ' left alone because ' + (d.keptRecent === 1 ? 'it' : 'they') + ' may still be in use on a form.'
+            : '';
+          if (!n) {
+            setCleanupMsg('No unused photos' + (d.keptRecent ? ' (' + d.keptRecent + ' newer one' + (d.keptRecent === 1 ? '' : 's') + ' kept for now).' : '.'), '#15803D');
+            resetCleanupBtn();
+            return;
+          }
+          var kb = d.wouldDelete.reduce(function (t, f) { return t + (f.bytes || 0); }, 0) / 1024;
+          resetCleanupBtn();
+          showModal({
+            title:       'Delete ' + n + ' unused photo' + (n === 1 ? '' : 's') + '?',
+            body:        'No listing uses ' + (n === 1 ? 'this photo' : 'these photos') + ' (' +
+                         (kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB' : Math.round(kb) + ' KB') +
+                         '). Deleting can\'t be undone. Photos on any listing, including pending and ' +
+                         'rejected ones, are never touched.' + recentNote,
+            confirmText: 'Delete',
+            danger:      true,
+            onConfirm:   function () {
+              cleanupBtn.disabled    = true;
+              cleanupBtn.textContent = 'Deleting…';
+              callCleanup(false).then(function (r) {
+                setCleanupMsg('Deleted ' + r.deleted.length + ' unused photo' + (r.deleted.length === 1 ? '' : 's') + '.', '#15803D');
+              }).catch(function (err) {
+                setCleanupMsg('Error: ' + err.message, '#991B1B');
+              }).then(resetCleanupBtn);
+            },
+          });
+        }).catch(function (err) {
+          setCleanupMsg('Error: ' + err.message, '#991B1B');
+          resetCleanupBtn();
+        });
       });
 
       // ── Row assignment ────────────────────────────────────────────────
       // Row 1: Approve opportunities, Submit an opportunity, Edit
       // opportunities, Log out. Row 2: Data review, Analytics review,
-      // Feedback, Send digest now. Both rows use identical
+      // Feedback, Delete unused photos. Both rows use identical
       // .header-admin-link / .header-logout-btn styling — no size or weight
       // difference between them. Log out is the one element that has stayed
       // in row 1 across every reshuffle of this nav; treat that as fixed
@@ -247,8 +290,8 @@ function showModal(opts) {
       sub.appendChild(reviewLink);
       sub.appendChild(analyticsLink);
       sub.appendChild(feedbackLink);
-      sub.appendChild(digestBtn);
-      sub.appendChild(digestMsg);
+      sub.appendChild(cleanupBtn);
+      sub.appendChild(cleanupMsg);
       inner.parentElement.appendChild(sub);
     }
     return;

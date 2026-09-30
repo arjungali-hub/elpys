@@ -1,36 +1,33 @@
 // Vercel Edge Middleware — runs ahead of static file serving, for every
 // request whose path matches `config.matcher` below.
 //
-// admin.html, admin-review.html and review.html used to be publicly
-// reachable: no admin data loads without the password (each has its own
-// inline login form backed by lib/adminAuth.js's checkAdminPassword,
-// unchanged by this file), but the page SHELL — and the fact that an admin
-// system exists at these URLs at all — was visible to anyone. This makes an
-// unauthenticated request 404 before any of that HTML ships.
+// admin-approve.html, admin-review.html and review.html are the admin
+// surface. No admin data loads without the password (each has its own inline
+// login form backed by lib/adminAuth.js's checkAdminPassword, unchanged by
+// this file), but without this the page SHELL — and the fact that an admin
+// system exists at these URLs at all — would be visible to anyone. This makes
+// an unauthenticated request 404 before any of that HTML ships.
 //
-// /admin-feedback, /admin-edit and /admin-approve are vercel.json rewrites
-// onto admin.html?view=... — same page, same shell, so they need the same
-// gate. Easy to miss (they were, once — a real regression caught during the
-// clean-URLs work that added them, before it shipped: those three paths
-// 200'd for a request with no session cookie at all, while /admin itself
-// correctly 404'd). If a future rewrite adds another alias for a gated
-// page, it needs to go in this matcher too, or it silently bypasses this
-// whole file.
+// /admin-feedback and /admin-edit are vercel.json rewrites onto
+// admin-approve.html (the page picks its view from the path), so they need
+// the same gate as /admin-approve itself. If a future rewrite adds another
+// alias for a gated page, it needs to go in this matcher too, or it silently
+// bypasses this whole file.
 //
 // They are flat (/admin-feedback), not nested (/admin/feedback), for a
-// reason that is not cosmetic: admin.html references styles.css and
+// reason that is not cosmetic: admin-approve.html references styles.css and
 // loading.js RELATIVELY, so under a nested path the browser resolves them
-// against /admin/ and requests /admin/styles.css — which does not exist,
-// gets swallowed by the catch-all slug rewrite, and comes back as HTML.
-// The page then loads with no CSS and a "Loading is not defined"
+// against the parent folder and requests e.g. /admin/styles.css — which does
+// not exist, gets swallowed by the catch-all slug rewrite, and comes back as
+// HTML. The page then loads with no CSS and a "Loading is not defined"
 // ReferenceError. Verified on a preview deployment. Keep these flat.
 //
 // admin-login.html is deliberately NOT in the matcher. It has no admin data
 // on it at all, and gating it would make it impossible for anyone —
 // including the real admin — to ever obtain the session cookie this
 // middleware checks for. It is the one door that has to stay open so the
-// others can be closed: log in there first, then admin/admin-review/review
-// all become reachable.
+// others can be closed: log in there first, then the admin pages all become
+// reachable.
 //
 // The cookie is set by api/admin-login.js, api/admin.js and api/review.js on
 // a successful password check — see adminSessionCookie() in
@@ -39,16 +36,11 @@
 // module, because the Edge runtime doesn't have the latter. The two
 // implementations must be changed together if either ever is.
 //
-// A bug in this file can only make these three pages 404 or (if the check is
-// ever loosened incorrectly) publicly loadable again — it does not touch
+// A bug in this file can only make these pages 404 or (if the check is ever
+// loosened incorrectly) publicly loadable again — it does not touch
 // checkAdminPassword or the data endpoints, so it cannot by itself expose
 // admin data. Losing this file entirely is a visibility regression, not a
 // security one.
-//
-// bare /admin now 404s unconditionally, signed in or not — see ADMIN_PATHS'
-// own comment below for why. admin.html the FILE is still very much alive;
-// it just has no direct URL of its own any more, only the named views
-// (/admin-feedback, /admin-edit, /admin-approve).
 
 const COOKIE_NAME = 'elpys_admin_session';
 
@@ -103,15 +95,6 @@ async function hasValidSession(request) {
 // check has to know to leave them alone — without this it would try to resolve
 // each as a listing, fail, and 404 the admin surface before the session check
 // ever ran.
-//
-// '/admin' is deliberately NOT in this set — it has its own unconditional
-// 404 above, before this file does anything else. See that check's own
-// comment for why it isn't handled here instead. /admin-feedback, /admin-edit
-// and /admin-approve are untouched: they are their own literal paths here,
-// each still gated normally, and Vercel rewrites them onto /admin?view=...
-// only AFTER middleware has already let them through — see vercel.json. That
-// rewrite destination is never itself re-checked against this set, so
-// retiring bare /admin does not touch them.
 const ADMIN_PATHS = new Set([
   '/admin-feedback', '/admin-edit', '/admin-approve',
   '/admin-review', '/review', '/analytics-review',
@@ -236,8 +219,7 @@ async function liveSlugs() {
 
 export const config = {
   matcher: [
-    '/admin', '/admin.html',
-    '/admin-feedback', '/admin-edit', '/admin-approve',
+    '/admin-feedback', '/admin-edit', '/admin-approve', '/admin-approve.html',
     '/admin-review', '/admin-review.html',
     '/review', '/review.html',
     '/analytics-review', '/analytics-review.html',
@@ -252,7 +234,7 @@ export const config = {
     // "rewrite these to the detail page", this one says "check these are real
     // listings first". A name added to one and not the other either 404s a
     // real page or lets a soft 404 back through.
-    '/:slug((?!(?:api|admin-login|admin-review|admin-feedback|admin-edit|admin-approve|admin|analytics-review|review|login|signup|submit|feedback|how-we-check|map|opportunities-detail|privacy|terms|about|account|index|404|analytics\\.js|beta-banner\\.js|loading\\.js|middleware\\.js|mini-map\\.js|supabase-auth\\.js|supabase-client\\.js|styles\\.css|robots\\.txt|sitemap\\.xml|favicon\\.ico|logos)$)[^/]+)',
+    '/:slug((?!(?:api|admin-login|admin-review|admin-feedback|admin-edit|admin-approve|analytics-review|review|login|signup|submit|feedback|how-we-check|map|opportunities-detail|privacy|terms|about|account|index|404|analytics\\.js|beta-banner\\.js|loading\\.js|middleware\\.js|mini-map\\.js|supabase-auth\\.js|supabase-client\\.js|styles\\.css|robots\\.txt|sitemap\\.xml|favicon\\.ico|logos)$)[^/]+)',
   ],
 };
 
@@ -270,18 +252,6 @@ async function notFound(request) {
 export default async function middleware(request) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\.html$/, '').replace(/\/$/, '') || '/';
-
-  // ── Bare /admin: retired, unconditionally 404 ─────────────────────────────
-  // Deliberately its own check, ahead of everything else, rather than just
-  // leaving '/admin' out of ADMIN_PATHS and letting it fall into the slug
-  // check below: that check fails OPEN when Supabase is unreachable (right,
-  // for public listing pages — wrong here), which would have turned a
-  // Supabase blip into bare /admin briefly serving admin.html's shell with no
-  // gate at all. This check has no such dependency — /admin 404s the same way
-  // whether Supabase is up, down, or slow. Signed in or not; there is no
-  // session check to bypass here on purpose. The named views
-  // (/admin-feedback, /admin-edit, /admin-approve) are untouched.
-  if (path === '/admin') return notFound(request);
 
   // ── Public: old listing URLs → clean /<slug>, query dropped ───────────────
   // Deliberately before the auth gate: these are public pages and must never

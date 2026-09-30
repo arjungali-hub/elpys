@@ -368,13 +368,225 @@ function _uuidV4() {
   });
 }
 
+// ── Photo metadata stripping ────────────────────────────────────────────────
+//
+// Photos used to be stored byte-for-byte, so a phone photo published its GPS
+// position (and camera model, timestamps, editing software) to anyone who
+// downloaded it. This rewrites the file's container — JPEG segments, PNG
+// chunks, WebP chunks — dropping every metadata block, without decoding or
+// re-encoding the pixels: no quality loss, and the image data is copied
+// through verbatim. Kept: what decoding and colour need (JPEG APP0 JFIF, APP2
+// ICC_PROFILE, APP14 Adobe; PNG iCCP/gAMA/etc.; WebP ICCP), plus, only when a
+// photo relies on it to display upright, a new minimal EXIF block holding
+// nothing but the Orientation tag. Anything unexpected throws, and the caller
+// refuses the upload rather than falling back to the original file.
+//
+// Pure (bytes in, bytes out, no DOM) so the same code can be run under Node
+// to clean files already in the bucket.
+function stripImageMetadata(bytes, mime) {
+  const fail = why => { const e = new Error('Unreadable image: ' + why); e.unreadableImage = true; throw e; };
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+
+  // Orientation from an Exif TIFF block (no "Exif\0\0" prefix). 1 when absent
+  // or out of range, so "not 1" always means a real rotation/flip.
+  function orientationOf(t) {
+    if (t.length < 8) return 1;
+    const le = t[0] === 0x49 && t[1] === 0x49;
+    if (!le && !(t[0] === 0x4D && t[1] === 0x4D)) return 1;
+    const r16 = o => le ? t[o] | t[o + 1] << 8 : t[o] << 8 | t[o + 1];
+    const r32 = o => le ? (t[o] | t[o + 1] << 8 | t[o + 2] << 16 | t[o + 3] << 24) >>> 0
+                        : (t[o] << 24 | t[o + 1] << 16 | t[o + 2] << 8 | t[o + 3]) >>> 0;
+    if (r16(2) !== 42) return 1;
+    const ifd = r32(4);
+    if (ifd + 2 > t.length) return 1;
+    const n = r16(ifd);
+    for (let i = 0; i < n; i++) {
+      const e = ifd + 2 + i * 12;
+      if (e + 12 > t.length) return 1;
+      if (r16(e) === 0x0112 && r16(e + 2) === 3) {
+        const v = r16(e + 8);
+        return v >= 1 && v <= 8 ? v : 1;
+      }
+    }
+    return 1;
+  }
+  // Minimal big-endian TIFF: IFD0 with one entry, Orientation (SHORT).
+  function orientationTiff(v) {
+    return new Uint8Array([0x4D, 0x4D, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x08,
+                           0x00, 0x01, 0x01, 0x12, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01,
+                           0x00, v, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+  }
+  const EXIF_HEADER = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00]; // "Exif\0\0"
+  const startsWith = (a, off, sig) => sig.every((b, i) => a[off + i] === b);
+  const ascii = s => Array.from(s, c => c.charCodeAt(0));
+  function concat(parts) {
+    let len = 0; parts.forEach(p => { len += p.length; });
+    const out = new Uint8Array(len); let o = 0;
+    parts.forEach(p => { out.set(p, o); o += p.length; });
+    return out;
+  }
+
+  if (mime === 'image/jpeg') {
+    if (u8[0] !== 0xFF || u8[1] !== 0xD8) fail('not a JPEG');
+    const out = [u8.subarray(0, 2)];
+    let orientation = 1, orientationSlot = -1, pos = 2, sawEOI = false;
+    const KEEP_APP = { 0xE0: true, 0xEE: true }; // APP0 JFIF, APP14 Adobe
+    const ICC = ascii('ICC_PROFILE\0');
+    while (pos < u8.length) {
+      if (u8[pos] !== 0xFF) fail('bad marker at ' + pos);
+      let m = u8[pos + 1];
+      if (m === 0xFF) { pos++; continue; }                 // fill byte
+      if (m === 0xD9) { out.push(u8.subarray(pos, pos + 2)); sawEOI = true; break; }
+      if (m === 0x01 || m === 0xD8 || (m >= 0xD0 && m <= 0xD7)) fail('stray marker');
+      if (pos + 4 > u8.length) fail('truncated segment');
+      const len = u8[pos + 2] << 8 | u8[pos + 3];
+      if (len < 2 || pos + 2 + len > u8.length) fail('bad segment length');
+      const seg = u8.subarray(pos, pos + 2 + len);
+      const body = pos + 4;
+      if (m >= 0xE0 && m <= 0xEF) {
+        const isIcc = m === 0xE2 && startsWith(u8, body, ICC);
+        if (m === 0xE1 && startsWith(u8, body, EXIF_HEADER) && orientationSlot === -1) {
+          orientation = orientationOf(u8.subarray(body + 6, pos + 2 + len));
+          orientationSlot = out.length;                      // same place as the original
+          out.push(new Uint8Array(0));
+        }
+        if (KEEP_APP[m] || isIcc) out.push(seg);             // everything else dropped
+      } else if (m === 0xFE) {
+        // COM: dropped
+      } else {
+        out.push(seg);
+      }
+      pos += 2 + len;
+      if (m === 0xDA) {
+        // Entropy-coded data runs to the next marker that isn't byte stuffing
+        // (FF00) or a restart (FFD0-D7). Copied verbatim. A progressive JPEG
+        // has more segments and scans after this; the loop picks them up.
+        const start = pos;
+        while (pos < u8.length) {
+          if (u8[pos] === 0xFF) {
+            const n = u8[pos + 1];
+            if (n === 0x00 || (n >= 0xD0 && n <= 0xD7)) { pos += 2; continue; }
+            if (n === 0xFF) { pos++; continue; }
+            break;
+          }
+          pos++;
+        }
+        if (pos >= u8.length) fail('scan data never ends');
+        out.push(u8.subarray(start, pos));
+      }
+    }
+    // Anything after EOI (phones append depth maps and HDR gain maps there,
+    // each with its own Exif block) is dropped with the rest.
+    if (!sawEOI) fail('no end-of-image marker');
+    if (orientation !== 1) {
+      const tiff = orientationTiff(orientation);
+      const len = 2 + EXIF_HEADER.length + tiff.length;
+      out[orientationSlot] = concat([new Uint8Array([0xFF, 0xE1, len >> 8, len & 0xFF]),
+                                     new Uint8Array(EXIF_HEADER), tiff]);
+    }
+    return concat(out);
+  }
+
+  if (mime === 'image/png') {
+    const SIG = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+    if (!startsWith(u8, 0, SIG)) fail('not a PNG');
+    const DROP = { eXIf: true, tEXt: true, iTXt: true, zTXt: true, tIME: true };
+    const out = [u8.subarray(0, 8)];
+    let pos = 8, sawIEND = false;
+    while (pos + 12 <= u8.length) {
+      const len = (u8[pos] << 24 | u8[pos + 1] << 16 | u8[pos + 2] << 8 | u8[pos + 3]) >>> 0;
+      const type = String.fromCharCode(u8[pos + 4], u8[pos + 5], u8[pos + 6], u8[pos + 7]);
+      if (!/^[A-Za-z]{4}$/.test(type) || pos + 12 + len > u8.length) fail('bad PNG chunk');
+      const chunk = u8.subarray(pos, pos + 12 + len);
+      if (type === 'eXIf') {
+        const o = orientationOf(u8.subarray(pos + 8, pos + 8 + len));
+        if (o !== 1) out.push(pngChunk('eXIf', orientationTiff(o)));
+      } else if (!DROP[type]) {
+        out.push(chunk);
+      }
+      pos += 12 + len;
+      if (type === 'IEND') { sawIEND = true; break; }
+    }
+    if (!sawIEND) fail('no IEND chunk');
+    return concat(out);
+  }
+
+  if (mime === 'image/webp') {
+    if (!startsWith(u8, 0, ascii('RIFF')) || !startsWith(u8, 8, ascii('WEBP'))) fail('not a WebP');
+    const riffLen = (u8[4] | u8[5] << 8 | u8[6] << 16 | u8[7] << 24) >>> 0;
+    if (riffLen + 8 > u8.length || riffLen < 4) fail('bad RIFF size');
+    const end = riffLen + 8;
+    const out = [];
+    let pos = 12, vp8xIndex = -1, orientation = 1;
+    while (pos + 8 <= end) {
+      const fourcc = String.fromCharCode(u8[pos], u8[pos + 1], u8[pos + 2], u8[pos + 3]);
+      const len = (u8[pos + 4] | u8[pos + 5] << 8 | u8[pos + 6] << 16 | u8[pos + 7] << 24) >>> 0;
+      const padded = len + (len & 1);
+      if (pos + 8 + len > end) fail('bad WebP chunk');
+      const chunk = u8.slice(pos, Math.min(pos + 8 + padded, end));
+      if (fourcc === 'EXIF') {
+        let t = u8.subarray(pos + 8, pos + 8 + len);
+        if (startsWith(t, 0, EXIF_HEADER)) t = t.subarray(6);  // some writers add the JPEG prefix
+        orientation = orientationOf(t);
+      } else if (fourcc !== 'XMP ') {
+        if (fourcc === 'VP8X') vp8xIndex = out.length;
+        out.push(chunk);
+      }
+      pos += 8 + padded;
+    }
+    if (vp8xIndex !== -1) {
+      const flags = out[vp8xIndex];
+      flags[8] &= ~(0x08 | 0x04);                              // EXIF and XMP flags
+      if (orientation !== 1) flags[8] |= 0x08;
+    }
+    if (orientation !== 1 && vp8xIndex !== -1) {
+      // Chunk order: VP8X, ICCP, ANIM, image, then EXIF, XMP at the end.
+      const tiff = orientationTiff(orientation);
+      const hdr = new Uint8Array([0x45, 0x58, 0x49, 0x46, tiff.length, 0, 0, 0]);
+      out.push(concat([hdr, tiff]));
+    }
+    const body = concat(out);
+    const size = body.length + 4;
+    return concat([new Uint8Array([0x52, 0x49, 0x46, 0x46, size & 0xFF, size >> 8 & 0xFF, size >> 16 & 0xFF, size >>> 24]),
+                   new Uint8Array(ascii('WEBP')), body]);
+  }
+
+  fail('unsupported type ' + mime);
+
+  function pngChunk(type, data) {
+    const t = new Uint8Array(ascii(type));
+    const len = data.length;
+    const crcInput = concat([t, data]);
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < crcInput.length; i++) {
+      c ^= crcInput[i];
+      for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xEDB88320 & -(c & 1));
+    }
+    c = (c ^ 0xFFFFFFFF) >>> 0;
+    return concat([new Uint8Array([len >>> 24, len >> 16 & 0xFF, len >> 8 & 0xFF, len & 0xFF]), t, data,
+                   new Uint8Array([c >>> 24, c >> 16 & 0xFF, c >> 8 & 0xFF, c & 0xFF])]);
+  }
+}
+// ── end photo metadata stripping ──
+
 // Never trusts file.name for the stored path — only its declared MIME type,
 // checked against an allowlist, to pick an extension. Throws a message
-// that's safe to show the submitter directly.
+// that's safe to show the submitter directly. Every photo is stripped of its
+// metadata first (stripImageMetadata above); one that can't be parsed is
+// refused rather than uploaded as-is.
 async function uploadOpportunityImage(file) {
   const ext = ALLOWED_IMAGE_EXT[file.type];
   if (!ext) throw new Error('Please choose a JPG, PNG, or WEBP image.');
   if (file.size > MAX_IMAGE_BYTES) throw new Error('That image is larger than 5MB. Please choose a smaller file.');
+
+  let cleaned;
+  try {
+    cleaned = stripImageMetadata(new Uint8Array(await file.arrayBuffer()), file.type);
+  } catch (err) {
+    console.error('Image metadata strip failed:', err);
+    throw new Error("We couldn't read that image. Please try a different photo.");
+  }
+  if (cleaned.length > MAX_IMAGE_BYTES) throw new Error('That image is larger than 5MB. Please choose a smaller file.');
 
   const path = 'uploads/' + _uuidV4() + '.' + ext;
   const res = await fetch(STORAGE_ROOT + 'storage/v1/object/' + IMAGE_BUCKET + '/' + path, {
@@ -384,7 +596,7 @@ async function uploadOpportunityImage(file) {
       Authorization:  'Bearer ' + SUPABASE_ANON_KEY,
       'Content-Type': file.type,
     },
-    body: file,
+    body: new Blob([cleaned], { type: file.type }),
   });
   if (!res.ok) {
     console.error('Image upload failed:', res.status, await res.text().catch(() => ''));
