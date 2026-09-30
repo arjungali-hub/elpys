@@ -214,6 +214,7 @@ function _transformRow(row) {
     _opportunityType: row.opportunity_type || 'recurring',
     _eventDate:       row.event_date       || null,
     _schedule:     row.schedule ? _scheduleFromStructured(row.schedule) : _parseSchedule(row.when),
+    _slots:        row.schedule ? _slotsFromStructured(row.schedule) : _slotsFromCoarse(_parseSchedule(row.when)),
     _where:        row.where          || '',
     _signupLink:   row.signup_link    || '#',
     _signupLabel:  row.signup_label   || 'Sign up →',
@@ -293,6 +294,28 @@ function _scheduleFromStructured(schedule) {
   });
 
   return { days: days, times: Array.from(timesSet) };
+}
+
+// Every day-and-time a recurring listing runs, as "monday-morning" style
+// tokens, for the homepage's Day + Time of day filter. The structured
+// schedule is per day, so "Saturday + Morning" only matches listings that
+// really run on Saturday mornings, not ones that run Saturdays and, on some
+// other day, mornings.
+const WEEK_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+function _slotsFromStructured(schedule) {
+  const out = [];
+  WEEK_DAYS.forEach(day => (schedule[day] || []).forEach(slot => out.push(day + '-' + slot)));
+  return out;
+}
+// Listings with only a free-text "when" get the coarse guess expanded to
+// every matching day, so they behave as they did under the old filter.
+function _slotsFromCoarse(sched) {
+  const out = [];
+  WEEK_DAYS.forEach((day, i) => {
+    if (!sched.days.includes(i < 5 ? 'weekdays' : 'weekends')) return;
+    sched.times.forEach(slot => out.push(day + '-' + slot));
+  });
+  return out;
 }
 
 // Formats a "YYYY-MM-DD" event_date for display, e.g. "Sat, Sep 20, 2026".

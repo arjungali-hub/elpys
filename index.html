@@ -153,10 +153,20 @@
   </div>
   <div class="time-filter" id="time-filter">
     <div class="time-filter-group" id="day-filter-group">
-      <span class="time-filter-label">Days</span>
-      <button class="filter-btn active" onclick="setDayFilter('all',this)">Any day</button>
-      <button class="filter-btn" onclick="setDayFilter('weekdays',this)">Weekdays</button>
-      <button class="filter-btn" onclick="setDayFilter('weekends',this)">Weekends</button>
+      <label class="time-filter-label" for="day-select">Day</label>
+      <select id="day-select" class="day-select" onchange="setDayFilter(this.value)">
+        <option value="all">Any day</option>
+        <option value="today">Today</option>
+        <option value="weekdays">Weekdays</option>
+        <option value="weekends">Weekends</option>
+        <option value="monday">Monday</option>
+        <option value="tuesday">Tuesday</option>
+        <option value="wednesday">Wednesday</option>
+        <option value="thursday">Thursday</option>
+        <option value="friday">Friday</option>
+        <option value="saturday">Saturday</option>
+        <option value="sunday">Sunday</option>
+      </select>
     </div>
     <div class="time-filter-group" id="time-filter-group">
       <span class="time-filter-label">Time of day</span>
@@ -325,20 +335,44 @@
     });
   }
 
+  const WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  // Today in Bellevue, not the visitor's clock, matching the rest of the site.
+  function pacificWeekday() {
+    try {
+      return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', weekday: 'long' }).format(new Date()).toLowerCase();
+    } catch (_) { return WEEK[(new Date().getDay() + 6) % 7]; }
+  }
+  function selectedDays() {
+    if (currentDayFilter === 'all')      return WEEK;
+    if (currentDayFilter === 'weekdays') return WEEK.slice(0, 5);
+    if (currentDayFilter === 'weekends') return WEEK.slice(5);
+    if (currentDayFilter === 'today')    return [pacificWeekday()];
+    return [currentDayFilter];
+  }
+
   function applyFilters() {
     const ageInput = document.getElementById('age-input');
     const age = ageInput && ageInput.value ? parseInt(ageInput.value, 10) : null;
+    const days  = selectedDays();
+    const times = currentTimeFilter === 'all' ? ['morning', 'afternoon', 'evening'] : [currentTimeFilter];
 
     document.querySelectorAll('.card').forEach(card => {
       const tags = card.dataset.tags || '';
       const tagShow  = currentTag === 'all' || tags.includes(currentTag);
       const ageShow  = ageMatches(card, age);
-      // A one-time event has no weekly pattern, so the Days / Time-of-day
-      // filters don't apply to it. Category and Age still do.
+      // Recurring listings match when they run on one of the chosen days AT
+      // one of the chosen times (per-day slots, see _slotsFromStructured).
+      // A one-time event matches when its date falls on a chosen day; it has
+      // no time of day recorded, so Time of day doesn't hide it.
       const isOneTime = card.dataset.onetime === 'true';
-      const dayShow  = isOneTime || currentDayFilter  === 'all' || (card.dataset.schedDays  || '').includes(currentDayFilter);
-      const timeShow = isOneTime || currentTimeFilter === 'all' || (card.dataset.schedTimes || '').includes(currentTimeFilter);
-      const show = tagShow && ageShow && dayShow && timeShow;
+      let whenShow;
+      if (isOneTime) {
+        whenShow = currentDayFilter === 'all' || days.includes(card.dataset.eventDay);
+      } else {
+        const slots = (card.dataset.slots || '').split(' ');
+        whenShow = days.some(d => times.some(t => slots.includes(d + '-' + t)));
+      }
+      const show = tagShow && ageShow && whenShow;
       card.style.display = show ? '' : 'none';
 
       const hasCondition = conditionApplies(card, age);
@@ -372,9 +406,7 @@
     applyFilters();
   }
 
-  function setDayFilter(val, btn) {
-    document.querySelectorAll('#day-filter-group .filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+  function setDayFilter(val) {
     currentDayFilter = val;
     applyFilters();
   }
@@ -407,8 +439,14 @@
   function buildCardHtml(opp) {
     const condAttr   = opp._ageCondition ? ' data-age-condition="' + escHtml(opp._ageCondition) + '"' : '';
     const isOneTime  = opp._opportunityType === 'one_time';
-    const schedDays  = opp._schedule ? opp._schedule.days.join(' ')  : '';
-    const schedTimes = opp._schedule ? opp._schedule.times.join(' ') : '';
+    const slots = (opp._slots || []).join(' ');
+    // Weekday of a one-time event's date, parsed as a plain calendar date
+    // (not new Date(iso), which reads it as UTC midnight).
+    let eventDay = '';
+    if (isOneTime && opp._eventDate) {
+      const [y, m, d] = opp._eventDate.split('-').map(Number);
+      if (y && m && d) eventDay = WEEK[(new Date(y, m - 1, d).getDay() + 6) % 7];
+    }
 
     const datePill = isOneTime && opp._eventDate
       ? '<span class="card-pill card-pill-date">' + escHtml(formatEventDate(opp._eventDate)) + '</span>' : '';
@@ -426,7 +464,7 @@
 
     return '<div class="card" data-tags="' + escHtml(opp._tags) + '" data-age="' + escHtml(opp._dataAge) + '"' + condAttr +
            (isOneTime ? ' data-onetime="true"' : '') +
-           ' data-sched-days="' + escHtml(schedDays) + '" data-sched-times="' + escHtml(schedTimes) + '">' +
+           ' data-slots="' + escHtml(slots) + '" data-event-day="' + escHtml(eventDay) + '">' +
       '<div class="card-photo">' +
         photoHtml +
         '<span class="card-pill card-pill-category">' + escHtml(opp.tag) + '</span>' +

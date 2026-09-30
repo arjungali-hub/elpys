@@ -634,6 +634,18 @@ header {
   font-size: 0.75rem;
   color: var(--muted);
 }
+/* Day picker: one dropdown instead of eleven buttons, styled like the age box. */
+.day-select {
+  font-family: inherit;
+  font-size: 0.8125rem;
+  padding: 0.3rem 1.8rem 0.3rem 0.75rem;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  color: var(--body);
+  background-color: var(--white);
+  cursor: pointer;
+}
+.day-select:focus { outline: none; border-color: #aaa; }
 
 .age-cond-phrase.highlighted {
   background: var(--surface);

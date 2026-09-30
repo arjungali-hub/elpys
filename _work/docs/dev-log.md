@@ -7,6 +7,45 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-30 — Homepage: pick a specific day, matched against each listing's real schedule
+
+Krish asked for a way to find opportunities on a certain day and time,
+without it getting complicated. The homepage already had **Days** (Any /
+Weekdays / Weekends) and **Time of day** (Any / Morning / Afternoon /
+Evening) buttons. They matched against a flattened summary, though: "runs on
+some weekday" plus "has a morning slot on some day". Every listing has a
+per-day `schedule` (e.g. Botanical Garden runs Tue/Thu mornings only), and
+that detail was thrown away, so Botanical Garden matched "Monday".
+
+**What changed:**
+- The Days buttons are replaced by one **Day** dropdown: Any day, Today,
+  Weekdays, Weekends, then Monday–Sunday. One control instead of eleven
+  buttons, and it fits on a phone.
+- "Today" is Bellevue's weekday (Pacific), not the visitor's clock.
+- **Time of day** is unchanged.
+- **Recurring listings:** each card carries `data-slots`
+  ("saturday-morning …", from `_slotsFromStructured` in
+  `supabase-client.js`). A card shows when any chosen day × chosen time is
+  one of its slots. Listings with only a free-text "when" expand the old
+  coarse guess to every matching day, so they behave as before.
+- **One-time events:** they show when their date falls on a chosen day
+  (`data-event-day`). No time is recorded for them, so Time of day doesn't
+  hide them. Before, they ignored Day entirely.
+
+**Checked** in local Chromium with the 13 live listings' real schedules
+plus a Saturday event. Every combination tried gave the expected set:
+- **Any/Any:** 14.
+- **Saturday + Morning:** 10. That drops Botanical Garden, Farmers Market,
+  Hopelink and Sophia Way, and includes the Saturday event.
+- **Wednesday + Afternoon:** includes Sophia Way.
+- **Thursday + Morning:** includes Botanical Garden and Farmers Market.
+- **Weekdays + Evening:** drops Botanical Garden.
+- **Sunday:** 7.
+- **Today:** resolved to Wednesday.
+
+The "N opportunities found" count follows the results. The 375px layout
+has no sideways scroll, and there were no page errors.
+
 ## 2026-09-30 — Past one-time events are deleted automatically overnight
 
 Krish asked for events to be deleted once they're done, rather than left
