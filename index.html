@@ -142,6 +142,13 @@
 
 <!-- ── Filter bar ── -->
 <div class="wrap" style="padding-top: 2rem;">
+  <!-- Search. Works together with every filter below; see applyFilters. -->
+  <div class="search-bar" role="search">
+    <label for="search-input" class="sr-only">Search opportunities</label>
+    <svg class="search-icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <input type="search" id="search-input" class="search-input" placeholder="Search by name, activity or place" autocomplete="off" enterkeyhint="search" />
+    <button type="button" class="search-clear" id="search-clear" aria-label="Clear search" hidden>×</button>
+  </div>
   <div class="filter-bar">
     <div class="filter-group">
       <span class="filter-label">Category</span>
@@ -149,7 +156,7 @@
         <button class="filter-btn active" onclick="filterCards('all', this)">All</button>
       </div>
     </div>
-    <span id="total-count" class="total-count"></span>
+    <span id="total-count" class="total-count" aria-live="polite"></span>
   </div>
   <div class="time-filter" id="time-filter">
     <div class="time-filter-group" id="day-filter-group">
@@ -180,6 +187,11 @@
     <label for="age-input">Your age</label>
     <input type="number" id="age-input" min="1" placeholder="e.g. 15" oninput="applyAgeFilter()">
     <span class="age-filter-hint" id="all-ages-hint">Opportunities open to all ages are always shown.</span>
+  </div>
+  <div class="no-results" id="no-results" hidden>
+    <p class="no-results-title">No opportunities match <span id="no-results-query"></span></p>
+    <p>Try fewer or different words, or clear the search and filters.</p>
+    <button type="button" class="btn-ghost" id="reset-all">Clear search and filters</button>
   </div>
 </div>
 
@@ -272,6 +284,27 @@
       else if (count === 1) countEl.textContent = '1 opportunity';
       else countEl.textContent = count + ' opportunities';
     }
+  }
+
+  // ── Search ──────────────────────────────────────────────────────────────
+  // Each card carries data-search: its name, category, descriptions, where
+  // and when, normalised (lower case, accents and punctuation removed). A
+  // query matches when EVERY word in it starts a word in that text, so
+  // "garden" finds "gardens", "food bank" finds both words anywhere, and word
+  // order doesn't matter. A trailing "s" on a query word is ignored, so
+  // "animals" still finds "animal".
+  function normalizeText(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+  function queryWords(q) {
+    return normalizeText(q).split(' ').filter(Boolean).map(w => (w.length > 3 && w.endsWith('s')) ? w.slice(0, -1) : w);
+  }
+  let currentQuery = [];
+  function searchMatches(card) {
+    if (!currentQuery.length) return true;
+    const hay = ' ' + (card.dataset.search || '');
+    return currentQuery.every(w => hay.includes(' ' + w));
   }
 
   let currentTag        = 'all';
@@ -372,7 +405,7 @@
         const slots = (card.dataset.slots || '').split(' ');
         whenShow = days.some(d => times.some(t => slots.includes(d + '-' + t)));
       }
-      const show = tagShow && ageShow && whenShow;
+      const show = tagShow && ageShow && whenShow && searchMatches(card);
       card.style.display = show ? '' : 'none';
 
       const hasCondition = conditionApplies(card, age);
@@ -389,6 +422,13 @@
     }
 
     const totalVisible = [...document.querySelectorAll('.card')].filter(c => c.style.display !== 'none').length;
+    const noResults = document.getElementById('no-results');
+    if (noResults) {
+      const anyCards = document.querySelectorAll('.card').length > 0;
+      noResults.hidden = !(anyCards && totalVisible === 0);
+      const q = document.getElementById('search-input').value.trim();
+      document.getElementById('no-results-query').textContent = q ? '\u201c' + q + '\u201d' : 'these filters';
+    }
     const totalEl = document.getElementById('total-count');
     if (totalEl) totalEl.textContent = totalVisible === 1 ? '1 opportunity found' : totalVisible + ' opportunities found';
 
@@ -410,6 +450,49 @@
     currentDayFilter = val;
     applyFilters();
   }
+
+  // Search box: filters as you type (lightly debounced), keeps ?q= in the
+  // address so a search can be shared or survives a refresh, "/" focuses it
+  // from anywhere on the page, Escape clears it.
+  (function wireSearch() {
+    const input = document.getElementById('search-input');
+    const clear = document.getElementById('search-clear');
+    let t = null;
+    function run() {
+      currentQuery = queryWords(input.value);
+      clear.hidden = !input.value;
+      try {
+        const url = new URL(location.href);
+        if (input.value.trim()) url.searchParams.set('q', input.value.trim()); else url.searchParams.delete('q');
+        history.replaceState(null, '', url.pathname + url.search + url.hash);
+      } catch (_) { /* address update is a nicety */ }
+      applyFilters();
+    }
+    input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 120); });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { input.value = ''; run(); }
+      if (e.key === 'Enter') { e.preventDefault(); clearTimeout(t); run(); }
+    });
+    clear.addEventListener('click', () => { input.value = ''; run(); input.focus(); });
+    document.addEventListener('keydown', e => {
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      const el = document.activeElement;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
+      e.preventDefault(); input.focus();
+    });
+    document.getElementById('reset-all').addEventListener('click', () => {
+      input.value = '';
+      currentQuery = [];
+      clear.hidden = true;
+      const ageInput = document.getElementById('age-input'); if (ageInput) ageInput.value = '';
+      document.getElementById('day-select').value = 'all'; currentDayFilter = 'all';
+      const firstTime = document.querySelector('#time-filter-group .filter-btn'); if (firstTime) setTimeFilter('all', firstTime);
+      const firstCat = document.querySelector('#filters .filter-btn'); if (firstCat) filterCards('all', firstCat);
+      run();
+    });
+    const initial = new URLSearchParams(location.search).get('q');
+    if (initial) { input.value = initial; currentQuery = queryWords(initial); clear.hidden = false; }
+  }());
 
   function setTimeFilter(val, btn) {
     document.querySelectorAll('#time-filter-group .filter-btn').forEach(b => b.classList.remove('active'));
@@ -440,6 +523,7 @@
     const condAttr   = opp._ageCondition ? ' data-age-condition="' + escHtml(opp._ageCondition) + '"' : '';
     const isOneTime  = opp._opportunityType === 'one_time';
     const slots = (opp._slots || []).join(' ');
+    const searchText = normalizeText([opp.name, opp.tag, opp._tags, opp.desc, opp._detailDesc, opp._where, opp._when].join(' '));
     // Weekday of a one-time event's date, parsed as a plain calendar date
     // (not new Date(iso), which reads it as UTC midnight).
     let eventDay = '';
@@ -464,7 +548,8 @@
 
     return '<div class="card" data-tags="' + escHtml(opp._tags) + '" data-age="' + escHtml(opp._dataAge) + '"' + condAttr +
            (isOneTime ? ' data-onetime="true"' : '') +
-           ' data-slots="' + escHtml(slots) + '" data-event-day="' + escHtml(eventDay) + '">' +
+           ' data-slots="' + escHtml(slots) + '" data-event-day="' + escHtml(eventDay) + '"' +
+           ' data-search="' + escHtml(searchText) + '">' +
       '<div class="card-photo">' +
         photoHtml +
         '<span class="card-pill card-pill-category">' + escHtml(opp.tag) + '</span>' +

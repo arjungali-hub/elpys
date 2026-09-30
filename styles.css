@@ -569,6 +569,70 @@ header {
   background: var(--body);
   color: var(--white);
 }
+/* Visually hidden, still read by screen readers (e.g. the search box's label). */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
+}
+/* ── Search ── */
+.search-bar {
+  position: relative;
+  max-width: 34rem;
+  margin-bottom: 1rem;
+}
+.search-icon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.search-input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  padding: 0.6rem 2.4rem 0.6rem 2.4rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--body);
+  background: var(--white);
+}
+.search-input:focus { outline: none; border-color: #aaa; box-shadow: 0 0 0 3px var(--off); }
+/* The browser's own clear control would double up with ours. */
+.search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.search-clear {
+  position: absolute;
+  right: 0.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.search-clear:hover { background: var(--off); color: var(--body); }
+.no-results {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  color: var(--muted);
+  max-width: 34rem;
+}
+.no-results-title { font-weight: 600; color: var(--body); margin-bottom: 0.25rem; }
+.no-results .btn-ghost { margin-top: 0.75rem; }
 .filter-bar {
   display: flex;
   align-items: center;

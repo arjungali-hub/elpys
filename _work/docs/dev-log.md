@@ -7,6 +7,53 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-30 — Search bar, built and parked on `feature/search-bar` (NOT merged; merge only when there are many more opportunities)
+
+**Status: finished and tested, but deliberately NOT merged.** Krish wants a
+search box ready for when Elpys has many more listings. With about 13, the
+category, day, time and age filters already cover it, so a search box would
+only add clutter. Merge this branch when the listing count makes scrolling
+and filtering tedious. Until then, leave it parked. The branch sits on top of
+main as of `98a562b` (the Day dropdown). Before merging later, merge main
+into it and re-run the checks below. `index.html` and `styles.css` are where
+conflicts would show up.
+
+**What it does:**
+- **Placement:** one search box above the Category filter on the homepage,
+  labelled for screen readers ("Search opportunities"). The result count is
+  announced (`aria-live`).
+- **What it searches:** each card's name, categories, card description, full
+  description, where and when. The text is normalised, so it's
+  case-insensitive, accents are ignored ("cafe" finds "Café") and
+  punctuation is ignored.
+- **Matching:** every word in the query must start a word in that text, so
+  word order doesn't matter ("bank food" finds Renewal Food Bank) and
+  prefixes match ("garden" finds "gardens"). A trailing "s" on a query word
+  is ignored ("animals" finds "animal").
+- **Works with every filter:** it's one more condition in `applyFilters`.
+  For example, "garden" + Monday gives nothing, and "garden" + Tuesday gives
+  Botanical Garden.
+- **Controls:**
+  - It filters as you type (120ms debounce), and Enter applies immediately.
+  - The query is kept in the address (`?q=`), so a search can be shared and
+    survives a refresh.
+  - "/" focuses the box from anywhere on the page, unless you're already
+    typing in a field.
+  - Escape and the × button both clear it.
+- **No results:** a "No opportunities match '…'" box offers **Clear search
+  and filters**, which resets the search, category, day, time and age.
+
+**Checked** in local Chromium with mocked listings:
+- Ten queries each returned exactly the expected listings, including
+  case, plural, word order, accents, category and phrase searches.
+- An empty query shows everything.
+- The no-results box appears, and its reset restores everything and removes
+  `?q=`.
+- Search combines correctly with the Day filter.
+- Opening `?q=farm` pre-fills the box and filters.
+- "/", Escape and × all work.
+- No sideways scroll at 375px, and no page errors.
+
 ## 2026-09-30 — Homepage: pick a specific day, matched against each listing's real schedule
 
 Krish asked for a way to find opportunities on a certain day and time,
