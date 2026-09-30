@@ -7,6 +7,15 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-30 — Parked, not merged: search bar on branch `feature/search-bar`
+
+A finished homepage search bar lives on branch `feature/search-bar`
+(`8b0707c`). **It is deliberately NOT merged.** Krish wants it held until
+Elpys has many more opportunities; with about 13, the filters already cover
+it. The branch's own dev-log entry describes the feature and its tests.
+When it's time: merge main into the branch, re-test, then merge. Don't
+delete the branch in the meantime.
+
 ## 2026-09-30 — Homepage: pick a specific day, matched against each listing's real schedule
 
 Krish asked for a way to find opportunities on a certain day and time,
