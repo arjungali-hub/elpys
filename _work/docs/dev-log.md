@@ -7,6 +7,17 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-09-30 — Cleanup stays weekly: this Vercel plan allows at most daily jobs
+
+Krish asked for Delete unused photos to run hourly if there was no downside.
+I tested it on a throwaway branch, `test/cron-hourly`, which was never merged.
+With `0 * * * *`, Vercel refused the commit before creating any deployment
+(status "Deployment failed", and the schedule was the only change). With
+`0 9 * * *`, it deployed normally. That's the Hobby plan's cron limit: at most
+once a day. Krish chose to keep the weekly schedule (`0 9 * * 1`), which is
+independent of the digest (`0 8 * * 1`, a separate job and endpoint an hour
+earlier). No change on main.
+
 ## 2026-09-30 — Photo branch merged (79d2d18); the older open items fixed on main
 
 **Merge.** Krish said merge, so `fix/scrub-hidden-photo-location-before-upload`
