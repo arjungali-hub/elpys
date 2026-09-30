@@ -59,14 +59,14 @@ test, which needed `npm install` in this environment.
 **Older open items, found before this branch and unrelated to it, still
 open** (none depend on the merge):
 - The full-width map on `/map` is a scroll trap on phones: dragging pans the
-  map, not the page (2026-09-04 and -06 entries; left as a product call).
+  map, not the page (2026-09-04 entries; left as a product call).
 - At the default zoom on `/map`, not every pin can be reached (same entries).
 - The `/map` sidebar doesn't show event dates for one-time events
   (2026-08-25).
 - The admin Published list has no way to clear past one-time events, which
   stay published after they drop off the public site (2026-08-25).
 - There's no admin view of rejected listings; the rows are kept but can only
-  be seen by SQL (2026-08-29).
+  be seen by SQL (2026-09-01).
 
 ## 2026-09-29 — "Delete unused photos", and the combined /admin page is gone (branch, not merged)
 
