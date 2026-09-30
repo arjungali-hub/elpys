@@ -106,7 +106,7 @@ function showModal(opts) {
 
       // ── Row 1: admin nav links ───────────────────────────────────────────
       var adminGroup = document.createElement('div');
-      adminGroup.style.cssText = 'display:flex;gap:0.5rem;align-items:center;margin-left:auto;';
+      adminGroup.className = 'header-admin-main';
 
       function makeAdminLink(text, href) {
         var a = document.createElement('a');
@@ -204,7 +204,7 @@ function showModal(opts) {
       // then confirms before anything goes. Replaced "Send digest now", which
       // only existed for testing; the digest itself still runs weekly.
       var cleanupMsg = document.createElement('span');
-      cleanupMsg.className = 'header-digest-msg';
+      cleanupMsg.className = 'header-cleanup-msg';
 
       var cleanupBtn = document.createElement('button');
       cleanupBtn.textContent = 'Delete unused photos';
@@ -240,7 +240,7 @@ function showModal(opts) {
               ' left alone because ' + (d.keptRecent === 1 ? 'it' : 'they') + ' may still be in use on a form.'
             : '';
           if (!n) {
-            setCleanupMsg('No unused photos.' + recentNote, '#15803D');
+            setCleanupMsg('No unused photos' + (d.keptRecent ? ' (' + d.keptRecent + ' newer one' + (d.keptRecent === 1 ? '' : 's') + ' kept for now).' : '.'), '#15803D');
             resetCleanupBtn();
             return;
           }

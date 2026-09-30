@@ -452,7 +452,9 @@
         document.getElementById('f-cover-photo').value = '';
       });
     } catch (err) {
-      setUploadStatus(statusEl, err.message, 'error');
+      // The file box clears, but a photo added earlier is still attached and
+      // still shown, so say which one will be sent.
+      setUploadStatus(statusEl, err.message + (coverImageUrl ? ' Your previous cover photo is still attached.' : ''), 'error');
       this.value = '';
     }
   });

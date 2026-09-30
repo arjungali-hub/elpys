@@ -1289,7 +1289,7 @@
         coverStatus.textContent = '';
         renderCover();
       } catch (err) {
-        coverStatus.textContent = err.message;
+        coverStatus.textContent = err.message + (state.cover ? ' The previous cover photo is still attached.' : '');
         coverStatus.className = 'photo-upload-status error';
       }
     });
@@ -1369,13 +1369,16 @@
     const payload = { action: 'update', id };
     const set = (key, val) => { if (val !== null && val !== undefined) payload[key] = val; };
     const text = fid => { const v = g(fid); return v === null ? null : v.trim(); };
-    const orNull = fid => { const v = text(fid); return v === null ? null : (v || null); };
+    // Optional fields: blank means "clear it". set() skips null, which is right
+    // for a field that isn't on this card but meant an emptied field was never
+    // sent at all, so the old text silently stayed.
+    const clearable = (key, fid) => { const v = text(fid); if (v !== null) payload[key] = v || null; };
 
     set('name',             text('e-name-' + id));
     set('description',      text('e-desc-' + id));
     // The column is long_description; sending detail_description silently
     // dropped every full-description edit, since the API ignores unknown keys.
-    set('long_description', orNull('e-detaildesc-' + id));
+    clearable('long_description', 'e-detaildesc-' + id);
     set('age_display',      text('e-age-' + id));
     set('when',             text('e-when-' + id));
     set('opportunity_type', g('e-type-' + id));
@@ -1389,14 +1392,11 @@
     set('where',            text('e-where-' + id));
     set('address',          text('e-addr-' + id));
     set('signup_link',      text('e-link-' + id));
-    set('signup_label',     orNull('e-label-' + id));
+    clearable('signup_label', 'e-label-' + id);
     set('section',          g('e-section-' + id));
-    set('card_note',        orNull('e-note-' + id));
-    set('admin_notes',      orNull('e-adminnotes-' + id));
-    // Not via set(): that skips null, so an emptied field could never clear a
-    // credit. Absent field (null) still leaves it untouched.
-    const creditVal = text('e-photocredit-' + id);
-    if (creditVal !== null) payload.photo_credit = creditVal || null;
+    clearable('card_note', 'e-note-' + id);
+    clearable('admin_notes', 'e-adminnotes-' + id);
+    clearable('photo_credit', 'e-photocredit-' + id);
 
     // Read from photoState, not the file inputs — uploads already happened
     // on selection, so this is just whatever is currently in the preview.
