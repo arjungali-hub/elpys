@@ -14,6 +14,8 @@
 // RLS: no anon access needed — this function uses the service role key.
 // Optionally enable RLS and grant no policies so only service role can insert/select.
 
+const { sendVisitorAlert, feedbackAlert } = require('../lib/adminAlert');
+
 const SUPABASE_URL     = process.env.SUPABASE_URL;
 const SUPABASE_KEY     = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET_KEY;
@@ -36,6 +38,7 @@ function pruneExpired(store, windowMs, now) {
 }
 
 module.exports = async function handler(req, res) {
+  const startedAt = Date.now();
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -111,5 +114,8 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Could not save your feedback. Please try again.' });
   }
 
+  // Saved: tell the Elpys inbox (lib/adminAlert.js — capped wait, never
+  // throws), then answer exactly as before.
+  await sendVisitorAlert(feedbackAlert(payload), startedAt, 'feedback');
   return res.status(200).json({ ok: true });
 };

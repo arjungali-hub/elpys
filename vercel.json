@@ -78,6 +78,10 @@
       "schedule": "0 8 * * 1"
     },
     {
+      "path": "/api/review-alerts",
+      "schedule": "0 15 * * *"
+    },
+    {
       "path": "/api/cleanup-photos",
       "schedule": "0 9 * * 1"
     }

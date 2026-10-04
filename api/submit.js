@@ -88,6 +88,7 @@ function supabaseHeaders(extra) {
 // Geocoding lives in lib/geocode.js so /api/admin can reuse it when an
 // admin edits an address after the fact.
 const { geocodeAddress } = require('../lib/geocode');
+const { sendVisitorAlert, submissionAlert } = require('../lib/adminAlert');
 
 // Only http(s) and mailto links are accepted. Escaping stops an attribute
 // breakout wherever this is rendered, but `javascript:` needs no quotes at all,
@@ -122,6 +123,7 @@ module.exports = async function handler(req, res) {
 };
 
 async function handleSubmit(req, res) {
+  const startedAt = Date.now();
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -410,17 +412,28 @@ async function handleSubmit(req, res) {
   };
 
   // ── 7. Insert via service role key ────────────────────────────────────────
+  // Returns only the new row's id, for the link in the alert email below.
   async function insertRow(row) {
-    const r = await fetch(SUPABASE_URL + 'Opportunities', {
+    const r = await fetch(SUPABASE_URL + 'Opportunities?select=id', {
       method:  'POST',
-      headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+      headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' }),
       body:    JSON.stringify(row),
     });
-    if (r.ok) return { ok: true };
+    if (r.ok) {
+      const rows = await r.json().catch(() => null);
+      return { ok: true, id: Array.isArray(rows) && rows[0] ? rows[0].id : null };
+    }
     const detail = await r.text().catch(() => '');
     let parsed = null;
     try { parsed = JSON.parse(detail); } catch (_) { /* not JSON — fall back to raw text */ }
     return { ok: false, status: r.status, detail, parsed };
+  }
+
+  // The row is saved: tell the Elpys inbox (lib/adminAlert.js — capped wait,
+  // never throws), then answer exactly as before.
+  async function saved(response) {
+    await sendVisitorAlert(submissionAlert(payload, result.id), startedAt, 'submission');
+    return res.status(200).json(response);
   }
 
   let result = await insertRow(payload);
@@ -439,7 +452,7 @@ async function handleSubmit(req, res) {
     const retry = Object.assign({}, payload);
     delete retry.schedule;
     result = await insertRow(retry);
-    if (result.ok) return res.status(200).json({ ok: true, warning: 'schedule-column-missing' });
+    if (result.ok) return saved({ ok: true, warning: 'schedule-column-missing' });
   }
 
   // Same trap, for cover_image_url/gallery_image_urls: this deploy can land
@@ -458,7 +471,7 @@ async function handleSubmit(req, res) {
     delete retry.cover_thumb_url;
     delete retry.gallery_image_urls;
     result = await insertRow(retry);
-    if (result.ok) return res.status(200).json({ ok: true, warning: 'photo-columns-missing' });
+    if (result.ok) return saved({ ok: true, warning: 'photo-columns-missing' });
   }
 
   if (!result.ok) {
@@ -476,5 +489,5 @@ async function handleSubmit(req, res) {
     return res.status(500).json({ error: 'Submission failed. Please try again.' });
   }
 
-  return res.status(200).json({ ok: true });
+  return saved({ ok: true });
 }
