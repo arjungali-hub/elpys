@@ -67,6 +67,40 @@ The homepage downloaded every listing's full cover photo (up to 1.8MB each,
   (that Monday) would delete them. Cards would then fall back to the full
   photo (no broken images), and the backfill would need redoing.
 
+**What was checked:**
+- **Branch preview, Chromium, cache disabled, whole homepage scrolled:**
+  listing photos downloaded fell from **7,703,311 bytes on production to
+  3,044,404 on the preview** (−60%). Results were the same at 1280px and at
+  375px with 3x density.
+- **Cards:** all 13 show their photo, with no console or CSP errors and no
+  sideways scroll.
+- **Sharpness:** every card has at least 2.7 image pixels per screen pixel
+  at 1280, and 1.17 at 375@3x. Two are the exception: Sammamish (0.87) and
+  The Sophia Way (0.49). Their uploaded photos are themselves only
+  1000x558 and 841x314, so they look exactly as they do on production now.
+- **Detail pages** load the full photo, not the thumbnail.
+- **Upload on the preview's /submit** (real CSP, real bucket): a 4032x3024
+  phone photo with rotation tag 6 and camera EXIF became an upright
+  1500x2000 photo (1.08MB) and an upright 1200x750 thumbnail (308KB). Both
+  have no EXIF and were stored with a one-year cache. The two test files
+  are unused and the weekly cleanup removes them.
+- **Admin editor:** tested locally with the API mocked. Saving sends both
+  URLs, removing the cover sends both as null, and the Photos block shows
+  the thumbnail. It couldn't be opened on the preview: admin pages need a
+  real signed-in session.
+- **Locally:** gallery photos of 2000px or less upload byte-for-byte as
+  scrubbed. A missing thumbnail falls back to the full photo.
+- **Cleanup tests:** 6/6 pass.
+- **Cleanup dry run against production data** (the same matching, in SQL
+  over the bucket listing): 29 files.
+  - 26 are in use: 13 covers and 13 thumbnails. Main's current logic
+    would count only 13, missing every thumbnail.
+  - 2 are kept as under 24h old: the test upload.
+  - 1 would be deleted: `8c219fa5…jpg` from 09-29. It is referenced
+    nowhere, so it is genuinely unused.
+- **Not tested:** a full /submit send on the preview. Turnstile rejects
+  preview domains, so this needs one real submission after merge.
+
 **Thumbnail sizes:** 13 thumbnails total 3.0MB against 7.7MB of covers.
 Each is smaller than its cover, but most are 150–350KB, above the 150KB
 target. Detailed outdoor photos at 1200x750 and q0.82 simply come out that
