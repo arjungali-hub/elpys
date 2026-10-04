@@ -628,6 +628,45 @@ async function uploadOpportunityImage(file) {
   return STORAGE_ROOT + 'storage/v1/object/public/' + IMAGE_BUCKET + '/' + path;
 }
 
+// ── Categories ───────────────────────────────────────────────────────────────
+//
+// The categories the homepage's filter buttons show, built from the live
+// listings: each listing's categories are split on "·" or ",", keyed by their
+// lowercase text, and labelled with the first letter capitalised ("education"
+// -> "Education", "mental health" -> "Mental health"); sorted by label.
+// Returns [[key, label], ...]. Shared by index.html's filter buttons and the
+// interest checkboxes on signup.html and account.html, so all three always
+// list the same categories in the same order — including a brand-new one
+// typed under "Other" on /submit, the first time a listing with it goes live.
+// The saved interest is the label; api/send-digest.js lowercases both sides,
+// so it matches the stored category.
+function categoryOptions(opportunities) {
+  const map = new Map();
+  (opportunities || []).forEach(opp => {
+    (opp.tag || '').split(/[·,]/).forEach(cat => {
+      const trimmed = cat.trim();
+      if (!trimmed) return;
+      map.set(trimmed.toLowerCase(), trimmed.charAt(0).toUpperCase() + trimmed.slice(1));
+    });
+  });
+  return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+}
+
+// What the interest checkboxes offer when the listings can't be loaded, so
+// the pages always work. These were the hard-coded four until 2026-10-04.
+const FALLBACK_INTEREST_CATEGORIES = ['Animals', 'Community', 'Environment', 'Food'];
+
+// The interest checkbox labels: the live categories, or the fallback four.
+async function interestCategories() {
+  try {
+    const labels = categoryOptions(await fetchOpportunities()).map(e => e[1]);
+    if (labels.length) return labels;
+  } catch (err) {
+    console.warn('Could not load categories; showing the default interests.', err);
+  }
+  return FALLBACK_INTEREST_CATEGORIES.slice();
+}
+
 // ── Category fallback icon ───────────────────────────────────────────────────
 //
 // Shown in place of a cover photo when a listing has none. One simple

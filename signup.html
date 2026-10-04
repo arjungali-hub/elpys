@@ -141,6 +141,7 @@
 
 <script src="loading.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
+<script src="supabase-client.js"></script>
 <script>
   var _supa = supabase.createClient(
     'https://ukrykzmehvghedrvmkjj.supabase.co',
@@ -155,6 +156,30 @@
   var form      = document.getElementById('signup-form');
   var btn       = document.getElementById('submit-btn');
   var statusEl  = document.getElementById('form-status');
+
+  // The interest checkboxes follow the live categories, in the homepage's
+  // order (interestCategories, supabase-client.js). The four in the HTML
+  // above are both the fallback and today's list, so nothing changes on
+  // screen unless a new category has gone live. Anything already ticked is
+  // kept ticked.
+  interestCategories().then(function (labels) {
+    var grid  = form.querySelector('.interest-grid');
+    var boxes = Array.from(grid.querySelectorAll('input[name="interest"]'));
+    if (boxes.map(function (c) { return c.value; }).join('|') === labels.join('|')) return;
+    var ticked = boxes.filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
+    ticked.forEach(function (v) { if (labels.indexOf(v) === -1) labels.push(v); });
+    grid.textContent = '';
+    labels.forEach(function (label) {
+      var el = document.createElement('label');
+      el.className = 'interest-label';
+      var input = document.createElement('input');
+      input.type = 'checkbox'; input.name = 'interest'; input.value = label;
+      input.checked = ticked.indexOf(label) !== -1;
+      el.appendChild(input);
+      el.appendChild(document.createTextNode(' ' + label));
+      grid.appendChild(el);
+    });
+  });
 
   // Supabase's weak_password error carries a machine-readable `reasons` array
   // rather than requiring us to parse its message text (which otherwise spells
