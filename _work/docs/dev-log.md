@@ -7,6 +7,35 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-04 — Feedback alert email no longer includes the feedback
+
+The "New Elpys feedback" email (`lib/adminAlert.js` `feedbackAlert`) used to
+carry the feedback text. A teen may type something personal, and the
+privacy policy then had to promise those emails would be deleted on the
+feedback's 12-month schedule: a manual Gmail chore for Krish.
+
+**What changed:**
+- **The email** now says only that feedback arrived, with an "Open
+  feedback" link to `/admin-feedback`. It carries no message, email address
+  or page. The feedback itself stays only in the database, where the
+  existing 12-month deletion already applies.
+- **`privacy.html`:** the Google row says feedback notifications contain
+  "only that feedback arrived (never what it says or your email address)".
+  The two "notification email is deleted on the same schedule" sentences
+  are removed, because there's nothing personal to delete.
+- **Submission emails are unchanged:** listing name, categories, date or
+  schedule type, photo count, never contact details. That's organization
+  information, not personal, and the Google row says exactly what's in
+  them.
+- **Krish no longer needs to clean the inbox,** and the 3-monthly
+  reminder in the Cowork prompt isn't needed.
+
+**Checked:**
+- `test/alert-emails.test.js` now sends feedback containing a name, an
+  address, HTML, a contact email and a page, and asserts none of them
+  appear in the email.
+- Suite 25/25.
+
 ## 2026-10-04 — Parked, not merged: map pin clusters on branch `feature/map-pin-clusters-parked`
 
 Map pin clustering for /map lives on branch `feature/map-pin-clusters-parked`

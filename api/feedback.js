@@ -116,6 +116,6 @@ module.exports = async function handler(req, res) {
 
   // Saved: tell the Elpys inbox (lib/adminAlert.js — capped wait, never
   // throws), then answer exactly as before.
-  await sendVisitorAlert(feedbackAlert(payload), startedAt, 'feedback');
+  await sendVisitorAlert(feedbackAlert(), startedAt, 'feedback');
   return res.status(200).json({ ok: true });
 };

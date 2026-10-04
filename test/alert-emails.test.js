@@ -78,21 +78,19 @@ test('recurring listings say so', async () => {
   assert.match(sent[0].text, /When: Recurring/);
 });
 
-test('saved feedback emails hello.elpys, escaped and cut at about 1000 characters', async () => {
+test('saved feedback emails hello.elpys that feedback arrived, never its text or the sender\'s email', async () => {
   reset();
-  const long = '<b>bold</b> & "quotes" ' + 'x'.repeat(2000);
-  const r = await call(feedback, { message: long, contact_email: 'teen@example.com', 'cf-turnstile-response': 'good' });
+  const msg = 'My name is Sam, I live at 12 Oak St <b>bold</b> ' + 'x'.repeat(50);
+  const r = await call(feedback, { message: msg, contact_email: 'teen@example.com', page_url: '/earthcorps', 'cf-turnstile-response': 'good' });
   assert.deepStrictEqual(r, { status: 200, body: { ok: true } });
   assert.strictEqual(sent.length, 1);
   const m = sent[0];
   assert.strictEqual(m.to, 'hello.elpys@gmail.com');
   assert.strictEqual(m.subject, 'New Elpys feedback');
-  assert.match(m.html, /&lt;b&gt;bold&lt;\/b&gt; &amp; &quot;quotes&quot;/);
-  assert.doesNotMatch(m.html, /<b>bold/);
-  assert.match(m.text, /x…\n/);
-  assert.ok(m.text.length < 1200, 'text was not cut: ' + m.text.length);
+  const all = m.html + m.text + m.subject;
+  for (const leak of [/Sam/, /Oak St/, /bold/, /xxxxx/, /teen@example\.com/, /earthcorps/]) assert.doesNotMatch(all, leak);
   assert.match(m.html, /https:\/\/elpys\.vercel\.app\/admin-feedback/);
-  assert.doesNotMatch(m.html + m.text + m.subject, /teen@example\.com/);
+  assert.match(m.text, /https:\/\/elpys\.vercel\.app\/admin-feedback/);
 });
 
 test('HTML in a listing name is escaped in the email, and the subject stays one plain line', async () => {
