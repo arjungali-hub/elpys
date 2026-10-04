@@ -79,7 +79,7 @@ const PUBLIC_COLUMNS = [
   'signup_link', 'signup_label', 'signup_steps', 'section', 'slug',
   'live_url', 'card_note', 'website', 'contact_email', 'contact_phone',
   'schedule', 'opportunity_type', 'event_date',
-  'cover_image_url', 'gallery_image_urls', 'photo_credit',
+  'cover_image_url', 'gallery_image_urls', 'photo_credit', 'cover_thumb_url',
 ].join(',');
 
 // Caches the in-flight PROMISE, not the resolved rows.
@@ -240,6 +240,7 @@ function _transformRow(row) {
     _contactEmail: row.contact_email  || null,
     _contactPhone: row.contact_phone  || null,
     _coverImageUrl:  row.cover_image_url || null,
+    _coverThumbUrl:  row.cover_thumb_url || null,
     _galleryImageUrls: Array.isArray(row.gallery_image_urls) ? row.gallery_image_urls : [],
     _photoCredit:  row.photo_credit   || null,
   };
@@ -592,40 +593,135 @@ function stripImageMetadata(bytes, mime) {
 }
 // ── end photo metadata stripping ──
 
-// Never trusts file.name for the stored path — only its declared MIME type,
-// checked against an allowlist, to pick an extension. Throws a message
-// that's safe to show the submitter directly. Every photo is stripped of its
-// metadata first (stripImageMetadata above); one that can't be parsed is
-// refused rather than uploaded as-is.
-async function uploadOpportunityImage(file) {
-  const ext = ALLOWED_IMAGE_EXT[file.type];
-  if (!ext) throw new Error('Please choose a JPG, PNG, or WEBP image.');
-  if (file.size > MAX_IMAGE_BYTES) throw new Error('That image is larger than 5MB. Please choose a smaller file.');
+// ── Upload sizing ──────────────────────────────────────────────────────────
+// Card thumbnails: the widest the homepage card photo ever renders is 590px
+// (a 640px-wide screen, one column, just before the two-column breakpoint;
+// measured across every viewport from 320 to 2560px on 2026-10-04). Doubled
+// for high-density screens and rounded up: 1200x750, the centre 16:10 of the
+// photo (smaller photos are cropped but not enlarged). Full photos are capped
+// at 2000px on the longest side.
+const THUMB_W = 1200, THUMB_H = 750, THUMB_QUALITY = 0.82;
+const FULL_MAX_SIDE = 2000, FULL_QUALITY = 0.88;
+// Every object path is a fresh UUID and uploads never overwrite (no upsert,
+// and anon has no UPDATE policy), so a file's bytes can never change under a
+// cached copy: cache for a year.
+const UPLOAD_CACHE_CONTROL = 'max-age=31536000';
 
-  let cleaned;
-  try {
-    cleaned = stripImageMetadata(new Uint8Array(await file.arrayBuffer()), file.type);
-  } catch (err) {
-    console.error('Image metadata strip failed:', err);
-    throw new Error("We couldn't read that image. Please try a different photo.");
-  }
-  if (cleaned.length > MAX_IMAGE_BYTES) throw new Error('That image is larger than 5MB. Please choose a smaller file.');
+// Decodes the already-scrubbed bytes into an <img>. Through a data: URL, not
+// blob:, because the site's CSP img-src allows data: and not blob: - a blob:
+// image would fail on the live site only. An <img> applies the EXIF
+// Orientation tag the scrub keeps, and so does drawing it onto a canvas, so a
+// rotated phone photo comes out upright in every copy made from it.
+function _decodeImage(bytes, mime) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('decode failed'));
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(new Blob([bytes], { type: mime }));
+  });
+}
 
+// A canvas re-encode: a fresh JPEG carrying no metadata at all. White
+// underneath, so a transparent PNG doesn't turn black.
+// src (optional) is the part of the image to draw: [x, y, width, height].
+function _encodeJpeg(img, w, h, quality, src) {
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, w, h);
+  ctx.imageSmoothingQuality = 'high';
+  if (src) ctx.drawImage(img, src[0], src[1], src[2], src[3], 0, 0, w, h);
+  else ctx.drawImage(img, 0, 0, w, h);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(b => (b ? resolve(b) : reject(new Error('encode failed'))), 'image/jpeg', quality);
+  });
+}
+
+async function _putImage(blob, ext, mime) {
   const path = 'uploads/' + _uuidV4() + '.' + ext;
   const res = await fetch(STORAGE_ROOT + 'storage/v1/object/' + IMAGE_BUCKET + '/' + path, {
     method:  'POST',
     headers: {
-      apikey:         SUPABASE_ANON_KEY,
-      Authorization:  'Bearer ' + SUPABASE_ANON_KEY,
-      'Content-Type': file.type,
+      apikey:          SUPABASE_ANON_KEY,
+      Authorization:   'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type':  mime,
+      'cache-control': UPLOAD_CACHE_CONTROL,
     },
-    body: new Blob([cleaned], { type: file.type }),
+    body: blob,
   });
   if (!res.ok) {
     console.error('Image upload failed:', res.status, await res.text().catch(() => ''));
     throw new Error('Upload failed. Please try again.');
   }
   return STORAGE_ROOT + 'storage/v1/object/public/' + IMAGE_BUCKET + '/' + path;
+}
+
+// Scrubs, size-checks and uploads one photo; with { thumb: true } also makes
+// and uploads the card-size copy. Never trusts file.name for the stored path —
+// only its declared MIME type, checked against an allowlist, to pick an
+// extension. Every message thrown is safe to show the submitter directly. A
+// photo that can't be parsed or decoded is refused rather than uploaded as-is.
+async function _prepareAndUpload(file, opts) {
+  const ext = ALLOWED_IMAGE_EXT[file.type];
+  if (!ext) throw new Error('Please choose a JPG, PNG, or WEBP image.');
+  if (file.size > MAX_IMAGE_BYTES) throw new Error('That image is larger than 5MB. Please choose a smaller file.');
+
+  let cleaned, img;
+  try {
+    cleaned = stripImageMetadata(new Uint8Array(await file.arrayBuffer()), file.type);
+    img = await _decodeImage(cleaned, file.type);
+  } catch (err) {
+    console.error('Image read failed:', err);
+    throw new Error("We couldn't read that image. Please try a different photo.");
+  }
+  if (cleaned.length > MAX_IMAGE_BYTES) throw new Error('That image is larger than 5MB. Please choose a smaller file.');
+
+  // naturalWidth/Height are after the Orientation tag is applied.
+  const w = img.naturalWidth, h = img.naturalHeight;
+  let fullBlob, fullExt = ext, fullMime = file.type;
+  if (Math.max(w, h) > FULL_MAX_SIDE) {
+    const k = FULL_MAX_SIDE / Math.max(w, h);
+    fullBlob = await _encodeJpeg(img, Math.round(w * k), Math.round(h * k), FULL_QUALITY);
+    fullExt = 'jpg'; fullMime = 'image/jpeg';
+  } else {
+    fullBlob = new Blob([cleaned], { type: file.type });   // the scrubbed bytes, untouched
+  }
+  const url = await _putImage(fullBlob, fullExt, fullMime);
+  if (!opts || !opts.thumb) return { url: url, thumbUrl: null };
+
+  // The thumbnail is a convenience: if it can't be made, the card falls back
+  // to the full photo, so the upload still succeeds.
+  let thumbUrl = null;
+  try {
+    // Cropped to the card's 16:10 from the centre: exactly the part the
+    // card's object-fit: cover shows, so the card looks the same and a
+    // portrait photo isn't stored at twice the height anyone sees.
+    const cw = Math.min(w, h * THUMB_W / THUMB_H), ch = cw * THUMB_H / THUMB_W;
+    const k = Math.min(1, THUMB_W / cw);
+    const thumb = await _encodeJpeg(img, Math.max(1, Math.round(cw * k)), Math.max(1, Math.round(ch * k)), THUMB_QUALITY,
+                                    [(w - cw) / 2, (h - ch) / 2, cw, ch]);
+    thumbUrl = await _putImage(thumb, 'jpg', 'image/jpeg');
+  } catch (err) {
+    console.error('Cover thumbnail failed; the card will use the full photo:', err);
+  }
+  return { url: url, thumbUrl: thumbUrl };
+}
+
+// Gallery photos (and anything else that needs no thumbnail): returns the URL.
+async function uploadOpportunityImage(file) {
+  return (await _prepareAndUpload(file, { thumb: false })).url;
+}
+
+// Cover photos: returns { url, thumbUrl } — the full photo for the detail
+// page and the card-size copy for the homepage (thumbUrl null if it failed).
+async function uploadCoverImage(file) {
+  return _prepareAndUpload(file, { thumb: true });
 }
 
 // ── Category fallback icon ───────────────────────────────────────────────────

@@ -16,9 +16,11 @@ const A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jpg';   // cover of a published 
 const B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.webp';  // gallery of a rejected row
 const C = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc.png';   // unused, old  -> deleted
 const D = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd.jpg';   // unused, 2h old -> kept
-const FILES = [A, B, C, D].map((name, i) => ({ name, created_at: i === 3 ? NEW : OLD, metadata: { size: 1000 } }))
+const T = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee.jpg';   // card thumbnail of A's row -> kept
+const FILES = [A, B, C, D, T].map((name, i) => ({ name, created_at: i === 3 ? NEW : OLD, metadata: { size: 1000 } }))
   .concat([{ name: '.emptyFolderPlaceholder', created_at: OLD }, { name: 'by-hand.jpg', created_at: OLD }]);
-const ROWS = [{ cover_image_url: U(A), gallery_image_urls: [] }, { cover_image_url: null, gallery_image_urls: [U(B)] }];
+const ROWS = [{ cover_image_url: U(A), cover_thumb_url: U(T), gallery_image_urls: [], name: 'not a photo column' },
+              { cover_image_url: null, cover_thumb_url: null, gallery_image_urls: [U(B)] }];
 
 function mockFetch({ rows = ROWS, rowsOk = true, listOk = true } = {}) {
   const calls = [];
@@ -26,7 +28,13 @@ function mockFetch({ rows = ROWS, rowsOk = true, listOk = true } = {}) {
     calls.push({ url, method: opts.method || 'GET', body: opts.body, headers: opts.headers });
     const json = (status, data) => ({ ok: status < 300, status, json: async () => data, text: async () => JSON.stringify(data) });
     if (url.includes('/storage/v1/object/list/')) return listOk ? json(200, FILES) : json(500, {});
-    if (url.includes('/rest/v1/Opportunities')) return rowsOk ? json(200, rows) : json(500, {});
+    // Like PostgREST, return only the columns asked for, so a select that
+    // forgets a photo column fails here the way it would in production.
+    if (url.includes('/rest/v1/Opportunities')) {
+      if (!rowsOk) return json(500, {});
+      const cols = new URL(url).searchParams.get('select').split(',');
+      return json(200, rows.map(r => Object.fromEntries(cols.filter(c => c in r).map(c => [c, r[c]]))));
+    }
     if (opts.method === 'DELETE') return json(200, JSON.parse(opts.body).prefixes.map(p => ({ name: p })));
     throw new Error('unexpected fetch ' + url);
   };
@@ -47,7 +55,7 @@ test('dry run lists only the old, unused upload and deletes nothing', async () =
   const r = await run(Object.assign({ query: { dry: '1' } }, admin));
   assert.strictEqual(r.status, 200);
   assert.deepStrictEqual(r.body.wouldDelete.map(f => f.name), [C]);
-  assert.strictEqual(r.body.inUse, 2);
+  assert.strictEqual(r.body.inUse, 3);
   assert.strictEqual(r.body.keptRecent, 1);
   assert.strictEqual(deletes(calls).length, 0);
 });
@@ -86,4 +94,15 @@ test('a failed listings read, an empty listings table, or a failed file list del
     assert.match(r.body.error, /Nothing was deleted/);
     assert.strictEqual(deletes(calls).length, 0);
   }
+});
+
+test('a card thumbnail (cover_thumb_url) counts as in use and is never deleted', async () => {
+  const calls = mockFetch();
+  const r = await run(admin);
+  assert.strictEqual(r.status, 200);
+  const deleted = deletes(calls).flatMap(c => JSON.parse(c.body).prefixes);
+  assert.ok(!deleted.includes('uploads/' + T), 'thumbnail was deleted');
+  assert.deepStrictEqual(deleted, ['uploads/' + C]);
+  const req = calls.find(c => c.url.includes('/rest/v1/Opportunities'));
+  assert.match(new URL(req.url).searchParams.get('select'), /(^|,)cover_thumb_url(,|$)/);
 });

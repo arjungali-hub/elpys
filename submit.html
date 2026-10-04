@@ -425,6 +425,7 @@
   // dev-log entry for why: a single photo can be up to 5MB, well past what a
   // Vercel serverless function will accept as a request body.
   let coverImageUrl = null;
+  let coverThumbUrl = null;   // card-size copy, made with the cover (uploadCoverImage)
   const galleryImageUrls = [];
 
   function setUploadStatus(el, text, kind) {
@@ -439,7 +440,9 @@
     const previewEl = document.getElementById('cover-photo-preview');
     setUploadStatus(statusEl, 'Uploading…', 'uploading');
     try {
-      coverImageUrl = await uploadOpportunityImage(file);
+      const up = await uploadCoverImage(file);
+      coverImageUrl = up.url;
+      coverThumbUrl = up.thumbUrl;
       setUploadStatus(statusEl, '');
       previewEl.innerHTML =
         '<div class="photo-thumb">' +
@@ -448,6 +451,7 @@
         '</div>';
       previewEl.querySelector('.photo-thumb-remove').addEventListener('click', function () {
         coverImageUrl = null;
+        coverThumbUrl = null;
         previewEl.innerHTML = '';
         document.getElementById('f-cover-photo').value = '';
       });
@@ -696,6 +700,7 @@
       admin_notes:         form.elements.admin_notes.value.trim() || null,
       section:             section.value,
       cover_image_url:     coverImageUrl,
+      cover_thumb_url:     coverImageUrl ? coverThumbUrl : null,
       gallery_image_urls:  galleryImageUrls,
       photo_credit:        form.elements.photo_credit.value.trim() || null,
       // status is NOT sent — the server always sets it to 'pending'

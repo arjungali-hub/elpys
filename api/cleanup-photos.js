@@ -13,7 +13,8 @@
 //   - its name is a real upload (uploads/<uuid>.<jpg|jpeg|png|webp>), so the
 //     folder placeholder and anything added by hand are never touched;
 //   - no row in Opportunities — any status, including pending and rejected —
-//     mentions it in cover_image_url or gallery_image_urls;
+//     mentions it in cover_image_url, cover_thumb_url or gallery_image_urls
+//     (the card-size thumbnail is "in use" exactly like the cover);
 //   - it is older than GRACE_HOURS. Photos upload the moment they are picked,
 //     before the form is sent or the editor is saved, so a brand-new file with
 //     no row yet is normal and must be left alone.
@@ -67,7 +68,7 @@ async function namesInUse() {
   const used = new Set();
   let rows = 0;
   for (let offset = 0; ; offset += 1000) {
-    const r = await fetch(SUPABASE_REST + 'Opportunities?select=cover_image_url,gallery_image_urls&order=id.asc',
+    const r = await fetch(SUPABASE_REST + 'Opportunities?select=cover_image_url,cover_thumb_url,gallery_image_urls&order=id.asc',
       { headers: supaHeaders({ Range: offset + '-' + (offset + 999), 'Range-Unit': 'items' }) });
     if (!r.ok) throw new Error('Could not read listings (HTTP ' + r.status + ')');
     const page = await r.json();
