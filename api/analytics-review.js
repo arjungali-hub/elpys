@@ -480,3 +480,8 @@ async function handleAnalyticsReview(req, res) {
     pendingRedesignPrompts: status.pendingRedesignPrompts,
   });
 }
+
+// Reused by api/review-alerts.js so its emails agree with this page's dot.
+module.exports.fetchTaskRun             = fetchTaskRun;
+module.exports.fetchLatestReviewSummary = fetchLatestReviewSummary;
+module.exports.computeStatus            = computeStatus;

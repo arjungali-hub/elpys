@@ -7,6 +7,87 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-04 — Emails to hello.elpys when something needs Krish
+
+Outreach sends organizations to /submit, but nothing told Krish when a
+submission or feedback arrived, or when the scheduled checks left something
+in Data review or Analytics review. Every alert goes only to
+`hello.elpys@gmail.com`, through the existing `lib/sendEmail.js`.
+
+**What changed:**
+- **New submission** (`api/submit.js`): after the row is saved, one email.
+  - Subject: `New Elpys submission: <name>`, as one line, trimmed to 100
+    characters.
+  - Body: name, categories, one-time plus date or recurring, photo count,
+    and a "Review it" button to `/admin-review?id=<id>`.
+  - It includes a plain-text version and never the submitter's contact
+    details.
+  - The insert now returns only the new row's `id`, which the link needs.
+- **New feedback** (`api/feedback.js`): after it's saved, `New Elpys
+  feedback` with the text cut at 1,000 characters ("…") and a link to
+  `/admin-feedback`. The optional contact email is not included.
+- **It can't hurt the forms** (`lib/adminAlert.js`):
+  - The email goes only after a successful insert, never for honeypot,
+    Turnstile, rate-limit or validation rejections.
+  - The wait is at most 3s, and never past 9s into the request (the
+    geocoder alone can take 8s, and functions stop at 10s). After that the
+    request carries on.
+  - Every failure is caught and logged, and the visitor's response is
+    byte-for-byte what it was.
+  - Flood cap: at most 30 of these per rolling 24h, in memory per
+    instance, with skips logged.
+  - Everything the visitor typed is escaped in the HTML.
+- **Data review and Analytics review** (Krish's addition): a new daily cron,
+  `api/review-alerts.js` (`0 15 * * *`, 8am PDT / 7am PST), emails when
+  something new needs doing.
+  - **Data review:** a flag waiting on a decision; the weekly or local
+    check failed or overdue; Supabase paused or unreachable.
+  - **Analytics review:** a redesign suggestion not yet acknowledged; the
+    monthly run failed, degraded or overdue.
+  - It imports `computeStatus` and friends from `api/review.js` and
+    `api/analytics-review.js`, so an email always agrees with the page's
+    yellow or red dot.
+  - Each item is emailed once when it appears. It is not repeated while it
+    waits, and it is new again if it clears and comes back.
+  - What was already sent is kept in `task_runs` (task_name
+    `review_alerts`), saved only after a successful send, so a failed
+    email retries the next day. Supabase being down repeats daily.
+  - Daily is the fastest this Vercel plan allows. Those queues are filled
+    by Cowork tasks writing straight to Supabase, so nothing in the site
+    sees an item arrive.
+  - Same auth as cleanup: the cron secret, or the admin password with
+    `?dry=1` to see what it would send.
+
+**What was checked:**
+- `test/alert-emails.test.js` (9 tests, `sendEmail` mocked):
+  - sends after a good insert, with the right subject, body and link;
+  - doesn't send on a failed insert, the honeypot, a failed Turnstile, or
+    the rate limit;
+  - a thrown sendEmail, or one that never finishes, leaves the response
+    identical, and the wait stops at 3s;
+  - the time budget is respected, and the flood cap works;
+  - HTML in a name or in feedback is escaped;
+  - contact details never appear.
+- `test/review-alerts.test.js` (7 tests):
+  - a new flag is emailed once and not repeated;
+  - new suggestions and an overdue check are emailed, and old items are
+    not;
+  - a failed analytics run is reported;
+  - a cleared-then-back flag is new again;
+  - a failed send isn't remembered;
+  - Supabase down is reported;
+  - the dry run sends nothing, and wrong credentials are refused.
+- The full suite is 23/23.
+- On production today nothing is waiting: 0 flags, all three checks
+  healthy, no suggestions. The first run after merge should send nothing.
+
+**What's left:**
+- After merge: send one real submission and one real feedback on
+  production and confirm both emails arrive. Turnstile rejects preview
+  domains, so this couldn't be tested before.
+- `privacy.html` doesn't yet cover these emails. It was not edited; see
+  the report to Krish.
+
 ## 2026-09-30 — Parked, not merged: search bar on branch `feature/search-bar`
 
 A finished homepage search bar lives on branch `feature/search-bar`

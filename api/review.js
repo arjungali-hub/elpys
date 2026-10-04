@@ -369,3 +369,8 @@ async function handleReview(req, res) {
 
   return res.status(405).json({ error: 'Method not allowed' });
 }
+
+// Reused by api/review-alerts.js so its emails agree with this page's dot.
+module.exports.probeSupabase  = probeSupabase;
+module.exports.fetchTaskRuns  = fetchTaskRuns;
+module.exports.computeStatus  = computeStatus;
