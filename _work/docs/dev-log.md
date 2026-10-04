@@ -7,6 +7,23 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-04 — Parked, not merged: map pin clusters on branch `feature/map-pin-clusters-parked`
+
+Map pin clustering for /map lives on branch `feature/map-pin-clusters-parked`
+(`8e15fcf`). **It is deliberately NOT merged.**
+- **What it does:** pins that would overlap merge into a numbered bubble
+  in the site's colours ("5 opportunities, zoom in"), using
+  Leaflet.markercluster 1.5.3 from unpkg. Every pin shows on its own from
+  neighbourhood zoom. List clicks, identical-address pins, event dates,
+  phone gestures and the route box all work as now.
+- **Why it waits:** with today's 13 listings it would only merge two pairs
+  of overlapping pins in central Bellevue.
+- **When to merge:** at about 30 published listings, or once pins visibly
+  crowd the starting view.
+- **Before merging:** merge main into the branch, then re-run its checks
+  (listed in the branch's own dev-log entry).
+- Don't delete the branch in the meantime.
+
 ## 2026-09-30 — Parked, not merged: search bar on branch `feature/search-bar`
 
 A finished homepage search bar lives on branch `feature/search-bar`
