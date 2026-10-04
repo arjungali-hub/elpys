@@ -31,6 +31,29 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" integrity="sha256-YU3qCpj/P06tdPBJGPax0bm6Q1wltfwjsho5TR4+TYc=" crossorigin="" />
+  <style>
+    /* Pin clusters (Leaflet.markercluster). Its own Default.css (the
+       green/yellow/orange bubbles) is deliberately not loaded; these use the
+       site's tokens and font instead. */
+    .map-cluster { background: none; border: none; }
+    .map-cluster-bubble {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 100%; box-sizing: border-box;
+      border-radius: 50%;
+      background: var(--accent); color: var(--white);
+      border: 3px solid var(--white);
+      box-shadow: var(--shadow-md), 0 0 0 1px var(--border);
+      font-family: inherit; font-size: 0.875rem; font-weight: 700; line-height: 1;
+    }
+    .map-cluster:hover .map-cluster-bubble { background: #374151; }
+    .map-cluster:focus-visible { outline: none; }
+    .map-cluster:focus-visible .map-cluster-bubble { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .map-cluster-label {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+  </style>
   <script src="analytics.js"></script>
 </head>
 <body>
@@ -94,6 +117,7 @@
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" integrity="sha256-Hk4dIpcqOSb0hZjgyvFOP+cEmDXUKKNE/tT542ZbNQg=" crossorigin=""></script>
 <script src="loading.js"></script>
 <script src="supabase-client.js"></script>
 <script>
@@ -126,6 +150,47 @@
 
   function pinIcon(big) {
     return makeMarkerIcon(big ? 50 : 34, true);
+  }
+
+  // Pins that would overlap on screen merge into one numbered bubble; click
+  // (or Enter on) a bubble to zoom in and split it. The radius is about one
+  // pin's width (21px), so only pins that actually overlap merge, and it
+  // stays well under the 34px spacing of the identical-address ring below,
+  // so those pins keep showing side by side rather than as a bubble. Picked
+  // by testing 20/24/30px against the real listings and ~60 mocked ones
+  // (2026-10-04). From zoom CLUSTER_OFF_ZOOM (neighbourhood level) up, every
+  // pin shows on its own.
+  const CLUSTER_RADIUS_PX = 20;
+  const CLUSTER_OFF_ZOOM = 15;
+  const clusters = L.markerClusterGroup({
+    maxClusterRadius: CLUSTER_RADIUS_PX,
+    disableClusteringAtZoom: CLUSTER_OFF_ZOOM,
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: false,
+    iconCreateFunction: cluster => {
+      const n = cluster.getChildCount();
+      const size = n < 10 ? 34 : n < 100 ? 40 : 46;
+      // The visible count is hidden from screen readers; the label says what
+      // the bubble is and what it does. Leaflet gives the bubble role="button".
+      return L.divIcon({
+        className: 'map-cluster',
+        iconSize: [size, size],
+        html: '<span class="map-cluster-bubble" aria-hidden="true">' + n + '</span>' +
+              '<span class="map-cluster-label">' + n + ' opportunities, zoom in</span>',
+      });
+    },
+  });
+  map.addLayer(clusters);
+
+  // The selected pin is lifted out of the clusters onto the map, so it stays
+  // visible with its popup open however far out the map is (a drawn route
+  // zooms out to fit), and goes back in when something else is selected.
+  let liftedMarker = null;
+  function liftOutOfClusters(marker) {
+    if (liftedMarker === marker) return;
+    if (liftedMarker) { map.removeLayer(liftedMarker); clusters.addLayer(liftedMarker); }
+    liftedMarker = null;
+    if (marker) { clusters.removeLayer(marker); marker.addTo(map); liftedMarker = marker; }
   }
 
   let activeItem = null;
@@ -174,6 +239,7 @@
     if (activeItem) activeItem.classList.remove('active');
 
     activeOpportunity = opp;
+    liftOutOfClusters(opp.marker || null);
     if (opp.marker) { opp.marker.setIcon(pinIcon(true)); opp.marker.openPopup(); }
 
     if (!opp.marker) {
@@ -382,7 +448,8 @@
       // pin — L.marker at NaN throws.
       if (isFinite(opp.lat) && isFinite(opp.lng)) {
         const at = [opp.lat, opp.lng];
-        opp.marker = L.marker(at, { icon: pinIcon(false) }).addTo(map).bindPopup(popupHtml);
+        opp.marker = L.marker(at, { icon: pinIcon(false) }).bindPopup(popupHtml);
+        clusters.addLayer(opp.marker);
         const n = ringIndex(opp.lat, opp.lng);
         if (n > 0) repeats.push({ marker: opp.marker, base: L.latLng(at), n });
         bounds.push(at);

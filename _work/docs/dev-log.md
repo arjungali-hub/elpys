@@ -7,6 +7,63 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-04 — Map pin clusters (PARKED, not merged)
+
+Built for later: with about 30 or more listings, pins around Bellevue would
+pile on top of each other on /map. This branch merges pins that would
+overlap into a numbered bubble. **It is deliberately not merged**; see the
+"Parked, not merged" entry on main.
+
+**What changed** (`map.html` only):
+- **Leaflet.markercluster 1.5.3**, pinned with SRI. The script and
+  `MarkerCluster.css` (its animations only) come from unpkg, which the CSP
+  allows for both scripts and styles; jsdelivr isn't allowed for styles.
+  The plugin's default green, yellow and orange bubble CSS is not loaded.
+  A small inline `<style>` styles the bubbles with the site's tokens and
+  font instead: `--accent` fill, a white border and count, `--shadow-md`.
+- **When pins merge:** the cluster radius is 20px, about one pin's width
+  (21px), so only pins that actually overlap merge. 24px and 30px were also
+  tested; they merged pins that were merely close. Clustering is off from
+  zoom 15, so every pin shows on its own well before street level.
+  Clicking a bubble, or Enter when it's focused, zooms in to split it.
+- **Accessibility:** each bubble is a focusable `role="button"` (Leaflet's
+  marker keyboard support) named "N opportunities, zoom in". The visible
+  count is hidden from screen readers.
+- **Selection:** the selected listing's pin is lifted out of the clusters
+  onto the map, so it's always visible with its popup open, even when a
+  drawn route zooms the map out. It goes back in when something else is
+  selected. A list click on a listing hidden in a bubble zooms to it and
+  opens its popup.
+- **Unchanged:**
+  - the 34px ring for pins at an identical address (the radius stays
+    under it, so they never merge into a bubble);
+  - one-time event dates in the popup and list;
+  - the phone gestures and two-finger hint;
+  - the route box.
+
+**What was checked** (Chromium, local, with Leaflet and markercluster
+served as the exact npm bytes, which match the SRI hashes):
+- **Real 13 listings at the starting view:** production shows 13 separate
+  pins. This branch shows 9 pins and **2 bubbles of 2**: Bellevue Botanical
+  Garden with Kelsey Creek Farm, and Jubilee REACH with Renewal Food Bank.
+  Their pins are about 12px apart and overlap on production today. As
+  asked, this is reported rather than forced away. One zoom step in leaves
+  one bubble; two steps show all 13.
+- **About 60 mocked listings across the Eastside**, including 6 at the
+  shared "Bellevue, WA" point and one one-time event:
+  - Clusters at zoom 11/12/13/14+: 10/3/1/0.
+  - The list click on a clustered listing zooms in and opens its popup.
+  - The 6 identical-address pins each open their own popup, exactly as on
+    main.
+  - The event date shows in the list and popup.
+  - The route box draws a route and keeps the selected pin and popup.
+  - The bubbles work with keyboard and mouse.
+- **Phone (375px, touch):** one finger scrolls the page and shows the hint,
+  two fingers hide it, and the map doesn't pan, the same as main. There is
+  no sideways scroll.
+- No console errors.
+- **CSP on the preview:** see the report.
+
 ## 2026-09-30 — Parked, not merged: search bar on branch `feature/search-bar`
 
 A finished homepage search bar lives on branch `feature/search-bar`
