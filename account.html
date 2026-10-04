@@ -76,6 +76,7 @@
 
 <script src="loading.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
+<script src="supabase-client.js"></script>
 <script>
   // Profile skeleton, shown until the session and profile resolve.
   (function () {
@@ -137,13 +138,30 @@
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrcnlrem1laHZnaGVkcnZta2pqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzODc4NzgsImV4cCI6MjA5ODk2Mzg3OH0.J1J4p3lTbQKMc3GvWVlBxAZZV1jGYPIU4Jj_ePLndgM'
   );
 
-  var CATEGORIES = ['Animals', 'Community', 'Environment', 'Food'];
+  // The interest checkboxes: the live categories in the homepage's order
+  // (interestCategories, supabase-client.js; the old four if listings can't
+  // load), plus any interest this person saved that no live listing uses any
+  // more — shown and ticked, never silently dropped. Matching ignores case,
+  // as api/send-digest.js does.
+  function interestChoices(live, saved) {
+    var lower = function (v) { return String(v).toLowerCase(); };
+    var savedLower = saved.map(lower);
+    var choices = live.map(function (label) {
+      return { label: label, checked: savedLower.indexOf(lower(label)) !== -1 };
+    });
+    var liveLower = live.map(lower);
+    saved.forEach(function (v) {
+      if (liveLower.indexOf(lower(v)) === -1) choices.push({ label: v, checked: true });
+    });
+    return choices;
+  }
 
   function esc(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   async function init() {
+    var categoriesPromise = interestCategories();
     // getSession handles the auth callback URL after email verification automatically
     var sessionResult = await _supa.auth.getSession();
     var session = sessionResult.data && sessionResult.data.session;
@@ -174,7 +192,7 @@
       currentInterests = metaInterests;
     }
 
-    render(user, currentInterests, isUnsubscribed, currentAvailability);
+    render(user, interestChoices(await categoriesPromise, currentInterests), isUnsubscribed, currentAvailability);
   }
 
   var DAYS        = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
@@ -202,7 +220,7 @@
     return '<div class="avail-grid">' + header + rows + '</div>';
   }
 
-  function render(user, currentInterests, isUnsubscribed, currentAvailability) {
+  function render(user, interestOptions, isUnsubscribed, currentAvailability) {
     var section = document.getElementById('account-section');
 
     var notifLabel = isUnsubscribed ? 'Enable email notifications' : 'Disable email notifications';
@@ -220,9 +238,9 @@
         '<div class="form-status" id="save-status"></div>' +
         '<form id="interests-form" class="interests-fieldset">' +
           '<div class="interest-grid">' +
-            CATEGORIES.map(function (cat) {
-              var checked = currentInterests.indexOf(cat) !== -1 ? ' checked' : '';
-              return '<label class="interest-label"><input type="checkbox" name="interest" value="' + cat + '"' + checked + '> ' + cat + '</label>';
+            interestOptions.map(function (opt) {
+              var checked = opt.checked ? ' checked' : '';
+              return '<label class="interest-label"><input type="checkbox" name="interest" value="' + esc(opt.label) + '"' + checked + '> ' + esc(opt.label) + '</label>';
             }).join('') +
           '</div>' +
           '<button type="submit" class="submit-btn" id="save-btn">Save interests →</button>' +

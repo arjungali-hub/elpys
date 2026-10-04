@@ -122,6 +122,60 @@ Each is smaller than its cover, but most are 150–350KB, above the 150KB
 target. Detailed outdoor photos at 1200x750 and q0.82 simply come out that
 size. Reaching 150KB would need a smaller width or lower quality; both were
 specified, so they weren't changed.
+## 2026-10-04 — Interest checkboxes follow the live categories
+
+The homepage's category buttons are built from the live listings, and
+/submit lets an organization type a new category under "Other". But the
+interest checkboxes on /signup and /account were hard-coded to Animals,
+Community, Environment and Food. The first listing in a new category (say
+"Education") could never be subscribed to, so the digest would never send
+it.
+
+**What changed:**
+- **One shared function.** `categoryOptions()` in `supabase-client.js` is
+  the homepage's normalisation, moved rather than copied: split on "·" or
+  ",", key by lowercase, label with a capital first letter, sort by label.
+  `index.html`'s filter buttons now call it, and so do the checkboxes, so
+  all three always list the same categories in the same order.
+- **`interestCategories()`** returns those labels from the live listings,
+  falling back to the old four when they can't load.
+- **/signup** keeps the four in its HTML (today's list and the fallback)
+  and rebuilds the grid only if the live list differs. Anything already
+  ticked stays ticked.
+- **/account** builds its grid from the live list, plus any interest the
+  person saved that no live listing uses any more. Those stay shown and
+  ticked, never silently dropped. Matching ignores case, like the digest.
+- Labels are now escaped on /account. A category is organization-typed
+  text.
+- Both pages load `supabase-client.js`. No global names clash with their
+  inline scripts; index, map, detail and submit already load it alongside
+  `supabase-auth.js`.
+- **`api/send-digest.js`:** checked and not changed. It lowercases both
+  the saved interest and each comma-separated category and compares whole
+  names, so "Education" matches `education`, "Mental health" matches
+  `mental health`, and a hand-edited "Education" category also matches.
+  New test: `test/digest-interest-match.test.js`.
+
+**What was checked** (Chromium, main and branch served side by side, with
+the 13 real listings' categories mocked):
+- **No visible change today.** On both pages the interest grid is
+  identical to main: the same HTML, pixel-identical screenshots, the same
+  accessibility tree, and the same Tab order (Animals, Community,
+  Environment, Food).
+- **With a mocked "education" listing,** "Education" appears on both pages
+  between Community and Environment, matching the homepage buttons.
+  Saving it on /account sends `["Community","Education"]`, and the digest
+  test selects the education listing for exactly that saved value.
+- **A saved "Education" and "mental health" with no live listing** stay
+  shown and ticked on /account.
+- **With the listings request blocked,** the four appear on both pages,
+  with saved ticks kept and no errors.
+- **At 375px,** with a long new category ("Mental health & wellbeing"),
+  there is no sideways scroll.
+- **Console:** the only errors are from local mocks (the font, the CDN,
+  `/lantern`), and main shows the same ones.
+- **Not checked on the preview:** /account with a real login. There's no
+  test account; it was covered locally with a mocked session.
 
 ## 2026-09-30 — Parked, not merged: search bar on branch `feature/search-bar`
 
