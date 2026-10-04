@@ -410,6 +410,7 @@
   // container so handleSave can swap it after an edit changes the photos.
   function reviewPhotosHtml(row) {
     const cover   = row.cover_image_url || null;
+    const coverSmall = row.cover_thumb_url || cover;   // shown small; the link opens the full photo
     const gallery = Array.isArray(row.gallery_image_urls) ? row.gallery_image_urls : [];
     let inner;
     if (!cover && !gallery.length) {
@@ -419,7 +420,7 @@
         '<div class="sub-photos">' +
           (cover
             ? '<a class="sub-photo-cover" href="' + esc(cover) + '" target="_blank" rel="noopener" title="Cover photo — open full size">' +
-                '<img src="' + esc(cover) + '" alt="Cover photo" /></a>'
+                '<img src="' + esc(coverSmall) + '" alt="Cover photo" /></a>'
             : '') +
           gallery.map((url, i) =>
             '<a class="sub-photo-thumb" href="' + esc(url) + '" target="_blank" rel="noopener" title="Gallery photo ' + (i + 1) + ' — open full size">' +
@@ -710,6 +711,7 @@
     opts = opts || {};
     photoState[row.id] = {
       cover:   row.cover_image_url || null,
+      coverThumb: row.cover_thumb_url || null,
       gallery: Array.isArray(row.gallery_image_urls) ? row.gallery_image_urls.slice() : [],
     };
     const stepsText = stepsToLines(row.signup_steps);
@@ -1274,7 +1276,7 @@
           '<button type="button" class="photo-thumb-remove" aria-label="Remove cover photo">×</button></div>'
         : '';
       const btn = coverPreview.querySelector('.photo-thumb-remove');
-      if (btn) btn.addEventListener('click', function () { state.cover = null; renderCover(); });
+      if (btn) btn.addEventListener('click', function () { state.cover = null; state.coverThumb = null; renderCover(); });
     }
     renderCover();
     const coverFile = card.querySelector('#e-cover-file-' + id);
@@ -1285,7 +1287,9 @@
       coverStatus.textContent = 'Uploading…';
       coverStatus.className = 'photo-upload-status';
       try {
-        state.cover = await uploadOpportunityImage(file);
+        const up = await uploadCoverImage(file);
+        state.cover = up.url;
+        state.coverThumb = up.thumbUrl;
         coverStatus.textContent = '';
         renderCover();
       } catch (err) {
@@ -1402,6 +1406,7 @@
     // on selection, so this is just whatever is currently in the preview.
     if (photoState[id]) {
       payload.cover_image_url = photoState[id].cover;
+      payload.cover_thumb_url = photoState[id].cover ? photoState[id].coverThumb : null;
       payload.gallery_image_urls = photoState[id].gallery;
     }
 
@@ -1521,6 +1526,7 @@
         const creditEl = document.getElementById('e-photocredit-' + id);
         photosEl.outerHTML = reviewPhotosHtml({
           cover_image_url:    payload.cover_image_url,
+          cover_thumb_url:    payload.cover_thumb_url,
           gallery_image_urls: payload.gallery_image_urls,
           photo_credit:       'photo_credit' in payload ? payload.photo_credit : (creditEl ? creditEl.value.trim() : null),
         });

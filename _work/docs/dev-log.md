@@ -7,6 +7,72 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-04 — Homepage cards load a small copy of each cover photo
+
+The homepage downloaded every listing's full cover photo (up to 1.8MB each,
+7.7MB for the 13 live covers) to show it in a card about 320px wide.
+
+**What changed:**
+- **New column `cover_thumb_url`** (migration
+  `20261004000000_cover_thumb_url.sql`): a card-size copy of the cover. It's
+  in `PUBLIC_COLUMNS` and granted to anon (checked in
+  `information_schema.column_privileges`). It has no DB check, the same as
+  `cover_image_url`; `api/submit.js` and `api/admin.js` validate it exactly
+  like the cover.
+- **Uploads** (`supabase-client.js`): picking a cover on /submit or in the
+  admin editor now uploads two files, the photo and a thumbnail, each its own
+  `uploads/<uuid>.jpg`.
+  - The thumbnail is the centre 16:10 of the photo at 1200x750, JPEG 0.82.
+    1200 is twice the widest the card photo ever renders (590px, on a 640px
+    screen, measured from 320 to 2560px). It is upright, smaller photos are
+    not enlarged, and it carries no metadata (canvas output).
+  - Centre 16:10 is exactly what the card's `object-fit: cover` shows, so the
+    card looks the same, and a portrait photo isn't stored at twice the
+    height anyone sees.
+  - If the thumbnail fails, the upload still succeeds and the card uses the
+    full photo.
+  - Full photos (cover and gallery) over 2000px on the longest side are
+    scaled to 2000px, JPEG 0.88. Photos 2000px or smaller upload as the
+    scrubbed bytes, untouched.
+  - Images are decoded through a `data:` URL, because the CSP's `img-src`
+    has no `blob:`.
+  - Every upload is sent with `cache-control: max-age=31536000`. That is safe
+    because a file is never overwritten: uploads are POSTs to a fresh UUID,
+    never upsert, and anon has no UPDATE on storage.
+- **Replacing or removing the cover** replaces or clears both files. If an
+  admin save changes the cover without sending a thumbnail, `api/admin.js`
+  clears it, so a stale thumbnail can't stay paired with a new cover.
+- **Homepage cards** use the thumbnail and fall back to the full photo: rows
+  without one use the full photo, and an `onerror` on the card image switches
+  to the full photo if the thumbnail fails to load. Lazy loading, alt text and
+  the 16:10 crop are unchanged.
+- **The detail page** still shows the full photo.
+- **The admin Photos block** (192x120) shows the thumbnail, and its link
+  opens the full photo. /map shows no photos.
+- **`api/cleanup-photos.js`** counts `cover_thumb_url` as in use. A new test
+  checks a thumbnail is never deleted; the test fails against the old
+  cleanup.
+
+**Backfill (done on production, 2026-10-04):**
+- All 13 rows with a cover (all published) got a thumbnail made with sharp
+  the same way: rotate, centre 16:10, at most 1200x750, q82, no metadata.
+- Each was uploaded with the one-year cache and read back: 200,
+  `image/jpeg`, byte-identical.
+- Rows were updated only where a hash of every other column still matched
+  the one taken beforehand. All 13 hashes were identical afterwards.
+- The column was added and filled on production before merge. That is safe
+  because it is purely additive and main never reads it.
+- **Merge before Mon 2026-10-12 09:00 UTC.** Main's weekly cleanup doesn't
+  know the new column, so its first run after the thumbnails are 24h old
+  (that Monday) would delete them. Cards would then fall back to the full
+  photo (no broken images), and the backfill would need redoing.
+
+**Thumbnail sizes:** 13 thumbnails total 3.0MB against 7.7MB of covers.
+Each is smaller than its cover, but most are 150–350KB, above the 150KB
+target. Detailed outdoor photos at 1200x750 and q0.82 simply come out that
+size. Reaching 150KB would need a smaller width or lower quality; both were
+specified, so they weren't changed.
+
 ## 2026-09-30 — Parked, not merged: search bar on branch `feature/search-bar`
 
 A finished homepage search bar lives on branch `feature/search-bar`

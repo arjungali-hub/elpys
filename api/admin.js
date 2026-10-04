@@ -260,7 +260,7 @@ module.exports = async function handler(req, res) {
                         'card_note','signup_label','slug','admin_notes',
                         'website','contact_email','contact_phone','opportunity_type','event_date',
                         'org_tier','org_legal_name','ein','wa_charity_number','org_domain',
-                        'cover_image_url','gallery_image_urls','photo_credit'];
+                        'cover_image_url','gallery_image_urls','photo_credit','cover_thumb_url'];
       const updates = {};
       for (const key of EDITABLE) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
@@ -274,6 +274,15 @@ module.exports = async function handler(req, res) {
       // panel's own upload can produce — not an arbitrary external image.
       if (updates.cover_image_url != null && !isValidImageUrl(updates.cover_image_url)) {
         return res.status(400).json({ error: 'Invalid cover photo.' });
+      }
+      // The card-size copy follows the same rule as the cover, and goes with
+      // it: a removed cover clears it, and a cover changed without a new copy
+      // clears it too, so a card never shows the previous photo.
+      if (updates.cover_thumb_url != null && !isValidImageUrl(updates.cover_thumb_url)) {
+        return res.status(400).json({ error: 'Invalid cover photo.' });
+      }
+      if (updates.cover_image_url !== undefined && (updates.cover_image_url === null || updates.cover_thumb_url === undefined)) {
+        updates.cover_thumb_url = updates.cover_image_url === null ? null : (updates.cover_thumb_url || null);
       }
       if (updates.photo_credit !== undefined) {
         const c = updates.photo_credit == null ? '' : String(updates.photo_credit).replace(/\s+/g, ' ').trim();

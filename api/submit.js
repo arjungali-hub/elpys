@@ -339,6 +339,16 @@ async function handleSubmit(req, res) {
     }
     coverImageUrl = body.cover_image_url;
   }
+  // The card-size copy of the cover: held to exactly the same rule as the
+  // cover itself (this project's bucket, uploads/<uuid>.<ext>), and only kept
+  // alongside a cover — a thumbnail without its cover is dropped.
+  let coverThumbUrl = null;
+  if (body.cover_thumb_url) {
+    if (!isValidImageUrl(body.cover_thumb_url)) {
+      return res.status(400).json({ error: 'Invalid cover photo.' });
+    }
+    if (coverImageUrl) coverThumbUrl = body.cover_thumb_url;
+  }
   let galleryImageUrls = [];
   if (body.gallery_image_urls != null) {
     if (!Array.isArray(body.gallery_image_urls) || body.gallery_image_urls.length > MAX_GALLERY_IMAGES) {
@@ -393,6 +403,7 @@ async function handleSubmit(req, res) {
     card_note:          body.card_note   ? String(body.card_note).trim().slice(0, 500)  : null,
     admin_notes:        body.admin_notes ? String(body.admin_notes).trim().slice(0, 1000) : null,
     cover_image_url:    coverImageUrl,
+    cover_thumb_url:    coverThumbUrl,
     gallery_image_urls: galleryImageUrls,
     photo_credit:       photoCredit,
     status:             'pending', // always set server-side, never from client
@@ -439,11 +450,12 @@ async function handleSubmit(req, res) {
   // and are not re-uploaded here, but they'd be orphaned (never attached to a
   // row) until the columns exist and this listing is resubmitted or edited.
   if (!result.ok && result.parsed && result.parsed.code === 'PGRST204' &&
-      /cover_image_url|gallery_image_urls/.test(String(result.parsed.message || ''))) {
+      /cover_image_url|gallery_image_urls|cover_thumb_url/.test(String(result.parsed.message || ''))) {
     console.warn('Opportunities cover_image_url/gallery_image_urls column(s) missing — retrying without them. ' +
                  'Run supabase/migrations/20260926000000_opportunity_photos.sql against the database.');
     const retry = Object.assign({}, payload);
     delete retry.cover_image_url;
+    delete retry.cover_thumb_url;
     delete retry.gallery_image_urls;
     result = await insertRow(retry);
     if (result.ok) return res.status(200).json({ ok: true, warning: 'photo-columns-missing' });

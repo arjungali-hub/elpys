@@ -450,8 +450,15 @@
 
     const datePill = isOneTime && opp._eventDate
       ? '<span class="card-pill card-pill-date">' + escHtml(formatEventDate(opp._eventDate)) + '</span>' : '';
+    // The card-size copy when there is one (about a fifth of the bytes), else
+    // the full photo. If the copy ever fails to load, the card swaps to the
+    // full photo once rather than showing a broken image.
+    const photoSrc = opp._coverThumbUrl || opp._coverImageUrl;
+    const photoFallback = opp._coverThumbUrl
+      ? ' data-full-src="' + safeUrl(opp._coverImageUrl) + '" onerror="this.onerror=null;this.src=this.dataset.fullSrc"'
+      : '';
     const photoHtml = opp._coverImageUrl
-      ? '<img class="card-photo-img" src="' + safeUrl(opp._coverImageUrl) + '" alt="' + escHtml(opp.name) + ' cover photo" loading="lazy" />' +
+      ? '<img class="card-photo-img" src="' + safeUrl(photoSrc) + '" alt="' + escHtml(opp.name) + ' cover photo" loading="lazy"' + photoFallback + ' />' +
         (opp._photoCredit ? '<span class="card-photo-credit">Photo: ' + escHtml(opp._photoCredit) + '</span>' : '')
       : '<span class="card-photo-fallback">' + categoryFallbackIconHtml(opp.tag) + '</span>';
 
