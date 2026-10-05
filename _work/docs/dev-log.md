@@ -7,6 +7,109 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-05 — Reject reason box; recovering from Vercel's bot-check 403
+
+Branch `fix/reject-reason-box-and-checkpoint-403-recovery`, **not merged**.
+Commits `297fd9c`, `29d4c7a`.
+
+**Reject reason (admin-review.html, api/admin.js)**
+- **The Reject dialog** has a "Reason (shown to admins only)" box.
+  - Focus starts in it, and Enter adds a new line rather than submitting.
+  - Escape, clicking outside, and Cancel all close it without rejecting.
+  - Focus returns to the Reject button.
+  - A half-typed reason is kept if the dialog is reopened.
+- **A reason is required:** the Reject button stays disabled until there
+  are at least 3 characters. Why: the only reason rejected rows are kept is
+  so a later reviewer can see why. Every TEST rejection can just say
+  "test".
+- **`showModal` has an `opts.input` option;** every other dialog is
+  unchanged (checked: Unpublish still focuses its button, with no field).
+- **`api/admin.js`** keeps the trim and empty → null behaviour, and refuses
+  more than 500 characters with a 400, like the photo credit's limit.
+- **Admin pages reject from one place only:** `admin-review.html`. Data
+  review uses "change needed / fine as is", not reject.
+- **The Rejected list on /admin-approve** already escaped the reason.
+  Checked with `<b>x</b> & "quotes"`: it shows as text.
+
+**Bot-check 403 recovery (api-fetch.js, lib/checkpoint.js)**
+- **What we found:**
+  - The project has no firewall config of its own ("Seawall Config not
+    found"), so the Oct 4 challenges were Vercel's automatic platform
+    protection.
+  - Whether real visitors were ever challenged can't be told. A challenged
+    request never reaches our function, so it isn't in the runtime logs.
+    Those keep only a short window on Hobby anyway: 12 entries for the
+    whole month, none of them 403s. Edge request data isn't available on
+    this plan.
+  - No project setting turns this protection off safely. The only control,
+    "pause system mitigations", lasts 24h and is meant for debugging.
+- **How the recovery works:**
+  - Every page that calls `/api/*` uses `ElpysApi.fetch()` from the new
+    `api-fetch.js`. The pages are submit, feedback, admin-review,
+    admin-approve, review, analytics-review, admin-login and account, plus
+    the cleanup button in supabase-auth.js.
+  - It treats a 403 carrying `x-vercel-mitigated: challenge`, or any
+    non-JSON 403, as the checkpoint. Our own functions only answer in JSON.
+  - The page saves what was typed to sessionStorage. Text fields, choices,
+    uploaded photo URLs and the schedule are kept. Files, passwords, the
+    honeypot and the Turnstile token never are.
+  - It shows "Your browser needs a quick security check. We'll bring you
+    straight back.", then loads `/api/checkpoint?return=<page>` as a normal
+    page. Vercel's checkpoint runs there, and the redirect brings the
+    browser back.
+  - The page restores everything. /submit and /feedback ask for the "I'm
+    human" check again (a fresh Turnstile widget; tokens are never reused).
+    Admin pages reopen the edit form or the data-review note, and keep a
+    reject reason.
+  - A second challenge right after a round-trip stops with "We couldn't
+    verify your browser. Please try again in a minute or email
+    hello.elpys@gmail.com." The saved copy is cleared after a successful
+    send.
+- **`/api/checkpoint` isn't a function of its own.** The Hobby plan allows
+  12 serverless functions per deployment and the site already uses 12. The
+  first push added a 13th and the preview build failed. `vercel.json` now
+  rewrites it to `/api/sitemap?checkpoint=1`, which hands off to
+  `lib/checkpoint.js`. That only redirects to paths on this site, never
+  `//…`, `https://…`, `/api/…` or anything with newlines. A test keeps
+  `api/` at 12 files or fewer.
+- **Other error messages:** a non-JSON 5xx on /submit and /feedback now
+  says "The site had a problem — please try again." instead of "HTTP 500".
+
+**Checked**
+- **Tests:** 41/41 pass, all existing ones included.
+  - `test/reject-reason.test.js`: stored and trimmed, empty → null, 500 is
+    OK and 501 is refused with no write.
+  - `test/checkpoint-challenge.test.js`: challenge detection; normal JSON
+    403/400s are ignored; plain 5xx message; redirect safety; the
+    `/api/checkpoint` → sitemap rewrite; the 12-function limit.
+  - `test/form-keeper.test.js`: the save/restore round-trip; secrets are
+    never saved; clear; the one-hour expiry; `justReturned`.
+- **Locally, in Chromium, with a faked challenge** at 1280 and 375:
+  - /submit: every field, checkbox, the "Other" text, the event date and
+    the cover photo came back. The note appeared, the Turnstile token was
+    not reused, a second challenge stopped without looping, and a
+    successful send cleared the saved copy.
+  - /feedback: the same.
+  - admin-review: an unsaved edit came back, with the form reopened, the
+    schedule cell ticked, and the new cover.
+  - Data review: the "change needed" note reopened with its text.
+  - The Reject dialog: focus, Enter, Escape, overlay click, the
+    disabled-until-3-characters rule, and the reason sent.
+- **On the preview** (`elpys-470picmv5…vercel.app`):
+  - `/api/checkpoint?return=/terms` lands on /terms.
+  - `api-fetch.js` is served as JavaScript, not rewritten into a listing
+    page.
+  - `/sitemap.xml` still works, and the build passes with 12 functions.
+
+**Not tested, and why**
+- **A real Vercel challenge:** it can't be triggered on demand. The
+  round-trip was tested with a faked 403 and a local stand-in for
+  `/api/checkpoint`. The real redirect was then checked on the preview.
+- **A full in-browser run on the preview:** the Vercel sandbox used for
+  this stopped twice. Whether the console shows CSP errors on the preview
+  is still to be checked in Krish's browser.
+- **The Reject dialog on the preview:** admin pages need Krish's login.
+
 ## 2026-10-04 — Post-merge checks (Cowork, in Krish's real Chrome)
 
 - **Submission email: PASS.**
