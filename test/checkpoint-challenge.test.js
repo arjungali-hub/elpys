@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { ElpysApi } = require('../api-fetch.js');
-const { safeReturn } = require('../api/checkpoint');
+const { safeReturn } = require('../lib/checkpoint');
 
 const res = (status, headers) => ({ status, headers: new Headers(headers || {}) });
 
@@ -42,11 +42,25 @@ test('/api/checkpoint only redirects to a path on this site', () => {
 });
 
 test('/api/checkpoint answers with a no-store redirect', () => {
-  const handler = require('../api/checkpoint');
+  const handler = require('../lib/checkpoint');
   const out = { headers: {} };
   handler({ query: { return: '/feedback' } }, { setHeader(k, v) { out.headers[k] = v; }, end() { out.ended = true; }, set statusCode(c) { out.status = c; } });
   assert.strictEqual(out.status, 302);
   assert.strictEqual(out.headers.Location, '/feedback');
   assert.strictEqual(out.headers['Cache-Control'], 'no-store');
   assert.ok(out.ended);
+});
+
+test('/api/checkpoint is served by api/sitemap.js (rewrite in vercel.json; Hobby allows 12 functions)', () => {
+  const sitemap = require('../api/sitemap');
+  const out = { headers: {} };
+  sitemap({ query: { checkpoint: '1', return: '/submit' } },
+          { setHeader(k, v) { out.headers[k] = v; }, end() { out.ended = true; }, set statusCode(c) { out.status = c; } });
+  assert.strictEqual(out.status, 302);
+  assert.strictEqual(out.headers.Location, '/submit');
+  const fs = require('fs');
+  const rewrites = JSON.parse(fs.readFileSync(require.resolve('../vercel.json'), 'utf8')).rewrites;
+  assert.ok(rewrites.some(r => r.source === '/api/checkpoint' && r.destination === '/api/sitemap?checkpoint=1'));
+  const functions = fs.readdirSync(require('path').join(__dirname, '../api')).filter(f => f.endsWith('.js'));
+  assert.ok(functions.length <= 12, functions.length + ' functions in api/ — the Hobby plan allows 12');
 });

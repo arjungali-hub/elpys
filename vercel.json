@@ -7,6 +7,10 @@
       "destination": "/api/sitemap"
     },
     {
+      "source": "/api/checkpoint",
+      "destination": "/api/sitemap?checkpoint=1"
+    },
+    {
       "source": "/lantern/static/:path(.*)",
       "destination": "https://us-assets.i.posthog.com/static/:path"
     },
