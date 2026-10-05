@@ -7,6 +7,64 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-04 — Post-merge checks (Cowork, in Krish's real Chrome)
+
+- **Submission email: PASS.**
+  - TEST listing "TEST post-merge 2026-10-04" (id 123) was submitted at
+    3:51 PM Pacific. The "New Elpys submission" email arrived within 1
+    minute.
+  - It showed the name, Community, "One-time, 2026-11-14" and "Photos 1".
+    It had no email address or phone number.
+  - "Review it" opened `/admin-review?id=123`.
+  - Krish later had to mark it "not spam", so it also ended up in Spam at
+    some point.
+- **Cover photo on /submit: PASS.** The test image was a 3024x4032 portrait
+  JPEG stored sideways with EXIF orientation 6, like a phone photo. The
+  preview showed it upright, and the stored cover is 1500x2000.
+- **Feedback email: PASS on content, but delivered to Spam.**
+  - "New Elpys feedback" arrived within 1 minute but went to Spam. Gmail's
+    reason: "similar to messages that were identified as spam in the past".
+  - The email did not contain the feedback text, only a notice and an
+    "Open feedback" button. Gmail disables links in Spam, so the button did
+    nothing there.
+  - `/admin-feedback` shows the TEST text. Krish marked both TEST emails
+    "not spam" and deleted them.
+- **Admin photo replace on listing 123: PASS.**
+  - A second sideways phone-style photo saved.
+  - The Photos block shows the 1200x750 thumbnail upright, and its link
+    opens the 1500x2000 full photo upright.
+  - Listing 123 was then rejected. It shows "Reason: none given" because
+    the Reject dialog has no reason field (fixed by
+    `fix/reject-reason-box-and-checkpoint-403-recovery`).
+  - The older TEST listing kept for testing is still pending, untouched.
+- **Homepage: PASS.**
+  - All 13 cards show a photo, served from the card thumbnails (1200px
+    wide, or the original when it's smaller).
+  - No broken images and no console errors.
+  - The detail pages for Renewal Food Bank (1500x1125) and EarthCorps
+    (1800x900) show the sharp full photo.
+- **Parked map preview (`elpys-fqpksak1h…vercel.app/map`): PASS with a
+  note.**
+  - Pins load, with two dark "2" cluster bubbles near Bellevue. No console
+    or CSP errors.
+  - The first click on a bubble zoomed in one level but it stayed a "2"
+    bubble. A second click split it into pins.
+- **Vercel bot check blocked API POSTs** (fixed by the same branch):
+  - The first two `/submit` sends failed with the page error "Something
+    went wrong: HTTP 403. Please try again."
+  - The response was Vercel's challenge page: `x-vercel-mitigated:
+    challenge`, HTML not JSON, about 31KB.
+  - The same thing happened later on the first admin "Save changes" (`POST
+    /api/admin` → 403).
+  - Opening any `elpys.vercel.app/api/...` URL as a normal page showed
+    "Vercel Security Checkpoint – We're verifying your browser". After it
+    passed, every POST worked (200).
+  - The project has no custom firewall config: the Vercel API returned
+    "Seawall Config not found". So this is Vercel's automatic platform bot
+    mitigation.
+  - The browser was automated (Chrome extension), which likely raised its
+    bot score. It is unknown whether real visitors ever hit this.
+
 ## 2026-10-04 — Feedback alert email no longer includes the feedback
 
 The "New Elpys feedback" email (`lib/adminAlert.js` `feedbackAlert`) used to
