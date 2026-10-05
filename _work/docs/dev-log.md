@@ -7,6 +7,60 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-05 — Weekly data check (cloud), 11:19 UTC — clean run, one listing's hours corrected
+
+`task_runs.cloud_weekly` set to `ok` against Supabase project
+`ukrykzmehvghedrvmkjj`: "Swept 13 rows plus 8 charities. 1 edit (row 91
+season dates), 1 handoff (91), 0 flags. No live one_time rows left."
+
+- **Edited: row 91, Bellevue Farmers Market, `when`.** Was "Thursdays,
+  May–October" — the market's own site
+  ([bellevuefarmersmarket.org](https://bellevuefarmersmarket.org/)) says
+  the Thursday season ran 21 May – 1 Oct 2026, so the listing was
+  advertising a market that had already closed for the year. Now:
+  "Thursdays, May to early Oct, plus Saturday fall markets Oct 31 and Nov
+  21" (those two run 10am–3pm). Reasoning appended to `admin_notes`; row
+  stamped `needs_browser_check = 2026-10-05`.
+- **Handed off, not flagged: row 91 again.** A second straight week of
+  `bellevuefarmersmarket.org/volunteer` returning stale 2025-season text
+  (sign-ups "soon to open", no button) via automated fetch, contradicting
+  the live 2026 form a real browser confirmed on 28 Sept. One stale read
+  could be a cache artifact; two in a row isn't — the fetch looks
+  unreliable, not the listing, so it went to the local browser check
+  instead of a flag.
+- **Untouched, carrying earlier stamps:** row 92 City of Sammamish (14
+  Sept), row 102 Jubilee REACH Thrift Store (28 Sept), row 106 Mercer
+  Island Parks (28 Sept).
+- **Test row 123** ("TEST post-merge 2026-10-04") was already `rejected` —
+  left as-is, `admin_notes` updated to a "TEST ROW — do not approve" note.
+  Row 115 left untouched.
+- **Checked, no change needed:** rows 93 EarthCorps (full October calendar
+  re-read, still zero Eastside events), 98 Sophia Way, 99 Washington
+  Trails Association, 100 Bellevue Botanical Garden, 101 Hopelink, 103
+  Kelsey Creek Farm, 104 Renewal Food Bank. Rows 95/96 skipped
+  (known-unverifiable list).
+- **Near-miss, logged as a process reminder:** an automated summary of
+  WTA's volunteer FAQ first read as "every under-18 volunteer needs a
+  guardian physically present," which would have contradicted the approved
+  "14+ solo (10–13 w/ adult)" wording. Re-reading the page verbatim: it
+  only requires age 10+ to join a work party and a guardian's signature on
+  the annual waiver alongside the youth's — nothing about 14+ attendance.
+  The summarizer had paraphrased, not quoted. No flag, no change — but a
+  reminder that an automated page summary needs a verbatim re-read before
+  anything consequential is acted on.
+- **Other state confirmed, nothing to act on:** 0 pending/new
+  `data_review_flags`; all 8 charities (rows 91, 93, 95, 98, 99, 101, 102,
+  104) still ProPublica subsection 3 / status code 1; no domain drift
+  across all 13 real rows; 0 real rows with a null `org_tier`;
+  `elpys-enforce-retention` (jobid 1, `17 4 1 * *`) last ran 2026-10-01
+  04:17 UTC, returned "1 row"; `task_runs.local_verify` last ran
+  2026-09-07.
+- **Observation, not caused by this run:** rows 117 and 118 (the two past
+  Keep Bellevue Beautiful one-time cleanups) are gone from
+  `"Opportunities"` — deleted sometime between 28 Sept and 5 Oct, not by
+  this task. Elpys currently has zero `one_time` listings of any kind, so
+  the event-date safeguard has nothing live to check right now.
+
 ## 2026-10-05 — Reject reason box + bot-check recovery, verified on the live preview and merged
 
 Follow-up to the entry directly below this one, which shipped the branch
