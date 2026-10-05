@@ -246,6 +246,7 @@
 </div><!-- /wrap -->
 
 <script src="loading.js"></script>
+<script src="api-fetch.js"></script>
 <script src="supabase-client.js"></script>
 <script>
   const API = '/api/admin';
@@ -305,7 +306,7 @@
     const container = document.getElementById('detail-container');
     Loading.show(container, Loading.detail('Loading opportunity'));
     try {
-      const res = await fetch(API, { headers: { 'x-admin-password': _password } });
+      const res = await ElpysApi.fetch(API, { headers: { 'x-admin-password': _password } });
       if (res.status === 401) {
         sessionStorage.removeItem('elpys_admin_pw');
         location.replace('/admin-login?next=' + encodeURIComponent(location.pathname + location.search));
@@ -343,9 +344,33 @@
       document.getElementById('back-link').textContent =
         CURRENT_KIND === 'pending' ? '← Pending submissions' : '← Published listings';
 
-      const card = CURRENT_KIND === 'pending' ? buildPendingCard(row) : buildPublishedCard(row);
+      // Back from a security-check round-trip with unsaved edits: seed the
+      // edit form's photos and schedule from them before it is built (the
+      // widgets read those once, at build time), then put the fields back.
+      const kept = ElpysApi.justReturned() ? ElpysForm.peek('admin-review') : null;
+      const keptExtra = kept && kept.extra;
+      const buildRow = keptExtra ? Object.assign({}, row) : row;
+      if (keptExtra && keptExtra.photos) {
+        buildRow.cover_image_url = keptExtra.photos.cover;
+        buildRow.cover_thumb_url = keptExtra.photos.coverThumb;
+        buildRow.gallery_image_urls = keptExtra.photos.gallery;
+      }
+      if (keptExtra && keptExtra.schedule) {
+        const sch = {};
+        keptExtra.schedule.forEach(k => { const [d, sl] = k.split(':'); (sch[d] = sch[d] || []).push(sl); });
+        buildRow.schedule = sch;
+      }
+      const card = CURRENT_KIND === 'pending' ? buildPendingCard(buildRow) : buildPublishedCard(buildRow);
       container.appendChild(card);
       if (CURRENT_KIND === 'pending') initApproveMap(row);
+      if (keptExtra) {
+        const edit = document.getElementById('edit-' + row.id);
+        if (edit) ElpysForm.restore(edit, 'admin-review');
+        if (keptExtra.open && edit) toggleEdit(row.id, true);
+        rejectReasonDraft = keptExtra.rejectReason || '';
+        showStatus('You’re back from a quick security check. Your unsaved changes are still here — press ' +
+          (rejectReasonDraft ? 'Reject again (your reason was kept)' : 'Save changes') + ' to finish.', false);
+      }
     } catch (err) {
       const c = document.getElementById('detail-container');
       Loading.clear(c);
@@ -363,6 +388,16 @@
         '<button class="modal-close" aria-label="Close">&times;</button>' +
         '<p class="modal-title">' + esc(opts.title) + '</p>' +
         '<p class="modal-body">' + esc(opts.body) + '</p>' +
+        (opts.input
+          ? '<div class="modal-input">' +
+              '<label class="modal-input-label" for="modal-input-field">' + esc(opts.input.label) + '</label>' +
+              '<textarea id="modal-input-field" rows="3" maxlength="' + (opts.input.maxLength || 500) + '"' +
+                ' placeholder="' + esc(opts.input.placeholder || '') + '"' +
+                (opts.input.minLength ? ' aria-describedby="modal-input-hint" required' : '') + '>' +
+                esc(opts.input.value || '') + '</textarea>' +
+              (opts.input.minLength ? '<p class="modal-input-hint" id="modal-input-hint">' + esc(opts.input.hint || '') + '</p>' : '') +
+            '</div>'
+          : '') +
         '<div class="modal-actions">' +
           (opts.confirmText
             ? '<button class="modal-btn-cancel">' + esc(opts.cancelText || 'Cancel') + '</button>' +
@@ -382,15 +417,29 @@
     const cancelBtn = overlay.querySelector('.modal-btn-cancel');
     if (cancelBtn) cancelBtn.addEventListener('click', close);
     overlay.querySelector('.modal-close').addEventListener('click', close);
-    overlay.querySelector('.modal-btn-action').addEventListener('click', function () {
+    // opts.input: an optional multi-line field (Reject's reason). Enter adds
+    // a line, as in any textarea; only the button confirms. With minLength,
+    // the button stays disabled until there is that much text.
+    const field = overlay.querySelector('#modal-input-field');
+    const actionBtn = overlay.querySelector('.modal-btn-action');
+    function enough() { return !opts.input || !opts.input.minLength || field.value.trim().length >= opts.input.minLength; }
+    if (field) {
+      const sync = function () { actionBtn.disabled = !enough(); };
+      field.addEventListener('input', sync);
+      sync();
+      if (opts.input.onInput) field.addEventListener('input', function () { opts.input.onInput(field.value); });
+    }
+    actionBtn.addEventListener('click', function () {
+      if (!enough()) return;
+      const value = field ? field.value.trim() : undefined;
       close();
-      if (opts.onConfirm) opts.onConfirm();
+      if (opts.onConfirm) opts.onConfirm(value);
     });
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
     document.addEventListener('keydown', onKey);
 
     document.body.appendChild(overlay);
-    overlay.querySelector('.modal-btn-action').focus();
+    (field || actionBtn).focus();
   }
 
   function confirmAction(title, body, confirmText, onConfirm, danger) {
@@ -570,25 +619,45 @@
         throw new Error(e.message || e.error || 'HTTP ' + res.status);
       }
       destroyApproveMap(id);
+      ElpysForm.clear('admin-review');
       setCardMsg(id, '✓ Approved. Taking you back to Published…', '#111827');
       setTimeout(function () { location.href = '/admin-edit'; }, 800);
     } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
   }
 
+  // The reason is the whole point of keeping a rejected row: it is what a
+  // later reviewer sees on /admin-approve's Rejected list ("Reason: …"), so it
+  // is required. REJECT_REASON_MAX matches the cap in api/admin.js.
+  const REJECT_REASON_MIN = 3, REJECT_REASON_MAX = 500;
+  let rejectReasonDraft = '';   // kept through a security-check round-trip
+
   function handleReject(id) {
-    confirmAction('Reject this submission?',
-      'It moves out of the pending queue and off the public site permanently, but the record — including any ' +
-      'research already on file — is kept rather than deleted, so the same organization can’t be resubmitted ' +
-      'and approved by someone who never saw why it was rejected.',
-      'Reject', function () { doReject(id); });
+    showModal({
+      title: 'Reject this submission?',
+      body: 'It moves out of the pending queue and off the public site permanently, but the record — including any ' +
+        'research already on file — is kept rather than deleted, so the same organization can’t be resubmitted ' +
+        'and approved by someone who never saw why it was rejected.',
+      input: {
+        label: 'Reason (shown to admins only)',
+        placeholder: 'e.g. private residence; no registered charity found',
+        minLength: REJECT_REASON_MIN, maxLength: REJECT_REASON_MAX,
+        hint: 'Required — a few words on why, for whoever reviews this organization next.',
+        value: rejectReasonDraft,
+        onInput: function (v) { rejectReasonDraft = v; },
+      },
+      confirmText: 'Reject', danger: true,
+      onConfirm: function (reason) { doReject(id, reason); },
+    });
   }
 
-  async function doReject(id) {
+  async function doReject(id, reason) {
     setCardBtns(id, true); setCardMsg(id, 'Rejecting…', '#6B7280');
     try {
-      const res = await postAction({ action: 'reject', id });
+      const res = await postAction({ action: 'reject', id, reason });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || e.error || 'HTTP ' + res.status); }
       destroyApproveMap(id);
+      rejectReasonDraft = '';
+      ElpysForm.clear('admin-review');
       setCardMsg(id, '✓ Rejected. Taking you back…', '#111827');
       setTimeout(function () { location.href = '/admin-approve'; }, 800);
     } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
@@ -1494,6 +1563,7 @@
       }
 
       const saved = await res.json().catch(() => ({}));
+      ElpysForm.clear('admin-review');
       if (saved.geocoded) {
         payload.lat = saved.geocoded.lat;
         payload.lng = saved.geocoded.lng;
@@ -1542,10 +1612,23 @@
   // ── Shared helpers ─────────────────────────────────────────────────────────
 
   function postAction(body) {
-    return fetch(API, {
+    return ElpysApi.fetch(API, {
       method: 'POST',
       headers: { 'x-admin-password': _password, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+    }, { save: saveAdminEdits });
+  }
+
+  // Before a round-trip through Vercel's security check (api-fetch.js): the
+  // open edit form's fields, its photos and schedule, and a half-typed reject
+  // reason. Put back by loadRow() when the page comes back.
+  function saveAdminEdits() {
+    const edit = document.getElementById('edit-' + ID);
+    ElpysForm.save(edit || document.getElementById('detail-container'), 'admin-review', {
+      open: !!(edit && edit.classList.contains('open')),
+      photos: photoState[ID] || null,
+      schedule: edit ? Array.from(edit.querySelectorAll('.avail-cell.active')).map(c => c.dataset.day + ':' + c.dataset.slot) : null,
+      rejectReason: rejectReasonDraft,
     });
   }
 

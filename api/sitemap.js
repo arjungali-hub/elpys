@@ -10,6 +10,8 @@
 // is still in the future. A sitemap should never advertise a URL the site
 // itself has stopped showing.
 
+const checkpoint = require('../lib/checkpoint');
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -73,6 +75,9 @@ async function fetchSlugs() {
 }
 
 module.exports = async function handler(req, res) {
+  // /api/checkpoint (vercel.json rewrites it here): the redirect back after
+  // Vercel's security check. See lib/checkpoint.js for why it lives here.
+  if (req.query && req.query.checkpoint === '1') return checkpoint(req, res);
   let listings = [];
   try {
     listings = await fetchSlugs();

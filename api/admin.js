@@ -20,6 +20,7 @@ const STORAGE_IMAGE_PREFIX = SUPABASE_URL
   : null;
 const IMAGE_FILENAME_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|webp)$/;
 const MAX_GALLERY_IMAGES = 8;
+const REJECT_REASON_MAX = 500;
 
 function isValidImageUrl(url) {
   if (!STORAGE_IMAGE_PREFIX || typeof url !== 'string') return false;
@@ -365,10 +366,17 @@ module.exports = async function handler(req, res) {
     // pending queue (which filters status=eq.pending) with no query changes
     // needed anywhere.
     if (action === 'reject') {
+      // Shown to admins on /admin-approve's Rejected list. Capped like the
+      // other free text here (photo credit); admin-review.html's box has the
+      // same maxlength and requires a few characters.
+      const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() || null : null;
+      if (reason && reason.length > REJECT_REASON_MAX) {
+        return res.status(400).json({ error: 'The reject reason is limited to ' + REJECT_REASON_MAX + ' characters.' });
+      }
       const out = await patchRow({
         status: 'rejected',
         rejected_at: new Date().toISOString(),
-        rejection_reason: typeof req.body.reason === 'string' ? req.body.reason.trim() || null : null,
+        rejection_reason: reason,
       });
       if (!out.ok) return res.status(out.status).json(out.payload);
       return res.status(200).json({ ok: true });

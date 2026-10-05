@@ -7,6 +7,33 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-05 — Reject reason box + bot-check recovery, verified on the live preview and merged
+
+Follow-up to the entry directly below this one, which shipped the branch
+but left one thing explicitly untested: "The Reject dialog on the preview:
+admin pages need Krish's login." That's now done.
+
+Krish checked `fix/reject-reason-box-and-checkpoint-403-recovery` on its
+live preview (the first URL handed to him, from the branch's own dev-log
+entry, turned out to be a stale deploy — the correct one was found by
+cross-checking the branch's actual HEAD commit against GitHub's recorded
+Vercel deployment for it, not by guessing between the two). Confirmed on
+the real preview, logged in as admin:
+- Reject dialog opens, a reason can be typed, and **Escape closes it
+  without rejecting** — the listing stayed in Pending. That was the one
+  real risk worth a human's eyes: a dialog that silently commits on cancel
+  would be the kind of thing nobody notices until a real rejection is
+  wrong.
+- No console errors on `/submit` or `/feedback` other than a Cloudflare
+  Turnstile failure (`400` from `challenges.cloudflare.com`,
+  `TurnstileError 110200`). That one's expected and unrelated to this
+  branch: Turnstile site keys are scoped to specific hostnames, and every
+  Vercel preview gets a fresh, unregistered subdomain — any preview of any
+  branch would show the same error. The branch's own entry already flagged
+  this risk ahead of time ("Turnstile blocks preview sends").
+
+Merged to `main`.
+
 ## 2026-10-04 — A Sep 4 branch, found still unmerged during a branch audit, merged
 
 `fix/mobile-submit-doorway` (one commit, `3a27589`, from 2026-09-04) was
@@ -17,6 +44,167 @@ a footer `/submit` link (it hadn't), and the branch still applied cleanly
 against everything that landed in the month since (conflicts only in this
 file). See that entry, now in its chronological place below, for what it
 actually does and how it was verified at the time.
+
+## 2026-10-05 — Reject reason box; recovering from Vercel's bot-check 403
+
+Branch `fix/reject-reason-box-and-checkpoint-403-recovery`, **not merged**.
+Commits `297fd9c`, `29d4c7a`.
+
+**Reject reason (admin-review.html, api/admin.js)**
+- **The Reject dialog** has a "Reason (shown to admins only)" box.
+  - Focus starts in it, and Enter adds a new line rather than submitting.
+  - Escape, clicking outside, and Cancel all close it without rejecting.
+  - Focus returns to the Reject button.
+  - A half-typed reason is kept if the dialog is reopened.
+- **A reason is required:** the Reject button stays disabled until there
+  are at least 3 characters. Why: the only reason rejected rows are kept is
+  so a later reviewer can see why. Every TEST rejection can just say
+  "test".
+- **`showModal` has an `opts.input` option;** every other dialog is
+  unchanged (checked: Unpublish still focuses its button, with no field).
+- **`api/admin.js`** keeps the trim and empty → null behaviour, and refuses
+  more than 500 characters with a 400, like the photo credit's limit.
+- **Admin pages reject from one place only:** `admin-review.html`. Data
+  review uses "change needed / fine as is", not reject.
+- **The Rejected list on /admin-approve** already escaped the reason.
+  Checked with `<b>x</b> & "quotes"`: it shows as text.
+
+**Bot-check 403 recovery (api-fetch.js, lib/checkpoint.js)**
+- **What we found:**
+  - The project has no firewall config of its own ("Seawall Config not
+    found"), so the Oct 4 challenges were Vercel's automatic platform
+    protection.
+  - Whether real visitors were ever challenged can't be told. A challenged
+    request never reaches our function, so it isn't in the runtime logs.
+    Those keep only a short window on Hobby anyway: 12 entries for the
+    whole month, none of them 403s. Edge request data isn't available on
+    this plan.
+  - No project setting turns this protection off safely. The only control,
+    "pause system mitigations", lasts 24h and is meant for debugging.
+- **How the recovery works:**
+  - Every page that calls `/api/*` uses `ElpysApi.fetch()` from the new
+    `api-fetch.js`. The pages are submit, feedback, admin-review,
+    admin-approve, review, analytics-review, admin-login and account, plus
+    the cleanup button in supabase-auth.js.
+  - It treats a 403 carrying `x-vercel-mitigated: challenge`, or any
+    non-JSON 403, as the checkpoint. Our own functions only answer in JSON.
+  - The page saves what was typed to sessionStorage. Text fields, choices,
+    uploaded photo URLs and the schedule are kept. Files, passwords, the
+    honeypot and the Turnstile token never are.
+  - It shows "Your browser needs a quick security check. We'll bring you
+    straight back.", then loads `/api/checkpoint?return=<page>` as a normal
+    page. Vercel's checkpoint runs there, and the redirect brings the
+    browser back.
+  - The page restores everything. /submit and /feedback ask for the "I'm
+    human" check again (a fresh Turnstile widget; tokens are never reused).
+    Admin pages reopen the edit form or the data-review note, and keep a
+    reject reason.
+  - A second challenge right after a round-trip stops with "We couldn't
+    verify your browser. Please try again in a minute or email
+    hello.elpys@gmail.com." The saved copy is cleared after a successful
+    send.
+- **`/api/checkpoint` isn't a function of its own.** The Hobby plan allows
+  12 serverless functions per deployment and the site already uses 12. The
+  first push added a 13th and the preview build failed. `vercel.json` now
+  rewrites it to `/api/sitemap?checkpoint=1`, which hands off to
+  `lib/checkpoint.js`. That only redirects to paths on this site, never
+  `//…`, `https://…`, `/api/…` or anything with newlines. A test keeps
+  `api/` at 12 files or fewer.
+- **Other error messages:** a non-JSON 5xx on /submit and /feedback now
+  says "The site had a problem — please try again." instead of "HTTP 500".
+
+**Checked**
+- **Tests:** 41/41 pass, all existing ones included.
+  - `test/reject-reason.test.js`: stored and trimmed, empty → null, 500 is
+    OK and 501 is refused with no write.
+  - `test/checkpoint-challenge.test.js`: challenge detection; normal JSON
+    403/400s are ignored; plain 5xx message; redirect safety; the
+    `/api/checkpoint` → sitemap rewrite; the 12-function limit.
+  - `test/form-keeper.test.js`: the save/restore round-trip; secrets are
+    never saved; clear; the one-hour expiry; `justReturned`.
+- **Locally, in Chromium, with a faked challenge** at 1280 and 375:
+  - /submit: every field, checkbox, the "Other" text, the event date and
+    the cover photo came back. The note appeared, the Turnstile token was
+    not reused, a second challenge stopped without looping, and a
+    successful send cleared the saved copy.
+  - /feedback: the same.
+  - admin-review: an unsaved edit came back, with the form reopened, the
+    schedule cell ticked, and the new cover.
+  - Data review: the "change needed" note reopened with its text.
+  - The Reject dialog: focus, Enter, Escape, overlay click, the
+    disabled-until-3-characters rule, and the reason sent.
+- **On the preview** (`elpys-470picmv5…vercel.app`):
+  - `/api/checkpoint?return=/terms` lands on /terms.
+  - `api-fetch.js` is served as JavaScript, not rewritten into a listing
+    page.
+  - `/sitemap.xml` still works, and the build passes with 12 functions.
+
+**Not tested, and why**
+- **A real Vercel challenge:** it can't be triggered on demand. The
+  round-trip was tested with a faked 403 and a local stand-in for
+  `/api/checkpoint`. The real redirect was then checked on the preview.
+- **A full in-browser run on the preview:** the Vercel sandbox used for
+  this stopped twice. Whether the console shows CSP errors on the preview
+  is still to be checked in Krish's browser.
+- **The Reject dialog on the preview:** admin pages need Krish's login.
+
+## 2026-10-04 — Post-merge checks (Cowork, in Krish's real Chrome)
+
+- **Submission email: PASS.**
+  - TEST listing "TEST post-merge 2026-10-04" (id 123) was submitted at
+    3:51 PM Pacific. The "New Elpys submission" email arrived within 1
+    minute.
+  - It showed the name, Community, "One-time, 2026-11-14" and "Photos 1".
+    It had no email address or phone number.
+  - "Review it" opened `/admin-review?id=123`.
+  - Krish later had to mark it "not spam", so it also ended up in Spam at
+    some point.
+- **Cover photo on /submit: PASS.** The test image was a 3024x4032 portrait
+  JPEG stored sideways with EXIF orientation 6, like a phone photo. The
+  preview showed it upright, and the stored cover is 1500x2000.
+- **Feedback email: PASS on content, but delivered to Spam.**
+  - "New Elpys feedback" arrived within 1 minute but went to Spam. Gmail's
+    reason: "similar to messages that were identified as spam in the past".
+  - The email did not contain the feedback text, only a notice and an
+    "Open feedback" button. Gmail disables links in Spam, so the button did
+    nothing there.
+  - `/admin-feedback` shows the TEST text. Krish marked both TEST emails
+    "not spam" and deleted them.
+- **Admin photo replace on listing 123: PASS.**
+  - A second sideways phone-style photo saved.
+  - The Photos block shows the 1200x750 thumbnail upright, and its link
+    opens the 1500x2000 full photo upright.
+  - Listing 123 was then rejected. It shows "Reason: none given" because
+    the Reject dialog has no reason field (fixed by
+    `fix/reject-reason-box-and-checkpoint-403-recovery`).
+  - The older TEST listing kept for testing is still pending, untouched.
+- **Homepage: PASS.**
+  - All 13 cards show a photo, served from the card thumbnails (1200px
+    wide, or the original when it's smaller).
+  - No broken images and no console errors.
+  - The detail pages for Renewal Food Bank (1500x1125) and EarthCorps
+    (1800x900) show the sharp full photo.
+- **Parked map preview (`elpys-fqpksak1h…vercel.app/map`): PASS with a
+  note.**
+  - Pins load, with two dark "2" cluster bubbles near Bellevue. No console
+    or CSP errors.
+  - The first click on a bubble zoomed in one level but it stayed a "2"
+    bubble. A second click split it into pins.
+- **Vercel bot check blocked API POSTs** (fixed by the same branch):
+  - The first two `/submit` sends failed with the page error "Something
+    went wrong: HTTP 403. Please try again."
+  - The response was Vercel's challenge page: `x-vercel-mitigated:
+    challenge`, HTML not JSON, about 31KB.
+  - The same thing happened later on the first admin "Save changes" (`POST
+    /api/admin` → 403).
+  - Opening any `elpys.vercel.app/api/...` URL as a normal page showed
+    "Vercel Security Checkpoint – We're verifying your browser". After it
+    passed, every POST worked (200).
+  - The project has no custom firewall config: the Vercel API returned
+    "Seawall Config not found". So this is Vercel's automatic platform bot
+    mitigation.
+  - The browser was automated (Chrome extension), which likely raised its
+    bot score. It is unknown whether real visitors ever hit this.
 
 ## 2026-10-04 — Feedback alert email no longer includes the feedback
 

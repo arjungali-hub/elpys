@@ -77,6 +77,7 @@
 </footer>
 
 <script src="loading.js"></script>
+<script src="api-fetch.js"></script>
 <script>
   var form     = document.getElementById('login-form');
   var btn      = document.getElementById('submit-btn');
@@ -115,7 +116,9 @@
     Loading.setBusy(btn, 'Logging in');
 
     try {
-      var res = await fetch('/api/admin-login', {
+      // The password is never saved for the security-check round-trip
+      // (api-fetch.js); it is retyped after coming back.
+      var res = await ElpysApi.fetch('/api/admin-login', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ password: password }),

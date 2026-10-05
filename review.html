@@ -197,6 +197,7 @@
 </div>
 
 <script src="loading.js"></script>
+<script src="api-fetch.js"></script>
 <script>
   const API = '/api/review';
   let _password = '';
@@ -312,7 +313,7 @@
 
   async function loadAll() {
     try {
-      const res = await fetch(API, { headers: { 'x-admin-password': _password } });
+      const res = await ElpysApi.fetch(API, { headers: { 'x-admin-password': _password } });
       if (res.status === 401) { goToAdminLogin(); return; }
       if (res.status === 429) {
         // The shared admin rate limiter kicked in — a retype won't help yet.
@@ -349,12 +350,29 @@
       renderPending(pending || []);
       renderDecided(decided || []);
       renderResolved(resolved || []);
+      reopenKeptNote();
     } catch (err) {
       // The message lives in the login panel, so that panel has to be back on
       // screen for the error to be visible at all.
       revealLogin();
       showLoginMsg('Error: ' + err.message, 'error');
     }
+  }
+
+  // Back from a round-trip through Vercel's security check (api-fetch.js)
+  // with a decision that hadn't saved: reopen that flag's note with the text
+  // that was typed, so pressing Submit again finishes it.
+  function reopenKeptNote() {
+    if (!ElpysApi.justReturned()) return;
+    const kept = ElpysForm.peek('review');
+    const x = kept && kept.extra;
+    if (!x || !x.flagId) return;
+    const card = document.getElementById('flag-' + x.flagId);
+    if (!card) return;
+    card.querySelector(x.decision === 'change_needed' ? '.btn-change' : '.btn-fine').click();
+    card.querySelector('textarea').value = x.note || '';
+    setMsg(x.flagId, 'Kept through a quick security check — press Submit to save it.');
+    card.scrollIntoView({ block: 'center' });
   }
 
   // ── Pending queue ──────────────────────────────────────────────────────────
@@ -519,11 +537,12 @@
     setMsg(flag.id, 'Saving…');
 
     try {
-      const res = await fetch(API, {
+      const res = await ElpysApi.fetch(API, {
         method:  'POST',
         headers: { 'x-admin-password': _password, 'Content-Type': 'application/json' },
         body:    JSON.stringify({ id: flag.id, decision, note }),
-      });
+      }, { save: () => ElpysForm.save(document.getElementById('content'), 'review', { flagId: flag.id, decision, note }) });
+      ElpysForm.clear('review');
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         console.error('Save failed — full response:', e);
