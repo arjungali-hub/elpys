@@ -329,6 +329,17 @@ header {
 .modal-title { font-size: 1.0625rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 0.5rem; padding-right: 1.5rem; }
 .modal-body  { font-size: 0.9375rem; color: #444; line-height: 1.55; margin-bottom: 1.5rem; }
 .modal-actions { display: flex; gap: 0.65rem; justify-content: flex-end; }
+/* Optional text field in a dialog (the Reject reason on admin-review.html). */
+.modal-input { margin: -0.75rem 0 1.25rem; }
+.modal-input-label { display: block; font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.35rem; }
+.modal-input textarea {
+  width: 100%; box-sizing: border-box; min-height: 4.5rem; resize: vertical;
+  font: inherit; font-size: 0.9375rem; line-height: 1.45;
+  padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius);
+}
+.modal-input textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.modal-input-hint { font-size: 0.8125rem; color: var(--muted); margin-top: 0.35rem; }
+.modal-btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
 .modal-btn-cancel {
   font-family: inherit; font-size: 0.9375rem;
   color: var(--muted); background: none;
@@ -1725,3 +1736,24 @@ footer a {
 @media (prefers-reduced-motion: reduce) {
   .skel-callout, .skel-map { opacity: .55 }
 }
+
+/* api-fetch.js: shown while the browser is sent through Vercel's security
+   check and back, or when that check can't be passed. Fixed at the top so it
+   is seen wherever the person was on a long form. */
+.checkpoint-banner {
+  position: fixed;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  width: min(92vw, 34rem);
+  padding: 0.85rem 1.1rem;
+  border-radius: var(--radius-lg);
+  background: var(--accent);
+  color: var(--white);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  box-shadow: var(--shadow-lg);
+}
+.checkpoint-banner.error { background: #991B1B; }
+.checkpoint-banner.info  { background: var(--white); color: var(--body); border: 1px solid var(--border); }

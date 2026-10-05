@@ -211,7 +211,10 @@ function showModal(opts) {
       cleanupBtn.className   = 'header-logout-btn';
 
       function callCleanup(dry) {
-        return fetch('/api/cleanup-photos' + (dry ? '?dry=1' : ''), {
+        // ElpysApi (api-fetch.js) recovers from Vercel's security check; it is
+        // loaded on the admin pages this button appears on.
+        var send = window.ElpysApi ? window.ElpysApi.fetch : fetch;
+        return send('/api/cleanup-photos' + (dry ? '?dry=1' : ''), {
           method: 'POST', headers: { 'x-admin-password': adminPw },
         }).then(function (r) {
           return r.json().catch(function () { return {}; }).then(function (j) {

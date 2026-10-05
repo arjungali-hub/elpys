@@ -75,6 +75,7 @@
 </footer>
 
 <script src="loading.js"></script>
+<script src="api-fetch.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
 <script src="supabase-client.js"></script>
 <script>
@@ -342,7 +343,7 @@
           var token = sessionResult.data && sessionResult.data.session && sessionResult.data.session.access_token;
           if (!token) { notify('Could not get your session', 'Please refresh the page and try again.'); return; }
 
-          var res = await fetch('/api/delete-account', {
+          var res = await ElpysApi.fetch('/api/delete-account', {
             method:  'DELETE',
             headers: { 'Authorization': 'Bearer ' + token },
           });

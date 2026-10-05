@@ -176,6 +176,7 @@
 </footer>
 
 <script src="loading.js"></script>
+<script src="api-fetch.js"></script>
 <script>
   // Pre-fill page field from ?from= param (set by the notice banner's link)
   const params    = new URLSearchParams(location.search);
@@ -205,12 +206,17 @@
     status.textContent = '';
     const label = document.createElement('span');
     label.className   = 'status-label';
-    label.textContent = type === 'error' ? 'Error' : 'Success';
+    label.textContent = type === 'error' ? 'Error' : type === 'info' ? 'Note' : 'Success';
     status.appendChild(label);
     status.appendChild(document.createTextNode(msg));
     status.className   = 'form-status ' + type;
     status.style.display = 'block';
     status.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Kept through a round-trip through Vercel's security check (api-fetch.js).
+  if (ElpysApi.justReturned() && ElpysForm.restore(form, 'feedback')) {
+    showStatus('You’re back — your message is still here. Please complete the “I’m human” check again, then send it.', 'info');
   }
 
   form.addEventListener('submit', async e => {
@@ -228,7 +234,7 @@
 
     try {
       const turnstileToken = (form.querySelector('[name="cf-turnstile-response"]') || {}).value || '';
-      const res = await fetch('/api/feedback', {
+      const res = await ElpysApi.fetch('/api/feedback', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -238,12 +244,13 @@
           page_url:      form.elements.page_url.value.trim()      || null,
           contact_email: form.elements.contact_email.value.trim() || null,
         }),
-      });
+      }, { save: () => ElpysForm.save(form, 'feedback') });
 
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || 'HTTP ' + res.status);
+      if (!res.ok) throw new Error(ElpysApi.plainError(res) || json.error || 'HTTP ' + res.status);
 
       if (window.posthog) posthog.capture('feedback_submitted');
+      ElpysForm.clear('feedback');
       form.style.display = 'none';
       showStatus('Thanks — we got your feedback!', 'success');
     } catch (err) {

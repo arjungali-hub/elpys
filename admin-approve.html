@@ -174,6 +174,7 @@
 </div><!-- /wrap -->
 
 <script src="loading.js"></script>
+<script src="api-fetch.js"></script>
 <script>
   const API = '/api/admin';
   let _password = '';
@@ -323,7 +324,7 @@
     if (fb) Loading.show(fb, Loading.rows(4, 'Loading feedback'));
 
     try {
-      const res = await fetch(API, { headers: { 'x-admin-password': _password } });
+      const res = await ElpysApi.fetch(API, { headers: { 'x-admin-password': _password } });
       if (res.status === 401) { goToAdminLogin(); return; }
       if (res.status === 429) {
         // The shared admin limiter refused this attempt, and it won't help to
@@ -487,7 +488,7 @@
   // ── Shared helpers ─────────────────────────────────────────────────────────
 
   function postAction(body) {
-    return fetch(API, {
+    return ElpysApi.fetch(API, {
       method: 'POST',
       headers: { 'x-admin-password': _password, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

@@ -178,6 +178,7 @@
 </div>
 
 <script src="loading.js"></script>
+<script src="api-fetch.js"></script>
 <script>
   const API = '/api/analytics-review';
   let _password = '';
@@ -367,7 +368,7 @@
         ackBtn.disabled = true;
         msg.textContent = '';
         try {
-          const res = await fetch(API, {
+          const res = await ElpysApi.fetch(API, {
             method: 'POST',
             headers: { 'x-admin-password': _password, 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'acknowledge-redesign-prompt', review_id: row.id, prompt_id: entry.id }),
@@ -432,7 +433,7 @@
 
   async function loadAll() {
     try {
-      const res = await fetch(API, { headers: { 'x-admin-password': _password } });
+      const res = await ElpysApi.fetch(API, { headers: { 'x-admin-password': _password } });
       if (res.status === 401) { goToAdminLogin(); return; }
       if (res.status === 429) {
         revealLogin();

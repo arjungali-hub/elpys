@@ -236,7 +236,7 @@ export const config = {
     // "rewrite these to the detail page", this one says "check these are real
     // listings first". A name added to one and not the other either 404s a
     // real page or lets a soft 404 back through.
-    '/:slug((?!(?:api|admin-login|admin-review|admin-feedback|admin-edit|admin-approve|analytics-review|review|login|signup|submit|feedback|how-we-check|map|opportunities-detail|privacy|terms|about|account|index|404|analytics\\.js|beta-banner\\.js|loading\\.js|middleware\\.js|mini-map\\.js|supabase-auth\\.js|supabase-client\\.js|styles\\.css|robots\\.txt|sitemap\\.xml|favicon\\.ico|logos)$)[^/]+)',
+    '/:slug((?!(?:api|admin-login|admin-review|admin-feedback|admin-edit|admin-approve|analytics-review|review|login|signup|submit|feedback|how-we-check|map|opportunities-detail|privacy|terms|about|account|index|404|analytics\\.js|api-fetch\\.js|beta-banner\\.js|loading\\.js|middleware\\.js|mini-map\\.js|supabase-auth\\.js|supabase-client\\.js|styles\\.css|robots\\.txt|sitemap\\.xml|favicon\\.ico|logos)$)[^/]+)',
   ],
 };
 
