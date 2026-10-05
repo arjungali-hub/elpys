@@ -7,6 +7,17 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-04 — A Sep 4 branch, found still unmerged during a branch audit, merged
+
+`fix/mobile-submit-doorway` (one commit, `3a27589`, from 2026-09-04) was
+sitting local-only on one machine — never even pushed — discovered while
+auditing every branch against `main` for "is everything that should be
+merged, merged?" Checked before merging: nothing on `main` had since added
+a footer `/submit` link (it hadn't), and the branch still applied cleanly
+against everything that landed in the month since (conflicts only in this
+file). See that entry, now in its chronological place below, for what it
+actually does and how it was verified at the time.
+
 ## 2026-10-04 — Feedback alert email no longer includes the feedback
 
 The "New Elpys feedback" email (`lib/adminAlert.js` `feedbackAlert`) used to
@@ -1856,6 +1867,80 @@ open by design.
 The timeout matters more than the retry: a request that *hangs* rather than fails
 would leave the caller awaiting indefinitely, which is worse than the failure it
 replaced.
+
+## 2026-09-04 — A visible route to /submit on phones (built on `fix/mobile-submit-doorway`, merged 2026-10-04)
+
+Built and verified on 2026-09-04, then sat unmerged and unpushed — only on
+one machine — until a branch audit on 2026-10-04 found it, confirmed
+nothing on `main` had superseded it (no footer `/submit` link existed
+anywhere yet) and confirmed it still merged cleanly against everything
+that had landed since, with conflicts only in this file. The verification
+below is as it was written at the time; nothing in it needed re-checking
+to still be true, since the change itself (one footer line, nine pages)
+hasn't touched since.
+
+Organization outreach starts in about two weeks and a lot of recipients will
+open the email on a phone. `.header-submit-link` is `display: none` below
+640px (`styles.css`, confirmed by measuring, not just reading — the row
+adds up to ~494px on a 375px phone and the nav wraps under the wordmark
+otherwise), so a phone visitor had **no visible link to the submission form
+anywhere on the page** — the header hid it and nothing replaced it.
+
+Chose the lower-risk of the two options on the table: added a standalone
+`<a href="/submit">Submit an opportunity</a>` line to the footer, right
+above the existing `.footer-links` nav, on every public content page —
+index, about, how-we-check, privacy, terms, feedback, map,
+opportunities-detail, 404. Left the header rule alone entirely; the header
+is the fragile part of this template (see the `.beta-badge` /
+`margin-right: auto` note in `styles.css` — that spacer broke the whole row
+once already when removed), so this task's brief was explicit about not
+touching it, and there was already a safer path available: `login.html`
+and `admin-login.html` already carry this exact standalone link in this
+exact position — it just never made it onto the actual content pages. This
+is a copy of an already-shipped pattern, not a new one. `account.html`
+intentionally does not get it (task scope: public pages only), and it
+already didn't.
+
+Did not add it inside `.footer-links` itself, which is what the task
+suggested as the default — the working convention on `login.html` /
+`admin-login.html` is a separate line above the nav, not a fifth nav item,
+so matched that instead for consistency. No new CSS: it inherits `footer a`
+(font-size 0.8125rem, `var(--muted)`, matches every other footer link, and
+`--muted` is correct here since the footer sits on `--white`, not
+`--surface`).
+
+Verified:
+- All 10 pages, 390px and 320px: the link renders, non-zero size, `href="/submit"`.
+- Desktop (1300px) header geometry measured before vs. after on `index.html`
+  — `.header-inner`, `.site-name`, `.header-submit-link`, `.header-auth-link`,
+  `.header-signup-btn` all identical to the pixel. The diff never touches
+  the header, so this is expected, but measured rather than assumed.
+- No horizontal overflow at 390px/320px on any of the 10 pages (checked via
+  `scrollWidth` vs `clientWidth`).
+- axe-core (injected directly — the site's CSP blocks a CDN `<script src>`)
+  on index, about, feedback, submit, map, and one listing detail page
+  (`opportunities-detail.html?slug=earthcorps`): zero violations on all six,
+  including the new link — the site's existing footer links are already
+  ~21px tall (under the 24px target-size guideline) and pass under WCAG
+  2.5.8's inline-text exception; the new link is identical markup, so it
+  passes the same way rather than needing its own sizing.
+- Signed-in admin header state (simulated via the same `sessionStorage`
+  flag `supabase-auth.js` checks — this exercises the layout path, not real
+  auth, since this branch doesn't touch auth) at desktop and 390px: the
+  `.admin-badge` insertion and the two admin nav rows render the same with
+  or without this change.
+
+**Found, not fixed, logged separately per this task's own instruction**:
+the signed-in admin header at 390px already overflows horizontally — on
+both the old code and this branch equally, so it predates this change.
+`window.innerWidth` reports 513px instead of the requested 390px (mobile
+viewport auto-expands to fit content wider than the declared viewport),
+because `.header-admin-sub`'s two rows of admin nav links (`Approve
+opportunities`, `Submit an opportunity`, `Edit opportunities` / `Data
+review`, `Analytics review`, `Feedback`) don't wrap or shrink at that
+width. Only reachable by a signed-in admin on a phone, so it's real but
+narrow. Not fixed here — it's a header-layout change, exactly the surface
+this task was told to leave alone.
 
 ## 2026-09-03 — Signup password: match the 8-char policy, show it upfront, plain-language errors
 
