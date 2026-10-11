@@ -37,7 +37,7 @@ couldn't merge. Done here, on this computer, same day.
   safe to delete now that it's merged, but wasn't deleted here — Krish's
   call.
 - **Still to do, not by Claude Code:** this entry and the one below it need
-  copying into the "Elpys Project Context" Google Doc's Change log by a
+  copying into the "Elpys Project Context" Claude Doc's Change log by a
   chat or Cowork session — Claude Code can read that doc but can't write
   it (see "Where the project's history lives" in `_work/README.md`).
 
