@@ -65,8 +65,9 @@ dead ends, and it's the raw material for the user's org-emailing list.
 
 ## Part 2 — Database rows
 
-Only PASS and PASS-WITH-FLAG entries. Present each as a labeled block the user can paste
-into the admin flow, plus an optional SQL insert.
+Only PASS and PASS-WITH-FLAG entries. These are **inserted directly** as of Oct 2026 —
+see "Changed Oct 2026" at the end of this section. Record each one as a labeled block in
+the report too, so the reasoning is auditable after the fact.
 
 ### Field conventions
 
@@ -190,5 +191,19 @@ VALUES
    $$Verified <date> against live page.$$);
 ```
 
-Present the SQL; don't run it. New listings go through the admin review flow so a human
-signs off before anything is published.
+**Changed Oct 2026: run the inserts yourself.** This file used to say "present the SQL;
+don't run it." Krish reversed that on 2026-10-11 — a `pending` row is invisible on the
+site and still needs his approval to publish, so making him paste it meant reviewing the
+same rows twice, and the double-paste is what created six undeletable duplicate rows in
+the Oct 2026 run.
+
+Insert PASS and PASS-WITH-FLAG rows directly, as `status = 'pending'`, never setting
+`verified_at`. Guard each one with `where not exists (select 1 from "Opportunities" where
+slug = …)` — there is **no unique index on `slug`**, so `on conflict` is not an option.
+Never UPDATE or DELETE an existing row, and check `criteria.md` section 3 before
+inserting rather than after. The full guard list is in `SKILL.md` step 6.
+
+Still hand Krish a SQL file for anything you did not insert: borderline candidates needing
+his judgment, rows that would supersede an existing listing, rejections, and any DELETE
+(which hangs through the connector regardless). New listings still reach the site only
+through the admin review flow, so a human still signs off before anything is published.

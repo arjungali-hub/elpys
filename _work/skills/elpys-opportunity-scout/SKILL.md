@@ -346,9 +346,52 @@ panel will not publish a listing without them, so a row missing them is not actu
 ready to paste. Leave `verified_at` unset: it is stamped by the human who approves the
 listing, not by this skill, because the whole point is that a person confirmed it.
 
-Never write to the database directly. New listings go in as `pending` for the user to
-review through the admin page, because the whole value proposition is that a human
-verified them.
+### Inserting the rows — changed Oct 2026
+
+**This skill used to say "never write to the database directly." Krish reversed that on
+2026-10-11.** His reasoning: a row inserted as `pending` is invisible on the site and
+cannot be published without his approval anyway, so making him paste the SQL meant
+reviewing the same rows twice. It also caused the only data incident of the Oct 2026 run
+— the SQL was pasted twice and produced six duplicate rows that then could not be
+deleted, because DELETE through the Supabase connector hangs and commits nothing.
+
+So: **insert PASS and PASS-WITH-FLAG rows yourself, as `pending`, under these guards.**
+
+1. **`status` is `pending`. Always.** Never insert or update a row to `published`, and
+   never set `verified_at` — the admin panel stamps that when Krish approves. The
+   `opportunity_publish_gate` trigger blocks publication without it, so this is belt and
+   braces, not the only safeguard.
+2. **Insert only. Never UPDATE or DELETE an existing row.** Those belong to the weekly
+   data check and to Krish. If a candidate duplicates or supersedes an existing row, say
+   so in the report and let him decide — do not edit the old row.
+3. **Guard every insert against duplicates.** There is **no unique index on `slug`**
+   (checked 2026-10-11), so `on conflict` does nothing. Use this shape, which is safe to
+   re-run and safe if a previous run half-completed:
+
+   ```sql
+   insert into "Opportunities" (name, slug, …)
+   select $$…$$, $$my-slug$$, …
+   where not exists (select 1 from "Opportunities" where slug = $$my-slug$$);
+   ```
+
+4. **Check the reject list before inserting, not after.** Every candidate goes against
+   `references/criteria.md` section 3 and its "Added Oct 2026" table. Anything on either
+   is a REJECT and is never inserted. In Oct 2026, two of six proposed rows were already
+   on that list and reached the review queue because the file was unreadable — that is
+   the failure this guard exists to stop.
+5. **One transaction for the whole batch**, and keep semicolons out of string values —
+   a semicolon inside a string literal hangs `execute_sql` for 180s and never reaches the
+   database.
+6. **Verify after writing.** Re-read every row you inserted straight out of the database
+   and confirm the values are what you intended before reporting.
+
+**What still goes in a SQL file for Krish to run:** anything you did not insert. A
+borderline candidate that needs his judgment, a row that would supersede an existing
+listing, a rejection of something already in the table, and any DELETE at all. Supply
+those as dollar-quoted statements with the reasoning in comments.
+
+**In the reply, give him the inserted row ids** so he can go straight to the admin queue
+instead of hunting for them.
 
 ---
 
@@ -488,6 +531,29 @@ logged the references as unavailable or needing updates they had never received.
 files existed the whole time; they simply were not packaged with the installed skill.
 That gap caused a real error in Oct 2026 — the run proposed KidsQuest Children's Museum
 and Bellevue Youth Theatre as listable when both were already on the reject list below.
-**If a future run finds `references/` empty again, say so plainly and treat the reject
-list as unknown rather than empty**, and do not record in any report that the list was
+**If a future run finds `references/` empty again, recover it from the repo before giving
+up.** All four files are committed to the elpys repo on `main`, which syncs into the Claude
+project, so a cloud run can read them even when the installed skill has lost them:
+
+```
+_work/skills/elpys-opportunity-scout/references/criteria.md
+_work/skills/elpys-opportunity-scout/references/sourcing.md
+_work/skills/elpys-opportunity-scout/references/output-format.md
+_work/skills/elpys-opportunity-scout/SKILL.md
+```
+
+A `SHA256SUMS` file sits alongside them. Read the committed copy with `project_read` at that
+path. If the path 404s, the project's knowledge index has not refreshed yet rather than the
+file being absent — fall back to `project_search` for a distinctive phrase ("Orgs already
+explicitly rejected", or "Search the age, not the activity" for `sourcing.md`) and use
+whatever path that returns. Index lag of exactly this kind was observed on 2026-10-11, when
+a search for those phrases returned nothing despite the files being on `main` — do not
+conclude from a failed read that the files are missing.
+
+Say in the report that the reject list came from the repo rather than the skill. **Only if
+both the skill and the repo come up empty** do you treat the reject list as UNKNOWN, insert
+nothing, and hand Krish SQL instead — and never record in any report that the list was
 consulted when it was not.
+
+`_work/` is excluded from the live site by `.vercelignore`, so these files are in version
+control without being published.
