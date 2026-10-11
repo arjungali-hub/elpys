@@ -7,6 +7,61 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-11 — Scout skill versioned in git, a real public-exposure bug fixed, working folder tidied
+
+Approved by Krish in a Cowork session the same day. Branch
+`backup/scout-skill-version-history`.
+
+- **The elpys-opportunity-scout skill is now versioned in git.** Cowork
+  wrote the current copy — `SKILL.md` plus `references/criteria.md`,
+  `output-format.md`, `sourcing.md` — into
+  `_work/skills/elpys-opportunity-scout/`, with a `SHA256SUMS` file. All
+  four verified against the checksums Krish supplied before committing, and
+  the committed blobs re-verified byte-for-byte after. Why: the installed
+  skill (in Krish's Claude account) was the only copy. Its reject list —
+  `criteria.md`, which names real organisations and the reasons they were
+  excluded — had no history anywhere but that one account. It's now in git
+  like everything else, so a change to the live skill means copying the new
+  files here, regenerating `SHA256SUMS`, and committing — not editing the
+  installed skill from this repo, which this task was explicitly told not
+  to do.
+- **Fixed a real, live public-exposure bug.** `.gitignore` keeps `_work/`
+  out of *accidental* commits, but does nothing once something under it is
+  deliberately force-added — which is exactly what `dev-log.md` already
+  was, and what the skill copy above now is too. Vercel deploys every
+  committed file regardless of `.gitignore`, so
+  `elpys.vercel.app/_work/docs/dev-log.md` (242 KB) and
+  `elpys.vercel.app/.claude/settings.json` were both actually live and
+  returning 200 before this. Committing the skill without fixing this would
+  have published the reject list, with reasons naming real organisations,
+  at a public URL. New `.vercelignore` at the repo root excludes `_work/`,
+  `.claude/`, `CLAUDE.md`, `supabase/` (the migrations folder only —
+  `supabase-client.js`/`supabase-auth.js` are root files, unaffected) and
+  `test/`. Each path was grepped against `api/`, `lib/`, `middleware.js`,
+  `vercel.json` and the root `*.js`/`*.html` files first — nothing the live
+  site serves references any of them.
+- **Working folder tidied** (`_work/`, all untracked/gitignored, so none of
+  this touches git history): applied patches, finished prompts, and old
+  status reports moved into a new `_work/_archive/`; the superseded 31 Aug
+  scout `.zip` moved there too, only after the skill copy above was
+  verified and committed; browser-test log dumps deleted; the now-empty
+  `claude/` and root `patches/` folders removed (after confirming the root
+  patch file is byte-identical to its archived copy).
+- **The extra git worktree was removed.** `../elpys-before-worktree`
+  existed only so `main` could stay checked out in one place while this
+  checkout floated across task branches — every check in Step 0 confirmed
+  nothing existed only there before it was removed. `git worktree list`
+  now shows only this one checkout, and `main` can be checked out here
+  directly. One loose end: Windows held a lock on the now-empty
+  `elpys-before-worktree` folder itself (git fully unregistered and
+  emptied it, both `rmdir` attempts got "Device or resource busy") — an
+  empty, no-longer-a-worktree directory stub may still be sitting on disk
+  and can be deleted by hand once nothing has it open.
+- **`docs/dev-log-oct05-semicolon-gotcha` is still open, not touched by
+  this work.** It also adds an entry at the top of this file, so merging
+  it after this will need a small conflict resolution right here — same
+  mechanical kind as the last two merges in this log, nothing structural.
+
 ## 2026-10-05 — Reject reason box + bot-check recovery, verified on the live preview and merged
 
 Follow-up to the entry directly below this one, which shipped the branch
