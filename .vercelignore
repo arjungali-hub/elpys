@@ -1,0 +1,8 @@
+# Committed on purpose, never deployed. .gitignore stops accidental commits;
+# this stops deliberate commits (dev log, scout skill, Claude settings)
+# becoming public URLs. Do not remove.
+_work/
+.claude/
+CLAUDE.md
+supabase/
+test/
