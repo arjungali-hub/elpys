@@ -7,6 +7,38 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-11 — Scout skill backup updated to the Oct 11 generation
+
+Branch `rescue-scout-references-into-git`, off `main` at `ea35a61`.
+
+- **The committed copy of the elpys-opportunity-scout skill in
+  `_work/skills/elpys-opportunity-scout/` now matches the current skill.**
+  Source: the installed skill copy (the packaged `.skill` in Downloads
+  couldn't be reached from this session). Before using it, confirmed its
+  `SKILL.md` contains the repo-recovery fallback ("recover it from the
+  repo"), so this is the newer generation, not an older one.
+- **Checksum comparison came out exactly as expected:** `SKILL.md` and
+  `references/output-format.md` differed; `references/criteria.md` and
+  `references/sourcing.md` were already identical and were not touched.
+  Only the two changed files were copied in.
+  - `SKILL.md` → `531fbe42db413572187be6f53a83bb35e589d5ecd921146cfa311b6c0054b8a3`
+    (adds the Oct 11 "insert the rows yourself, as pending" policy with its
+    six guards, and the fallback telling a cloud run to read these
+    committed copies if the installed skill loses `references/`).
+  - `references/output-format.md` → `7cdbb4264880b860a0cf8ff681230b5b5c2cb6134eecbb4b6922ebaaab4096b1`
+    (the scout now inserts PASS / PASS-WITH-FLAG rows itself as `pending`
+    rather than handing over SQL).
+  - Unchanged: `criteria.md` `6cef96e3…f450b882`, `sourcing.md` `53865e8a…a1777`.
+- **`SHA256SUMS` regenerated** in the same format and `sha256sum -c` passes
+  for all four files; every repo file re-compared byte-for-byte against the
+  source after copying.
+- **`.vercelignore` still excludes `_work/`**, so none of this is published.
+- Expected follow-on: the Claude project's knowledge index lags repo
+  changes, so a cloud session may 404 on these paths for a while after the
+  merge. That's what the fallback in `SKILL.md` is written to survive — not
+  a failure. The recovered zip in the local skills folder stays until this
+  is merged.
+
 ## 2026-10-11 — Scout skill versioned in git, a real public-exposure bug fixed, working folder tidied
 
 Approved by Krish in a Cowork session the same day. Branch
