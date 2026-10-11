@@ -7,6 +7,40 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-11 — Scout skill backup merged to main (the cross-check and merge the cloud session couldn't do)
+
+Follow-up to the entry directly below this one. That cloud session pushed
+`rescue-scout-references-into-git` (`42f1a79`) and opened PR #1, but
+couldn't reach Downloads to cross-check against the packaged `.skill`, and
+couldn't merge. Done here, on this computer, same day.
+
+- **The packaged archive wasn't in Downloads.** Searched by name and by
+  extension — only an unrelated, much older `elpys-opportunity-scout.zip`
+  (Aug 19) was there, not an Oct 11 `.skill`. This was anticipated: the
+  task's own fallback for this case is to confirm the committed `SKILL.md`
+  carries the "recover it from the repo" phrase (it does, line 534) and
+  proceed on the checksums the cloud session already recorded, rather than
+  block on a file that doesn't exist.
+- **Checked the four committed files against those recorded checksums
+  anyway**, as the closest available integrity check: all four matched
+  exactly, confirming nothing drifted on disk or in transit between that
+  commit and this merge. `sha256sum -c SHA256SUMS` also passes, both on the
+  branch and again on `main` after merging. `.vercelignore` still excludes
+  `_work/`.
+- **Merged to `main`** as `4d55414` (`git merge --no-ff`, real merge
+  commit, no rebase needed — `main` hadn't moved since the branch was cut).
+  PR #1 closed automatically on push (`Closes #1` in the merge commit
+  message) and GitHub shows it merged, pointing at `4d55414`.
+- **Nothing deleted.** The recovered zip the cloud session's own entry
+  mentions is still wherever that session left it; the Downloads folder
+  was only searched, not touched. `rescue-scout-references-into-git` is
+  safe to delete now that it's merged, but wasn't deleted here — Krish's
+  call.
+- **Still to do, not by Claude Code:** this entry and the one below it need
+  copying into the "Elpys Project Context" Google Doc's Change log by a
+  chat or Cowork session — Claude Code can read that doc but can't write
+  it (see "Where the project's history lives" in `_work/README.md`).
+
 ## 2026-10-11 — Scout skill backup updated to the Oct 11 generation
 
 Branch `rescue-scout-references-into-git`, off `main` at `ea35a61`.
