@@ -7,6 +7,39 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-10-14 — elpys-outreach-email skill backed up to git
+
+New skill, `elpys-outreach-email` — before Krish emails an organization
+already listed on Elpys, it re-verifies that listing against the
+organization's own live website in a real browser (ages, adult rule, fees,
+days/times, sign-up steps, contact details), then fills in Krish's
+approved email template, only calling it ready to send once the
+verification passes. Until now the only copy lived in his Claude account.
+
+Backed up the same way `elpys-opportunity-scout` already is:
+`_work/skills/elpys-outreach-email/` now holds `SKILL.md`,
+`references/template.md`, `references/site-notes.md`, and a
+`SHA256SUMS` file:
+
+```
+11889bd6578b188b82a5c50c5921bdd7754608e3268ef17baef34e2633bd2c1c  SKILL.md
+399ece544eafc3b109180292aca50007d32a10871f2efa9ed13dc634038d00c1  references/template.md
+f00b38a32705a5b22bf14210928438a9311c9e19136a410a43840d28744cd0c6  references/site-notes.md
+```
+
+- Every file was written from base64 (decoded with Python's
+  `base64.b64decode`, raw bytes, no CRLF conversion) and its checksum
+  confirmed before anything was committed.
+- `sha256sum -c SHA256SUMS` passes for all three, both before and after
+  merging to `main`.
+- `.vercelignore` still excludes `_work/`, so none of this reaches the
+  live site, the same way the scout skill doesn't.
+- **Updated the same way the scout skill is**, not by editing the
+  installed skill from this repo: copy the new files in, regenerate
+  `SHA256SUMS`, commit. The installed skill in Krish's Claude account
+  stays the source of truth for day-to-day use; this is its version
+  history.
+
 ## 2026-10-11 — Scout skill backup merged to main (the cross-check and merge the cloud session couldn't do)
 
 Follow-up to the entry directly below this one. That cloud session pushed
