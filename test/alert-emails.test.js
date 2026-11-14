@@ -64,7 +64,7 @@ test('a saved submission emails hello.elpys once, with the details and the revie
     assert.match(part, /Park Cleanup/);
     assert.match(part, /Community, Environment/);
     assert.match(part, /One-time, 2099-05-01/);
-    assert.match(part, /https:\/\/elpys\.vercel\.app\/admin-review\?id=4242/);
+    assert.match(part, /https:\/\/www\.elpysvolunteering\.com\/admin-review\?id=4242/);
     assert.doesNotMatch(part, /organizer@example\.org|555-0100/);
   }
   assert.match(m.text, /Photos: 2\n/);
@@ -89,8 +89,8 @@ test('saved feedback emails hello.elpys that feedback arrived, never its text or
   assert.strictEqual(m.subject, 'New Elpys feedback');
   const all = m.html + m.text + m.subject;
   for (const leak of [/Sam/, /Oak St/, /bold/, /xxxxx/, /teen@example\.com/, /earthcorps/]) assert.doesNotMatch(all, leak);
-  assert.match(m.html, /https:\/\/elpys\.vercel\.app\/admin-feedback/);
-  assert.match(m.text, /https:\/\/elpys\.vercel\.app\/admin-feedback/);
+  assert.match(m.html, /https:\/\/www\.elpysvolunteering\.com\/admin-feedback/);
+  assert.match(m.text, /https:\/\/www\.elpysvolunteering\.com\/admin-feedback/);
 });
 
 test('HTML in a listing name is escaped in the email, and the subject stays one plain line', async () => {

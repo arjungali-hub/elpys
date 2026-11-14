@@ -88,7 +88,7 @@ Check each of these against what the pages say today:
 | Contact email and phone | Match their published contact details. |
 | One-time event (`event_date`) | The event is still on, on that date. |
 
-Also open the Elpys listing itself at `elpys.vercel.app/<slug>`, confirm it
+Also open the Elpys listing itself at `www.elpysvolunteering.com/<slug>`, confirm it
 loads, and check the console for errors.
 
 When an automated summary of a page is the basis for a correction, re-read

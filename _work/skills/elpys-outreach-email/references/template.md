@@ -18,8 +18,8 @@ I based the details on your own website, including the age minimum, whether an a
 Three things would help:
 
 1. If anything on that page is wrong or out of date, just reply and I'll fix it within a week.
-2. If a teen or parent ever asks where else they can volunteer, sharing elpys.vercel.app would mean a lot. It's free, has no ads, and every listing is checked before it goes on the site.
-3. If you run other programs that take teen volunteers, you can add them at elpys.vercel.app/submit. I review every submission before it goes live.
+2. If a teen or parent ever asks where else they can volunteer, sharing elpysvolunteering.com would mean a lot. It's free, has no ads, and every listing is checked before it goes on the site.
+3. If you run other programs that take teen volunteers, you can add them at elpysvolunteering.com/submit. I review every submission before it goes live.
 
 Thanks for running a program that welcomes teen volunteers. There aren't many.
 
@@ -33,7 +33,7 @@ Elpys · hello.elpys@gmail.com
   own name as a person would say it, not the listing's full title. "Kelsey
   Creek Farm", "The Sophia Way" (not "The Sophia Way — Donation Center"),
   "Washington Trails Association".
-- **[link to opportunity]** — `elpys.vercel.app/<slug>`, using the row's
+- **[link to opportunity]** — `elpysvolunteering.com/<slug>`, using the row's
   `slug` column. No `https://`, no trailing slash (trailing-slash URLs used
   to 404 on Elpys). Open it once in the browser to confirm it loads.
 - **[One specific sentence…]** — one sentence, true today, about this

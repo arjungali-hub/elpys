@@ -5,6 +5,7 @@
 const crypto = require('crypto');
 const sendEmail = require('../lib/sendEmail');
 const { checkAdminPassword } = require('../lib/adminAuth');
+const { SITE_URL } = require('../lib/siteUrl');
 
 // Matches api/submit.js and api/review.js: tolerates SUPABASE_URL given with or
 // without the /rest/v1/ suffix, which would otherwise 404 every query silently.
@@ -80,7 +81,7 @@ module.exports = async function handler(req, res) {
     if (denied) return res.status(denied.status).json(denied.body);
   }
 
-  const siteUrl = 'https://elpys.vercel.app';
+  const siteUrl = SITE_URL;
   const todayIso = new Date().toISOString().slice(0, 10);
 
   // 1. New published opportunities in the last 7 days
