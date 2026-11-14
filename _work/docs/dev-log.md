@@ -82,6 +82,20 @@ reading the code only; no digest was sent.
 **Expected side effect:** cookies and saved logins belong to one hostname, so
 admins and signed-in users have to log in once more on the new domain.
 
+**Verified on production after merging** (merge commit `6fbb081`, real
+browser on `https://www.elpysvolunteering.com`):
+- `/hopelink` after its script runs: canonical and og:url are
+  `https://www.elpysvolunteering.com/hopelink`, the listing renders, and
+  the console shows no errors. This is the one check the preview couldn't do.
+- `/`: canonical, og:url, og:image and all JSON-LD URLs are on the new base,
+  and 11 listing cards render.
+- `/robots.txt`: the header and `Sitemap: https://www.elpysvolunteering.com/sitemap.xml`.
+- `/sitemap.xml`: all 19 `<loc>` entries are on the new base.
+- `https://elpys.vercel.app/about?probe=redirect-check` lands on
+  `https://www.elpysvolunteering.com/about?probe=redirect-check`. The query
+  string survives the redirect, so unsubscribe and listing links in digests
+  already sent keep working.
+
 ## 2026-10-14 — elpys-outreach-email skill backed up to git
 
 New skill, `elpys-outreach-email` — before Krish emails an organization
