@@ -7,6 +7,81 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-11-14 — Every site address moved to www.elpysvolunteering.com
+
+Krish bought `elpysvolunteering.com` and attached it to the `elpys` Vercel
+project today. The real address is `https://www.elpysvolunteering.com`
+(with www): the bare domain 308s to www, and `elpys.vercel.app` 301s to it
+with the path kept. Every absolute URL the site emits now uses the new base
+directly. Branch `new-front-door-elpysvolunteering-com`, commit `778c738`.
+
+**What moved**
+- **New `lib/siteUrl.js`** exporting `SITE_URL`. `api/sitemap.js`,
+  `api/send-digest.js` (listing links, unsubscribe link, "browse all"),
+  `lib/adminAlert.js` (alert-email links) and `lib/geocode.js` (Nominatim
+  User-Agent, same format) all import it, so the next domain change is one
+  edit plus the static HTML. It lives in `lib/`, so `api/` stays at the
+  Hobby plan's 12 functions.
+- **Static HTML** (no build step, so still hard-coded): every
+  `seo:generated` block's canonical, `og:url`, `og:image` and
+  `twitter:image`; `index.html`'s JSON-LD (`#website` / `#organization`
+  fragments kept); `setListingMeta()` in `opportunities-detail.html`; the
+  feedback form's example placeholder; and the `seo:generated` comment on all
+  17 pages, reworded to name the new base and to say every one must change
+  together.
+- **`privacy.html` / `terms.html`:** the site's name in the body text, as
+  `elpysvolunteering.com` (no www or scheme, since people read it). Address
+  only; no other legal wording touched.
+- **`robots.txt`:** header comment and `Sitemap:` line.
+- **Outreach-email skill repo copy:** `www.elpysvolunteering.com/<slug>`
+  where it tells an agent which page to open, bare
+  `elpysvolunteering.com/...` in the email text. `SHA256SUMS` regenerated
+  (only `SKILL.md` and `template.md` changed). **The installed copy in
+  Krish's Claude account still has the old address** and needs the same
+  edit. Until then, a future "copy the installed skill in" would undo this.
+
+**Not on the original checklist, found and fixed:** `test/alert-emails` and
+`test/review-alerts` asserted the alert links as escaped regexes
+(`/https:\/\/elpys\.vercel\.app\/.../`). The backslashes hide them from a
+plain grep for the domain, so they only showed up as 3 test failures after
+the move. Now they assert the literal new host, rather than importing
+`SITE_URL`, so a revert would fail them. A fixed-string search for the
+escaped form found nothing else in the repo.
+
+**Deliberately left alone**
+- Past entries in this file: history.
+- `_work/README.md` line 18: it records where the dev log *was* publicly
+  readable before October. Swapping the host would make that false.
+- `_work/_archive/`: untracked applied patches and finished prompts. Editing
+  a `.patch` would also break it.
+- `vercel.json`: the CSP is `'self'`, and every redirect in `middleware.js`
+  is built from `url.origin`, so nothing depends on the hostname.
+
+**Verified before merging**
+- Full `test/` suite green, same counts as before the change (`alert-emails`
+  9, `review-alerts` 7, the rest unchanged).
+- Sitemap handler run locally with stubbed data: every `<loc>` on the new
+  base, no double slashes. Geocoder User-Agent captured with a stubbed
+  `fetch`: `Elpys/1.0 (https://www.elpysvolunteering.com; hello.elpys@gmail.com)`.
+- **On the preview** (`elpys-ub4b0dpx8-arjungali-hubs-projects.vercel.app`),
+  fetched through the Vercel connector, which gets past the deployment
+  login that blocked every earlier preview check:
+  - `/sitemap.xml`: all 19 `<loc>` (8 pages plus 11 live listings) on
+    `https://www.elpysvolunteering.com/`.
+  - `/`: canonical, og:url, og:image, twitter:image and all four JSON-LD
+    URLs on the new base.
+  - `/hopelink`: the served template's canonical and og tags on the new
+    base, and `setListingMeta()` building `https://www.elpysvolunteering.com/`
+    plus the slug.
+
+**Couldn't verify on the preview:** the listing canonical *after* the script
+runs. That needs a real browser, which can't get past the preview login.
+Checked on production instead (see below). `send-digest.js` was checked by
+reading the code only; no digest was sent.
+
+**Expected side effect:** cookies and saved logins belong to one hostname, so
+admins and signed-in users have to log in once more on the new domain.
+
 ## 2026-10-14 — elpys-outreach-email skill backed up to git
 
 New skill, `elpys-outreach-email` — before Krish emails an organization
