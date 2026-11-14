@@ -15,7 +15,7 @@ const checkpoint = require('../lib/checkpoint');
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const SITE = 'https://elpys.vercel.app';
+const { SITE_URL: SITE } = require('../lib/siteUrl');
 
 // Everything that exists whether or not the database answers. `changefreq` and
 // `priority` are hints only — Google ignores both — but they cost nothing and

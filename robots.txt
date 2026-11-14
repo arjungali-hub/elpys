@@ -1,4 +1,4 @@
-# Elpys — https://elpys.vercel.app
+# Elpys — https://www.elpysvolunteering.com
 #
 # The site is a public directory and every page listed in the sitemap is meant
 # to be found. The disallow rules below are the admin surface and the account
@@ -23,4 +23,4 @@ Disallow: /api/
 # The analytics reverse proxy (see vercel.json). Not content.
 Disallow: /lantern/
 
-Sitemap: https://elpys.vercel.app/sitemap.xml
+Sitemap: https://www.elpysvolunteering.com/sitemap.xml

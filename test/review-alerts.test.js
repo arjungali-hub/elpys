@@ -72,7 +72,7 @@ test('a new flag is emailed once to hello.elpys, then not again while it waits',
   assert.strictEqual(sent[0].to, 'hello.elpys@gmail.com');
   assert.strictEqual(sent[0].subject, 'Elpys: 1 new item in Data review');
   assert.match(sent[0].text, /Bellevue Farmers Market \(when\): Hours changed/);
-  assert.match(sent[0].text, /https:\/\/elpys\.vercel\.app\/review/);
+  assert.match(sent[0].text, /https:\/\/www\.elpysvolunteering\.com\/review/);
   assert.match(sent[0].html, /&lt;10am–2pm&gt;/);
   assert.doesNotMatch(sent[0].html, /<10am/);
 
