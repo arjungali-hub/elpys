@@ -7,6 +7,12 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-11-24 — CLAUDE.md: merge to main after every update
+
+Krish: "always merge after updates". Added a Merging section to CLAUDE.md so
+every session merges to main and pushes when a change is done, without waiting
+for "merge". The parked branches stay excluded.
+
 ## 2026-11-24 — Approval page: Mark verified keeps your checklist; Approve returns to the queue
 
 Krish: pressing Mark verified on /admin-review reloaded the listing, which wiped
