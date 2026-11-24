@@ -7,6 +7,17 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-11-24 — Homepage: removed the "Bellevue, WA" label above the headline
+
+Krish asked to drop the small grey "BELLEVUE, WA" label at the top of the
+homepage hero. Removed the `<p class="hero-label">` from `index.html` and its
+now-unused `.hero-label` rule from `styles.css`; nothing else used the
+class. Page titles, meta descriptions and the privacy policy still mention
+Bellevue, WA, which is unchanged.
+
+**Checked:** Chromium, locally, at 1280 and 375. The headline is now the
+first line of the hero, with no sideways scroll and no page errors.
+
 ## 2026-11-14 — Every site address moved to www.elpysvolunteering.com
 
 Krish bought `elpysvolunteering.com` and attached it to the `elpys` Vercel
