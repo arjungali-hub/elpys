@@ -7,6 +7,38 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-11-24 — "Bellevue, WA" removed from every visitor-facing page
+
+Krish asked to remove Bellevue, WA everywhere on the site (after the hero label
+went). Changed:
+
+- **Share/search metadata, all pages:** og:image:alt and twitter:image:alt now
+  read "Elpys — verified volunteer opportunities for teens". Homepage
+  description/og/twitter title and description, and the about, map, 404 and
+  listing-detail descriptions (plus the detail page's fallback description in
+  JS) drop "in Bellevue, WA" / "in the Bellevue area".
+- **Homepage JSON-LD:** WebSite/Organization descriptions drop the place; the
+  Organization's `areaServed` (City: Bellevue) block is removed. JSON still
+  parses.
+- **`logos/elpys-og.png`:** the orange "BELLEVUE, WA" line at the bottom of the
+  share card is painted out with the card's flat background (250,246,238); the
+  remaining content sits almost exactly centred (top 123px, bottom 128px).
+  There is no source file for this PNG; it was edited in place.
+- **About:** intro, the "who's behind it" line ("a student who…"), and the
+  criteria bullet, now "Close by — roughly 20 minutes away".
+- **Terms:** criteria now end "close by (roughly 20 minutes away)". Last updated
+  November 24, 2026.
+- **Privacy:** intro drops the place; "built for people in the Bellevue,
+  Washington area" is now "built for people in the United States" (still not
+  offered in the EU/UK). Last updated November 24, 2026.
+
+Deliberately left: /submit form placeholders that use Bellevue Farmers Market
+as a worked example, the /map route box placeholder ("Bellevue High School or
+98004"), code comments about the Bellevue calendar day, and the map's default
+centre coordinates. None of those claims the site is for Bellevue; all are
+easy to change if wanted. Tests: 40/41 pass; send-email.test.js fails
+identically on main (local module issue, unrelated).
+
 ## 2026-11-24 — Homepage: removed the "Bellevue, WA" label above the headline
 
 Krish asked to drop the small grey "BELLEVUE, WA" label at the top of the

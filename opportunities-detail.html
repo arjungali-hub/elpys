@@ -8,24 +8,24 @@
        to https://www.elpysvolunteering.com; if the domain ever changes again,
        every one of them must be updated together (grep for
        "seo:generated"). Server-side URLs come from lib/siteUrl.js. -->
-  <meta name="description" content="Full details for a verified teen volunteer opportunity in the Bellevue area: what you'd do, when, where, and the exact steps to sign up.">
+  <meta name="description" content="Full details for a verified teen volunteer opportunity: what you'd do, when, where, and the exact steps to sign up.">
   <link rel="canonical" href="https://www.elpysvolunteering.com/opportunities-detail">
   <meta name="theme-color" content="#111827">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Elpys">
   <meta property="og:title" content="Volunteer opportunity — Elpys">
-  <meta property="og:description" content="Full details for a verified teen volunteer opportunity in the Bellevue area: what you'd do, when, where, and the exact steps to sign up.">
+  <meta property="og:description" content="Full details for a verified teen volunteer opportunity: what you'd do, when, where, and the exact steps to sign up.">
   <meta property="og:url" content="https://www.elpysvolunteering.com/opportunities-detail">
   <meta property="og:image" content="https://www.elpysvolunteering.com/logos/elpys-og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Elpys — verified volunteer opportunities for teens in Bellevue, WA">
+  <meta property="og:image:alt" content="Elpys — verified volunteer opportunities for teens">
   <meta property="og:locale" content="en_US">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Volunteer opportunity — Elpys">
-  <meta name="twitter:description" content="Full details for a verified teen volunteer opportunity in the Bellevue area: what you'd do, when, where, and the exact steps to sign up.">
+  <meta name="twitter:description" content="Full details for a verified teen volunteer opportunity: what you'd do, when, where, and the exact steps to sign up.">
   <meta name="twitter:image" content="https://www.elpysvolunteering.com/logos/elpys-og.png">
-  <meta name="twitter:image:alt" content="Elpys — verified volunteer opportunities for teens in Bellevue, WA">
+  <meta name="twitter:image:alt" content="Elpys — verified volunteer opportunities for teens">
   <link rel="icon" type="image/svg+xml" href="logos/elpys-favicon.svg">
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -138,7 +138,7 @@
     // characters a search result actually shows, on a word boundary.
     let desc = String(opp.desc || opp._detailDesc || '').replace(/\s+/g, ' ').trim();
     if (desc.length > 160) desc = desc.slice(0, 157).replace(/\s+\S*$/, '') + '…';
-    if (!desc) desc = 'A verified volunteer opportunity for teens in the Bellevue area.';
+    if (!desc) desc = 'A verified volunteer opportunity for teens.';
 
     const title = opp.name + ' — Elpys';
 
