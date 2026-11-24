@@ -7,6 +7,30 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-11-24 — Approval page: Mark verified keeps your checklist; Approve returns to the queue
+
+Krish: pressing Mark verified on /admin-review reloaded the listing, which wiped
+the source URLs and checkboxes in Organization verification (including the
+exclusions box at the bottom), so they had to be filled in again before
+Approve. And Approve landed on Published listings instead of the queue.
+
+- **`admin-review.html` handleVerify:** no longer calls loadRow() after a
+  successful verify. The checklist is only persisted on Approve/Save, so the
+  reload rebuilt the card from the database without it. Now it sets
+  `verified_at` (from the response) on the card's own row object and fires an
+  `input` event on the legal-name field, which runs the checklist's existing
+  sync: gate panel, "Verified" date and the Approve button update in place.
+  Slug, lat/lng and the map pin also survive now, since nothing reloads.
+  Falls back to refreshGateStatus() if a card has no verification form.
+  Works for both pending and published cards (same closure row).
+- **handleApprove:** "✓ Approved. Taking you back to the approval queue…" and
+  goes to `/admin-approve` (was `/admin-edit`).
+
+Checked in Chromium against a mocked /api/admin: ticked the gov check, typed a
+source URL, ticked exclusions, Mark verified → all three kept, gate shows
+"Human-verified", Approve enabled; Approve posted update then approve and
+landed on /admin-approve.
+
 ## 2026-11-24 — "Bellevue, WA" removed from every visitor-facing page
 
 Krish asked to remove Bellevue, WA everywhere on the site (after the hero label

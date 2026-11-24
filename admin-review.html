@@ -621,8 +621,8 @@
       }
       destroyApproveMap(id);
       ElpysForm.clear('admin-review');
-      setCardMsg(id, '✓ Approved. Taking you back to Published…', '#111827');
-      setTimeout(function () { location.href = '/admin-edit'; }, 800);
+      setCardMsg(id, '✓ Approved. Taking you back to the approval queue…', '#111827');
+      setTimeout(function () { location.href = '/admin-approve'; }, 800);
     } catch (err) { setCardMsg(id, 'Error: ' + err.message, '#111827'); setCardBtns(id, false); }
   }
 
@@ -1177,7 +1177,7 @@
     const block = card.querySelector('#gate-' + row.id);
     if (!block) return;
     const btn = block.querySelector('.btn-verify');
-    if (btn) btn.addEventListener('click', function () { handleVerify(row.id); });
+    if (btn) btn.addEventListener('click', function () { handleVerify(row, card); });
   }
 
   // Called from the checklist form's own change handler (wireVerification's
@@ -1197,7 +1197,8 @@
     return body.verifiable;
   }
 
-  async function handleVerify(id) {
+  async function handleVerify(row, card) {
+    const id = row.id;
     const btn = document.querySelector('#gate-' + id + ' .btn-verify');
     const msgEl = document.getElementById('gatemsg-' + id);
     if (btn) btn.disabled = true;
@@ -1208,11 +1209,19 @@
         const e = await res.json().catch(() => ({}));
         throw new Error(e.message || e.error || 'HTTP ' + res.status);
       }
+      const body = await res.json().catch(() => ({}));
       if (msgEl) { msgEl.textContent = '✓ Verified.'; msgEl.style.color = '#111827'; }
-      // Reloading the row brings the gate block, the checklist, and the
-      // Approve button back in sync with the source of truth, rather than
-      // patching several bits of DOM by hand.
-      setTimeout(loadRow, 700);
+      // Update this card in place rather than reloading the row: the
+      // checklist ticks, source URLs and the exclusions box above are only
+      // saved on Approve (or Save), so a reload rebuilt the card from the
+      // database and wiped them, and they had to be filled in again.
+      // Setting verified_at on the card's own row object and re-running the
+      // checklist's sync brings the gate panel and the Approve button up to
+      // date exactly as typing in the form does.
+      row.verified_at = body.verified_at || new Date().toISOString();
+      const legal = card.querySelector('#v-legalname-' + id);
+      if (legal) legal.dispatchEvent(new Event('input', { bubbles: true }));
+      else refreshGateStatus(card, row);
     } catch (err) {
       if (msgEl) { msgEl.textContent = 'Error: ' + err.message; msgEl.style.color = '#111827'; }
       if (btn) btn.disabled = false;
