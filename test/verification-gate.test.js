@@ -5,7 +5,7 @@
 // SQL; that one is exercised with real SQL against the live database (see
 // _work/docs/dev-log.md for the transcript — a plain node script can't run
 // SQL against Supabase directly).
-const { gateReasons, irsSourceIsAuthoritative, hasPassingCheck, VERIFY_ACTION_REASONS } = require('../lib/verificationGate');
+const { gateReasons, humanIrsCheck, irsSourceIsAuthoritative, hasPassingCheck, VERIFY_ACTION_REASONS } = require('../lib/verificationGate');
 
 let fails = 0;
 const check = (label, cond, detail) => {
@@ -154,6 +154,27 @@ check('stale_verification excluded', VERIFY_ACTION_REASONS.indexOf('stale_verifi
 check('exclusions_not_confirmed excluded (checklist is separate from verify)', VERIFY_ACTION_REASONS.indexOf('exclusions_not_confirmed') === -1);
 check('no_org_tier included', VERIFY_ACTION_REASONS.indexOf('no_org_tier') !== -1);
 check('invalid_irs_check included', VERIFY_ACTION_REASONS.indexOf('invalid_irs_check') !== -1);
+
+console.log('\n=== humanIrsCheck: an admin’s own irs.gov look supplies condition 8 ===');
+const ticked = src => [{ check: 'irs_not_revoked', result: 'pass', source: src }];
+const IRS_URL = 'https://apps.irs.gov/app/eos/details/';
+const h1 = humanIrsCheck(ticked(IRS_URL), {}, { now: NOW });
+check('ticked + irs.gov source, nothing on file -> record', h1 && h1.result === 'not_listed' && h1.source === IRS_URL && h1.checked_at === '2026-09-01', h1);
+check('that record passes condition 8',
+  reasonsOf(baseCharity({ verification: { checks: baseCharity().verification.checks, irs_revocation_check: h1 } }), { now: NOW })
+    .indexOf('invalid_irs_check') === -1);
+check('not ticked -> nothing', humanIrsCheck([{ check: 'irs_not_revoked', result: 'fail', source: IRS_URL }], {}, { now: NOW }) === null);
+check('ProPublica source -> nothing', humanIrsCheck(ticked('https://projects.propublica.org/nonprofits/organizations/911531234'), {}, { now: NOW }) === null);
+check('lookalike host -> nothing', humanIrsCheck(ticked('https://irs.gov.evil.com/x'), {}, { now: NOW }) === null);
+check('blank source -> nothing', humanIrsCheck(ticked(''), {}, { now: NOW }) === null);
+check('never overrides a fresh irs.gov "listed_revoked"',
+  humanIrsCheck(ticked(IRS_URL), { irs_revocation_check: { checked_at: '2026-08-30', source: 'https://apps.irs.gov/app/eos/', result: 'listed_revoked' } }, { now: NOW }) === null);
+check('never overrides a fresh irs.gov "listed_reinstated"',
+  humanIrsCheck(ticked(IRS_URL), { irs_revocation_check: { checked_at: '2026-08-30', source: 'https://apps.irs.gov/app/eos/', result: 'listed_reinstated' } }, { now: NOW }) === null);
+check('replaces a stale record',
+  !!humanIrsCheck(ticked(IRS_URL), { irs_revocation_check: { checked_at: '2025-01-01', source: 'https://apps.irs.gov/app/eos/', result: 'not_listed' } }, { now: NOW }));
+check('replaces a non-IRS-source record (which condition 8 rejects anyway)',
+  !!humanIrsCheck(ticked(IRS_URL), { irs_revocation_check: { checked_at: '2026-08-30', source: 'https://projects.propublica.org/x', result: 'not_listed' } }, { now: NOW }));
 
 console.log('\nFAILURES: ' + fails);
 process.exit(fails ? 1 : 0);
