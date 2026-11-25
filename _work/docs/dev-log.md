@@ -7,6 +7,35 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-11-25 — Review page shows every detail without opening Edit
+
+Krish: opening a submission to approve showed only some details; location,
+contact emails etc. needed the Edit form. Website, contact email and contact
+phone weren't on /admin-review at all, not even in Edit, though the API
+returns them (`select=*`) and `update` accepts them.
+
+- **`admin-review.html` listingViewHtml(row):** a read-only block shared by
+  pending and published cards: card description, full description, photos
+  (existing reviewPhotosHtml), a Details table (address, where-on-card, type,
+  event date when one-time, when, weekly schedule summary, category, age +
+  minimum, section, sign-up link, sign-up button label, website, contact email
+  (mailto), contact phone (tel), card note, submitted time) and the sign-up
+  steps. Missing values read "not given". Published cards previously showed
+  only the one-line summary; they now get the same block.
+- The pending card's old inline description/steps/note/sign-up-link bits are
+  replaced by it (admin note box kept).
+- **Edit form:** Website, Contact email, Contact phone fields added; saved as
+  clearable (blank clears).
+- **After Save:** the card keeps its row in `_cardRows`, merges the saved
+  payload, and redraws the whole view block, replacing the photos-only
+  refresh.
+- Table stacks label-over-value under 540px.
+
+Checked in Chromium with a mocked /api/admin, pending at 1280 and 375 and
+published at 1280. All fields visible with Edit closed, no horizontal
+overflow, no page errors. Editing contact email and blanking website then
+Save sent `contact_email: new@…, website: null` and the table updated.
+
 ## 2026-11-24 — CLAUDE.md: merge to main after every update
 
 Krish: "always merge after updates". Added a Merging section to CLAUDE.md so
