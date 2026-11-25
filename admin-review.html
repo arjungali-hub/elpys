@@ -61,6 +61,19 @@
     .sub-steps { font-size: 0.875rem; color: #374151; padding-left: 1.1rem; margin-bottom: 0.75rem; }
     .sub-steps li { margin-bottom: 0.2rem; }
     .sub-note { font-size: 0.875rem; color: var(--text-muted); font-style: italic; margin-bottom: 0.75rem; }
+    /* Read-only "Details" table on the review page: every field the listing
+       has, so nothing needs the Edit form just to be seen. */
+    .sub-section-title { font-size: 0.8125rem; font-weight: 600; margin: 0.25rem 0 0.3rem; }
+    .sub-details { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin-bottom: 1rem; }
+    .sub-details th { text-align: left; font-weight: 600; color: var(--text-muted); padding: 0.3rem 1rem 0.3rem 0;
+                      vertical-align: top; white-space: nowrap; width: 1%; }
+    .sub-details td { padding: 0.3rem 0; color: #374151; overflow-wrap: anywhere; }
+    .sub-details tr + tr th, .sub-details tr + tr td { border-top: 1px solid var(--border); }
+    .sub-details .none { color: var(--text-muted); font-style: italic; }
+    @media (max-width: 540px) {
+      .sub-details th, .sub-details td { display: block; width: auto; border-top: none !important; padding: 0; }
+      .sub-details th { padding-top: 0.5rem; }
+    }
     .sub-links { font-size: 0.875rem; margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; align-items: center; }
     .sub-links a { color: var(--text-main); text-decoration: underline; }
 
@@ -488,7 +501,68 @@
            '</div>';
   }
 
+  // Everything about the listing, read-only: descriptions, photos, a table of
+  // every other field (location, contacts, schedule, links…), and the sign-up
+  // steps. Shared by pending and published cards, and re-rendered from the
+  // card's own row after a save so it never goes stale.
+  const _cardRows = {};
+
+  function scheduleSummary(schedule) {
+    if (!schedule || typeof schedule !== 'object' || Array.isArray(schedule)) return '';
+    return SCHED_DAYS.map(function (d, i) {
+      const on = Array.isArray(schedule[d]) ? schedule[d] : [];
+      return on.length ? SCHED_ABBR[i] + ': ' + on.join(', ') : '';
+    }).filter(Boolean).join(' · ');
+  }
+
+  function detailsTableHtml(row) {
+    const none = '<span class="none">not given</span>';
+    const txt  = v => (v == null || String(v).trim() === '') ? none : esc(v);
+    const link = (v, href) => (v == null || String(v).trim() === '') ? none
+      : '<a href="' + esc(href || v) + '" target="_blank" rel="noopener">' + esc(v) + ' ↗</a>';
+    const websiteHref = row.website && !/^https?:\/\//i.test(row.website) ? 'https://' + row.website : row.website;
+    const rows = [
+      ['Address',          txt(row.address)],
+      ['Where (on card)',  txt(row['where'])],
+      ['Type',             row.opportunity_type === 'one_time' ? 'One-time' : 'Recurring'],
+    ];
+    if (row.opportunity_type === 'one_time') rows.push(['Event date', txt(row.event_date)]);
+    rows.push(
+      ['When',             txt(row['when'])],
+      ['Weekly schedule',  txt(scheduleSummary(row.schedule))],
+      ['Category',         txt(row.category)],
+      ['Age',              txt(row.age_display) + (row.age_min != null ? ' (minimum ' + esc(row.age_min) + ')' : '')],
+      ['Section',          row.section === 'contact' ? 'Contact to sign up' : row.section === 'online' ? 'Sign up online' : txt(row.section)],
+      ['Sign-up link',     link(row.signup_link)],
+      ['Sign-up button',   txt(row.signup_label)],
+      ['Website',          link(row.website, websiteHref)],
+      ['Contact email',    row.contact_email ? link(row.contact_email, 'mailto:' + row.contact_email) : none],
+      ['Contact phone',    row.contact_phone ? link(row.contact_phone, 'tel:' + String(row.contact_phone).replace(/[^\d+]/g, '')) : none],
+      ['Card note',        txt(row.card_note)],
+      ['Submitted',        row.created_at ? esc(new Date(row.created_at).toLocaleString()) : none]
+    );
+    return '<table class="sub-details">' +
+      rows.map(r => '<tr><th scope="row">' + esc(r[0]) + '</th><td>' + r[1] + '</td></tr>').join('') +
+    '</table>';
+  }
+
+  function listingViewHtml(row) {
+    const steps = stepsToArray(row.signup_steps);
+    return '<div class="sub-view-slot">' +
+      '<p class="sub-section-title">Card description</p>' +
+      '<p class="sub-desc">' + (row.description ? esc(row.description) : '<em>none</em>') + '</p>' +
+      (row.long_description ? '<p class="sub-section-title">Full description</p><p class="sub-desc" style="color:var(--text-muted);">' + esc(row.long_description) + '</p>' : '') +
+      reviewPhotosHtml(row) +
+      '<p class="sub-section-title">Details</p>' +
+      detailsTableHtml(row) +
+      '<p class="sub-section-title">Sign-up steps</p>' +
+      (steps.length ? '<ol class="sub-steps">' + steps.map(s => '<li>' + esc(s) + '</li>').join('') + '</ol>'
+                    : '<p class="sub-note">No steps given.</p>') +
+    '</div>';
+  }
+
   function buildPendingCard(row) {
+    _cardRows[row.id] = Object.assign({}, row);
     const card = document.createElement('div');
     card.className = 'submission-card';
     card.id = 'card-' + row.id;
@@ -497,23 +571,12 @@
     // couldn't place the address and the admin has to set them.
     const hasCoords = row.lat != null && row.lng != null &&
                       isFinite(parseFloat(row.lat)) && isFinite(parseFloat(row.lng));
-    const steps = stepsToArray(row.signup_steps);
-    const stepsHtml = steps.length ? '<ol class="sub-steps">' + steps.map(s => '<li>' + esc(s) + '</li>').join('') + '</ol>' : '';
-    const noteHtml      = row.card_note   ? '<p class="sub-note">' + esc(row.card_note) + '</p>' : '';
     const adminNoteHtml = row.admin_notes ? '<p style="font-size:0.8125rem;background:var(--bg-secondary);border:1px solid var(--border);border-left:3px solid var(--text-main);border-radius:5px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;"><strong>Admin note:</strong> ' + esc(row.admin_notes) + '</p>' : '';
 
     card.innerHTML =
       '<div class="sub-name">' + esc(row.name) + '</div>' +
       '<div class="sub-meta">' + metaHtml(row, 'pending') + '</div>' +
-      '<p class="sub-desc">' + esc(row.description || '') + '</p>' +
-      (row.long_description ? '<p style="font-size:0.8125rem;font-weight:600;margin:0.5rem 0 0.2rem;">Full description</p><p class="sub-desc" style="color:var(--text-muted);">' + esc(row.long_description) + '</p>' : '') +
-      reviewPhotosHtml(row) +
-      '<p style="font-size:0.8125rem;font-weight:600;margin-bottom:0.3rem;">Sign-up steps</p>' +
-      stepsHtml + noteHtml + adminNoteHtml +
-      '<div class="sub-links">' +
-        '<a href="' + esc(row.signup_link || '#') + '" target="_blank" rel="noopener">Sign-up link ↗</a>' +
-        '<span style="color:#999;font-size:0.8125rem;">Submitted: ' + (row.created_at ? new Date(row.created_at).toLocaleDateString() : '—') + '</span>' +
-      '</div>' +
+      listingViewHtml(row) + adminNoteHtml +
       '<div class="approve-fields">' +
         '<p>Confirm before approving</p>' +
         '<div class="approve-row">' +
@@ -667,6 +730,7 @@
   // ── Published ──────────────────────────────────────────────────────────────
 
   function buildPublishedCard(row) {
+    _cardRows[row.id] = Object.assign({}, row);
     const card = document.createElement('div');
     card.className = 'submission-card';
     card.id = 'card-' + row.id;
@@ -674,6 +738,7 @@
     card.innerHTML =
       '<div class="sub-name">' + esc(row.name) + '</div>' +
       '<div class="sub-meta">' + metaHtml(row, 'published') + '</div>' +
+      listingViewHtml(row) +
 
       gateStatusHtml(row) +
 
@@ -802,6 +867,9 @@
           : '') +
         ef('Sign-up link',  'text',   'e-link-'    + row.id, esc(row.signup_link || '')) +
         ef('Sign-up label', 'text',   'e-label-'   + row.id, esc(row.signup_label || '')) +
+        ef('Website',       'text',   'e-website-' + row.id, esc(row.website || '')) +
+        ef('Contact email', 'email',  'e-cemail-'  + row.id, esc(row.contact_email || '')) +
+        ef('Contact phone', 'text',   'e-cphone-'  + row.id, esc(row.contact_phone || '')) +
         efSelect('Section', 'e-section-' + row.id, row.section || 'online') +
         efCategories(row.id, row.category) +
         efSchedule(row.id, row.schedule) +
@@ -1476,6 +1544,9 @@
     set('address',          text('e-addr-' + id));
     set('signup_link',      text('e-link-' + id));
     clearable('signup_label', 'e-label-' + id);
+    clearable('website',       'e-website-' + id);
+    clearable('contact_email', 'e-cemail-'  + id);
+    clearable('contact_phone', 'e-cphone-'  + id);
     set('section',          g('e-section-' + id));
     clearable('card_note', 'e-note-' + id);
     clearable('admin_notes', 'e-adminnotes-' + id);
@@ -1599,17 +1670,13 @@
       // category, age, when, where or slug stayed stale until a reload.
       const metaEl = card.querySelector('.sub-meta');
       if (metaEl) metaEl.innerHTML = metaHtml(payload, CURRENT_KIND);
-      // Same for the read-only photos (pending cards only). The payload always
-      // carries both photo fields; the credit only when its field is on the card.
-      const photosEl = card.querySelector('.sub-photos-slot');
-      if (photosEl && 'cover_image_url' in payload) {
-        const creditEl = document.getElementById('e-photocredit-' + id);
-        photosEl.outerHTML = reviewPhotosHtml({
-          cover_image_url:    payload.cover_image_url,
-          cover_thumb_url:    payload.cover_thumb_url,
-          gallery_image_urls: payload.gallery_image_urls,
-          photo_credit:       'photo_credit' in payload ? payload.photo_credit : (creditEl ? creditEl.value.trim() : null),
-        });
+      // Same for the read-only view (descriptions, photos, details table,
+      // steps): merge what was saved into the card's row and redraw it.
+      const viewEl = card.querySelector('.sub-view-slot');
+      if (viewEl && _cardRows[id]) {
+        const merged = Object.assign(_cardRows[id], payload);
+        delete merged.action; delete merged.regeocode;
+        viewEl.outerHTML = listingViewHtml(merged);
       }
       // (the 3s self-clear is set by setCardMsg above)
     } catch (err) {
