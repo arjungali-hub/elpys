@@ -7,6 +7,26 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-11-25 — Gate panel: dropped the "Verification not stale" line
+
+Krish: remove "Verification not stale (under a year old)" from the review
+page; the weekly data check keeps listings current and one approval is enough.
+
+- **`admin-review.html`:** removed that entry from GATE_CONDITIONS. The client
+  mirror now reports a verified_at over a year old as `not_verified` ("Verified
+  over a year ago — press Mark verified again."), so it shows on the
+  Human-verified line instead of its own.
+- **Not changed:** lib/verificationGate.js and the SQL trigger still refuse to
+  *publish* a row whose verified_at is over 365 days old. That only bites a
+  pending row verified long ago (published rows are never re-gated), and the
+  line above tells the admin what to do. Dropping it server-side would need a
+  migration; not asked for.
+
+Chromium, mocked API: unverified shows "Not human-verified yet.", fresh shows
+the green Human-verified line, a 2024 date shows the re-verify message; no
+stale line in any case. The charity flow test from the previous entry still
+passes.
+
 ## 2026-11-25 — Charities can be marked verified from the admin's own irs.gov check
 
 Krish filled in the whole charity checklist (Mountains to Sound Greenway Trust,

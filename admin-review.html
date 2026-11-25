@@ -1108,7 +1108,6 @@
     { reason: 'no_org_tier',        label: 'Organization tier recorded' },
     { reason: 'no_org_domain',      label: 'Canonical organization domain recorded' },
     { reason: 'not_verified',       label: 'Human-verified (Mark verified clicked)' },
-    { reason: 'stale_verification', label: 'Verification not stale (under a year old)' },
     { reason: 'no_ein',             label: 'EIN recorded', tierScope: 'charity' },
     { reason: 'no_wa_registration', label: 'WA charity registration, or a documented exemption', tierScope: 'charity' },
     { reason: 'invalid_irs_check',  label: 'IRS auto-revocation check — not listed, from irs.gov, within a year', tierScope: 'charity' },
@@ -1161,7 +1160,11 @@
     } else {
       const age = gateDaysAgo(row.verified_at, now);
       if (age == null || age > GATE_MAX_AGE_DAYS) {
-        reasons.push({ reason: 'stale_verification', message: 'Verification is stale (' + (age == null ? 'unknown age' : Math.floor(age) + ' days old') + ').' });
+        // No separate "not stale" line in the panel (Krish, 2026-11-25: one
+        // approval is enough; the weekly data check keeps listings current).
+        // The database still refuses to publish a row verified over a year
+        // ago, so that rare case shows on the Human-verified line instead.
+        reasons.push({ reason: 'not_verified', message: 'Verified over a year ago — press Mark verified again.' });
       }
     }
 
