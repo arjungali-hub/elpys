@@ -623,6 +623,7 @@
         org_domain: verify.payload.org_domain,
         ein: verify.payload.ein,
         wa_charity_number: verify.payload.wa_charity_number,
+        checks: verify.payload.verification.checks,
       };
       // Keeps the visible "Database publish gate" panel showing what would
       // actually happen if Approve were clicked right now, not the row as it
@@ -764,6 +765,7 @@
         org_domain: verify.payload.org_domain,
         ein: verify.payload.ein,
         wa_charity_number: verify.payload.wa_charity_number,
+        checks: verify.payload.verification.checks,
       });
     });
     wireGateStatus(card, row);
@@ -1125,6 +1127,16 @@
     } catch (_) { return false; }
   }
 
+  function clientHumanIrsCheck(checks, stored, now) {
+    const c = Array.isArray(checks) && checks.find(x => x && x.check === 'irs_not_revoked');
+    if (!c || c.result !== 'pass' || !gateIrsSourceOk(c.source)) return null;
+    if (stored && typeof stored === 'object') {
+      const age = gateDaysAgo(stored.checked_at, now);
+      if (age != null && age <= GATE_MAX_AGE_DAYS && gateIrsSourceOk(stored.source)) return null;
+    }
+    return { checked_at: now.toISOString().slice(0, 10), source: c.source, result: 'not_listed', checked_by: 'admin' };
+  }
+
   // fields overrides org_tier/org_domain/ein/wa_charity_number with live form
   // values when called from inside the verification panel (those are edited
   // there); verified_at and verification.irs_revocation_check/wa_charity
@@ -1161,9 +1173,15 @@
         reasons.push({ reason: 'no_wa_registration', message: 'No Washington charity registration or documented exemption.' });
       }
 
-      const irs = verification.irs_revocation_check;
+      // Same rule as humanIrsCheck() in lib/verificationGate.js (the server
+      // copy is what counts): a ticked "not automatically revoked" box with
+      // an irs.gov source fills in condition 8, unless a fresh irs.gov record
+      // is already on file, which it never overrides.
+      const irs = clientHumanIrsCheck(fields.checks, verification.irs_revocation_check, now) || verification.irs_revocation_check;
       if (!irs || typeof irs !== 'object') {
-        reasons.push({ reason: 'invalid_irs_check', message: 'No IRS auto-revocation check recorded.' });
+        reasons.push({ reason: 'invalid_irs_check', message: tier === 'charity'
+          ? 'No IRS auto-revocation check recorded. Tick "not automatically revoked" above with the irs.gov page you checked.'
+          : 'No IRS auto-revocation check recorded.' });
       } else {
         const ircAge = gateDaysAgo(irs.checked_at, now);
         if (ircAge == null) reasons.push({ reason: 'invalid_irs_check', message: 'IRS auto-revocation check has no valid checked_at date.' });
@@ -1270,9 +1288,29 @@
     const btn = document.querySelector('#gate-' + id + ' .btn-verify');
     const msgEl = document.getElementById('gatemsg-' + id);
     if (btn) btn.disabled = true;
-    if (msgEl) { msgEl.textContent = 'Marking verified…'; msgEl.style.color = '#6B7280'; }
+    if (msgEl) { msgEl.textContent = 'Saving organization details…'; msgEl.style.color = '#6B7280'; }
     try {
-      const res = await postAction({ action: 'verify', id });
+      // verify reads tier/domain/EIN/WA# from the database, so whatever was
+      // just typed into the verification panel is saved first (as Approve
+      // does), and the checklist goes along with it to be saved too.
+      const v = readVerification(id, card);
+      if (card.querySelector('#v-tier-gov-' + id)) {
+        const upd = await postAction({
+          action: 'update', id,
+          org_tier: v.payload.org_tier,
+          org_legal_name: v.payload.org_legal_name,
+          org_domain: v.payload.org_domain,
+          ein: v.payload.ein,
+          wa_charity_number: v.payload.wa_charity_number,
+        });
+        if (!upd.ok) {
+          const e = await upd.json().catch(() => ({}));
+          throw new Error(e.message || e.error || 'HTTP ' + upd.status);
+        }
+      }
+      if (msgEl) msgEl.textContent = 'Marking verified…';
+      const res = await postAction({ action: 'verify', id,
+        verification: v.payload.verification ? { checks: v.payload.verification.checks } : undefined });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error(e.message || e.error || 'HTTP ' + res.status);
@@ -1287,6 +1325,7 @@
       // checklist's sync brings the gate panel and the Approve button up to
       // date exactly as typing in the form does.
       row.verified_at = body.verified_at || new Date().toISOString();
+      if (body.verification) row.verification = body.verification;
       const legal = card.querySelector('#v-legalname-' + id);
       if (legal) legal.dispatchEvent(new Event('input', { bubbles: true }));
       else refreshGateStatus(card, row);

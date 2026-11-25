@@ -7,6 +7,48 @@ lives in the Claude Project itself, not this repo, and is the narrative canonica
 doc) — this file is the raw log a Cowork session pulls from when refreshing that
 doc, not a replacement for it.
 
+## 2026-11-25 — Charities can be marked verified from the admin's own irs.gov check
+
+Krish filled in the whole charity checklist (Mountains to Sound Greenway Trust,
+irs.gov sources) and got "Verification complete", but Mark verified stayed
+greyed out: the publish gate still said "No IRS auto-revocation check
+recorded." Condition 8 needs `verification.irs_revocation_check`, and the only
+thing that ever wrote it was the automated research task. The checklist's
+"Exempt status has not been automatically revoked" box was saved only into
+`verification.checks` (and only at approve), never into that record. So any
+charity the task hadn't researched, including every /submit submission, could
+never be verified.
+
+- **`lib/verificationGate.js` humanIrsCheck(checks, stored):** a ticked
+  `irs_not_revoked` with an **irs.gov** source becomes
+  `{ checked_at: today, source, result: 'not_listed', checked_by: 'admin' }`.
+  The irs.gov-only rule (the tBUG lesson) is unchanged: ProPublica/other
+  sources produce nothing. It never replaces a fresh irs.gov record, whatever
+  its result (a machine "listed_revoked"/"listed_reinstated" can't be ticked
+  away); it only fills a missing, undated, stale or non-IRS-source one.
+- **`api/admin.js` verify:** accepts `verification.checks`, merges them into the
+  stored verification (same mergeVerification as approve, so research keys are
+  kept), adds humanIrsCheck for charities, gates on that, and saves
+  `verification` with `verified_at`. Returns the saved verification. No checks
+  sent behaves as before.
+- **`admin-review.html`:** the gate panel's client mirror applies the same rule
+  from the live checklist (so the IRS line goes green and Mark verified
+  enables as you fill it in); the IRS message for charities now says to tick
+  the box with the irs.gov page. handleVerify first saves tier/legal
+  name/domain/EIN/WA# via `update` (verify reads those from the database, and
+  a /submit row has none), then sends the checklist with verify.
+- The DB trigger (SQL copy of the gate) is unchanged; the record written
+  satisfies it (checked_at casts to a date, irs.gov host, not_listed).
+
+Tests: 10 new cases in test/verification-gate.test.js (irs.gov passes,
+ProPublica/lookalike/blank don't, fresh revoked/reinstated never overridden,
+stale and non-IRS records replaced); suite 40/41 (send-email.test.js as
+before). api/admin.js verify driven with mocked Supabase: irs.gov 200 with the
+record saved and an existing key kept; ProPublica 422; revoked-on-file 422;
+nothing patched on refusal. Chromium against a mocked API with Krish's exact
+form: IRS line green, Mark verified enabled, posts update then verify, checklist
+kept, Approve enabled; same form with a ProPublica source keeps it disabled.
+
 ## 2026-11-25 — Review page shows every detail without opening Edit
 
 Krish: opening a submission to approve showed only some details; location,

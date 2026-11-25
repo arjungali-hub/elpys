@@ -7,7 +7,7 @@
 
 const { checkAdminPassword, adminSessionCookie } = require('../lib/adminAuth');
 const { geocodeAddress }     = require('../lib/geocode');
-const { gateReasons, VERIFY_ACTION_REASONS } = require('../lib/verificationGate');
+const { gateReasons, humanIrsCheck, VERIFY_ACTION_REASONS } = require('../lib/verificationGate');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -235,7 +235,21 @@ module.exports = async function handler(req, res) {
       const row = await fetchRow();
       if (!row) return res.status(404).json({ error: 'No opportunity matched id ' + id + '.' });
 
-      const reasons = gateReasons(row).filter(r => VERIFY_ACTION_REASONS.indexOf(r.reason) !== -1);
+      // The panel sends its checklist along, so it is saved now rather than
+      // only at approve (merged the same way approve merges it), and a
+      // ticked "not automatically revoked" box with an irs.gov source can
+      // supply condition 8 — see humanIrsCheck in lib/verificationGate.js.
+      const sentChecks = req.body.verification && Array.isArray(req.body.verification.checks)
+        ? req.body.verification.checks : null;
+      let verification = row.verification;
+      if (sentChecks) {
+        verification = mergeVerification(row.verification, { checks: sentChecks });
+        const irs = row.org_tier === 'charity' ? humanIrsCheck(sentChecks, row.verification) : null;
+        if (irs) verification.irs_revocation_check = irs;
+      }
+
+      const reasons = gateReasons(Object.assign({}, row, { verification }))
+        .filter(r => VERIFY_ACTION_REASONS.indexOf(r.reason) !== -1);
       if (reasons.length) {
         return res.status(422).json({
           error: 'Cannot mark verified',
@@ -244,9 +258,11 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      const out = await patchRow({ verified_at: new Date().toISOString() });
+      const patch = { verified_at: new Date().toISOString() };
+      if (sentChecks) patch.verification = verification;
+      const out = await patchRow(patch);
       if (!out.ok) return res.status(out.status).json(out.payload);
-      return res.status(200).json({ ok: true, verified_at: out.row.verified_at });
+      return res.status(200).json({ ok: true, verified_at: out.row.verified_at, verification: out.row.verification });
     }
 
     if (action === 'update') {
